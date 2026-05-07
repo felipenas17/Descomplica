@@ -1,0 +1,35 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  --color-primary: #8A2BE2;
+  --color-secondary: #00FFFF;
+  --color-background-app: #F3F4F6;
+  --color-on-surface: #111827;
+  --color-on-surface-variant: #4B5563;
+  --color-surface-glass: rgba(255, 255, 255, 0.85);
+}
+
+@layer utilities {
+  .glass-card {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(138, 43, 226, 0.1);
+  }
+
+  .sidebar-dark {
+    background: #342e39;
+  }
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+}
+
+body {
+  background-color: var(--color-background-app);
+  color: var(--color-on-surface);
+  font-family: 'Inter', sans-serif;
+}
