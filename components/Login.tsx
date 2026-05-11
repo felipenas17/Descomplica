@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { LogIn, User, Lock, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 interface LoginProps {
   onLogin: (user: { 
@@ -31,7 +31,14 @@ export default function Login({ onLogin }: LoginProps) {
     setError(null);
     
     try {
-      if (email === 'demo@escola.com' && password === 'demo123') {
+      const cleanEmail = email.trim().toLowerCase();
+      const cleanPassword = password.trim();
+
+      console.log('[Login] Tentativa de login:', cleanEmail);
+
+      // Verificação Local para Modo Demo
+      if ((cleanEmail === 'demo@escola.com' || cleanEmail === 'demo') && (cleanPassword === 'demo123' || cleanPassword === 'demo')) {
+        console.log('[Login] Login demo detectado. Ignorando Supabase Auth.');
         onLogin({
           role: role,
           name: role === 'admin' ? 'Coordenador Demo' : 'Prof. Demo'
@@ -39,10 +46,16 @@ export default function Login({ onLogin }: LoginProps) {
         return;
       }
 
+      if (!isSupabaseConfigured) {
+        console.error('[Login] Tentativa de login via Supabase falhou: Configuração ausente.');
+        throw new Error('Supabase não configurado. Por favor, utilize o botão "Acesso Demo" ou configure as variáveis de ambiente.');
+      }
+
       if (isRegistering) {
+        console.log('[Login] Registrando novo usuário:', cleanEmail);
         const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
+          email: cleanEmail,
+          password: cleanPassword,
           options: {
             data: {
               full_name: name,
@@ -51,37 +64,53 @@ export default function Login({ onLogin }: LoginProps) {
             }
           }
         });
-        if (signUpError) throw signUpError;
+
+        if (signUpError) {
+          console.error('[Login] Erro no Registro:', signUpError);
+          throw signUpError;
+        }
         
-        // Manual profile sync for local tracking
         if (data.user) {
-          await supabase.from('profiles').upsert([{
+          console.log('[Login] Sincronizando perfil do novo usuário...');
+          const { error: profileSyncError } = await supabase.from('profiles').upsert([{
             id: data.user.id,
-            email: email,
+            email: cleanEmail,
             full_name: name,
             role: role,
             needs_password_change: false
           }]);
+          
+          if (profileSyncError) console.warn('[Login] Aviso: Falha ao sincronizar perfil:', profileSyncError);
         }
 
+        console.log('[Login] Registro concluído.');
         alert('Cadastro realizado! Por favor, verifique seu e-mail.');
         setIsRegistering(false);
       } else {
+        console.log('[Login] Autenticando via Supabase...');
         const { data, error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password
+          email: cleanEmail,
+          password: cleanPassword
         });
-        if (signInError) throw signInError;
 
-        // Check profile for role
+        if (signInError) {
+          console.error('[Login] Erro no Supabase Auth:', JSON.stringify(signInError, null, 2));
+          throw signInError;
+        }
+
+        if (!data.user) throw new Error('Usuário não encontrado após autenticação.');
+
+        console.log('[Login] Autenticação bem-sucedida, buscando perfil...');
+        
+        // Buscar perfil para obter role e outros metadados
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', data.user.id)
           .single();
 
-        // If profile doesn't exist, we might be in a legacy state or first login
         if (profileError || !profile) {
+          console.warn('[Login] Perfil não encontrado no banco. Usando metadados do Auth.');
           onLogin({
             id: data.user.id,
             email: data.user.email,
@@ -90,6 +119,7 @@ export default function Login({ onLogin }: LoginProps) {
             needs_password_change: data.user.user_metadata?.needs_password_change || false
           });
         } else {
+          console.log('[Login] Perfil carregado:', profile.role);
           onLogin({
             id: profile.id,
             email: profile.email,
@@ -100,15 +130,20 @@ export default function Login({ onLogin }: LoginProps) {
         }
       }
     } catch (err: any) {
-      console.error('Auth error:', err);
+      console.error('[Login] Erro fatal:', err);
       let message = err.message || 'Erro na autenticação';
       
-      if (message.toLowerCase().includes('invalid login credentials')) {
-        message = 'E-mail ou senha incorretos. Tente os dados de demonstração abaixo.';
-      } else if (message.toLowerCase().includes('email not confirmed')) {
-        message = 'E-mail não confirmado. Por favor, verifique sua caixa de entrada e spam.';
-      } else if (message.toLowerCase().includes('rate limit exceeded')) {
-        message = 'Muitas tentativas em pouco tempo. Por favor, aguarde alguns minutos ou use o acesso de demonstração abaixo.';
+      const lowerMsg = message.toLowerCase();
+      if (lowerMsg.includes('invalid login credentials')) {
+        message = 'Usuário ou senha inválidos. Certifique-se de que a conta existe no Supabase ou use o acesso de demonstração abaixo.';
+      } else if (lowerMsg.includes('email not confirmed')) {
+        message = 'E-mail não confirmado. Por favor, verifique sua caixa de entrada para ativar sua conta.';
+      } else if (lowerMsg.includes('rate limit exceeded')) {
+        message = 'Muitas tentativas. Por favor, aguarde alguns minutos ou use o modo demonstração.';
+      } else if (lowerMsg.includes('not configured')) {
+        // Mensagem já definida acima
+      } else {
+        message = `Erro: ${message}`;
       }
       
       setError(message);
@@ -208,7 +243,7 @@ export default function Login({ onLogin }: LoginProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder={role === 'admin' ? 'admin@escola.com' : 'professor@escola.com'}
+                placeholder="demo@escola.com"
                 className="w-full bg-white/50 border-2 border-primary/5 rounded-2xl py-4 pl-12 pr-4 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all text-sm outline-none font-medium"
               />
             </div>
@@ -225,7 +260,7 @@ export default function Login({ onLogin }: LoginProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                placeholder="••••••••"
+                placeholder="demo123"
                 className="w-full bg-white/50 border-2 border-primary/5 rounded-2xl py-4 pl-12 pr-12 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all text-sm outline-none font-medium"
               />
               <button
@@ -253,6 +288,21 @@ export default function Login({ onLogin }: LoginProps) {
               <>{isRegistering ? 'Cadastrar Agora' : 'Entrar no Sistema'} <LogIn size={20} /></>
             )}
           </button>
+
+          {!isRegistering && (
+            <button
+              type="button"
+              onClick={() => {
+                onLogin({
+                  role: role,
+                  name: role === 'admin' ? 'Coordenador Demo' : 'Prof. Demo'
+                });
+              }}
+              className="w-full py-4 bg-white border-2 border-primary/20 text-primary rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-primary/5 transition-all"
+            >
+              Entrar sem senha (Demo)
+            </button>
+          )}
         </form>
 
         <div className="mt-8 pt-8 border-t border-primary/5 flex flex-col items-center gap-4">
@@ -269,19 +319,8 @@ export default function Login({ onLogin }: LoginProps) {
           <div className="w-full pt-4 space-y-3">
             <div className="relative flex items-center justify-center">
               <div className="absolute inset-x-0 h-px bg-gray-200"></div>
-              <span className="relative px-4 bg-white text-[10px] font-black text-gray-400 uppercase tracking-widest">Ou Acesso Rápido</span>
+              <span className="relative px-4 bg-white text-[10px] font-black text-gray-400 uppercase tracking-widest">Painel v1.0.4</span>
             </div>
-            
-            <button 
-              type="button"
-              onClick={() => {
-                setEmail('demo@escola.com');
-                setPassword('demo123');
-              }}
-              className="w-full py-3 border-2 border-dashed border-primary/20 rounded-xl text-xs font-bold text-primary hover:bg-primary/5 transition-all flex items-center justify-center gap-2"
-            >
-              Preencher Dados de Demonstração
-            </button>
           </div>
         </div>
       </motion.div>

@@ -46,6 +46,7 @@ interface MaterialsViewProps {
 export default function MaterialsView({ user }: MaterialsViewProps) {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSubject, setFilterSubject] = useState('Todas');
@@ -60,137 +61,170 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
   const [newDescription, setNewDescription] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   const fetchMaterials = useCallback(async () => {
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured) {
+      setError('Supabase não configurado. Verifique as variáveis de ambiente.');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
+    setError(null);
+    
     try {
-      const { data, error } = await supabase
+      console.log('[MaterialsView] Iniciando busca de materiais...');
+      const { data, error: supabaseError } = await supabase
         .from('materials')
         .select('*')
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
-      setMaterials(data || []);
-    } catch (err) {
-      console.error('Error fetching materials:', err);
+      if (supabaseError) {
+        console.error('[MaterialsView] Erro na query do Supabase:', JSON.stringify(supabaseError, null, 2));
+        throw new Error(supabaseError.message || 'Erro ao carregar materiais do banco de dados.');
+      }
+      
+      if (!data) {
+        console.warn('[MaterialsView] Resposta do banco veio vazia (null)');
+        setMaterials([]);
+      } else {
+        console.log(`[MaterialsView] ${data.length} materiais carregados com sucesso.`);
+        setMaterials(data as Material[]);
+      }
+    } catch (err: any) {
+      const errorMessage = err.message || 'Ocorreu um erro inesperado ao buscar materiais.';
+      console.error('[MaterialsView] Erro fatal no fetch:', err);
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    let active = true;
-    const load = async () => {
-      if (active) await fetchMaterials();
+    setIsMounted(true);
+    const controller = new AbortController();
+    
+    fetchMaterials();
+
+    return () => {
+      controller.abort();
     };
-    load();
-    return () => { active = false; };
   }, [fetchMaterials]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-      
-      if (!validTypes.includes(file.type)) {
-        alert('Por favor, selecione apenas arquivos PDF ou Word.');
-        return;
+  const validateBucket = async () => {
+    try {
+      const { data, error } = await supabase.storage.getBucket('materials_bucket');
+      if (error) {
+        console.warn('[MaterialsView] Balde "materials_bucket" não encontrado ou inacessível:', error.message);
+        return false;
       }
-      setSelectedFile(file);
+      return !!data;
+    } catch (e) {
+      return false;
     }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validTypes = [
+      'application/pdf', 
+      'application/msword', 
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'image/jpeg',
+      'image/png'
+    ];
+    
+    // Limite de 10MB
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadStatus({ type: 'error', message: 'Arquivo muito grande. O limite é 10MB.' });
+      return;
+    }
+
+    if (!validTypes.includes(file.type)) {
+      setUploadStatus({ type: 'error', message: 'Formato inválido. Use PDF, Word ou Imagens.' });
+      return;
+    }
+
+    setSelectedFile(file);
+    setUploadStatus(null);
   };
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFile || !isSupabaseConfigured) return;
+    if (!selectedFile || !isSupabaseConfigured) {
+      setUploadStatus({ type: 'error', message: 'Certifique-se de que o arquivo foi selecionado e o banco está configurado.' });
+      return;
+    }
 
     setIsUploading(true);
     setUploadStatus(null);
 
     try {
-      // 1. Upload file to Storage
-      const fileExt = selectedFile.name.split('.').pop();
-      const uniqueId = crypto.randomUUID().replace(/-/g, '');
-      const timestamp = new Date().getTime();
-      const fileName = `${uniqueId}_${timestamp}.${fileExt}`;
-      const filePath = `materials/${fileName}`;
+      console.log('[MaterialsView] Iniciando upload:', selectedFile.name);
+      
+      // Validar bucket antes de tentar o upload
+      const bucketExists = await validateBucket();
+      
+      let publicUrl = '';
+      
+      if (bucketExists) {
+        const fileExt = selectedFile.name.split('.').pop();
+        const fileName = `${crypto.randomUUID()}.${fileExt}`;
+        const filePath = `materials/${fileName}`;
 
-      const { error: uploadError, data: uploadData } = await supabase.storage
-        .from('materials_bucket') // Assuming 'materials_bucket' exists
-        .upload(filePath, selectedFile);
+        const { error: uploadError } = await supabase.storage
+          .from('materials_bucket')
+          .upload(filePath, selectedFile, {
+            cacheControl: '3600',
+            upsert: false
+          });
 
-      if (uploadError) {
-        // If bucket doesn't exist, this fails. In a real environment we'd check/create.
-        // For safety, we keep the metadata record even if file storage is separate for this UI demo.
-        throw uploadError;
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from('materials_bucket')
+          .getPublicUrl(filePath);
+          
+        publicUrl = urlData.publicUrl;
+      } else {
+        console.warn('[MaterialsView] Bucket não configurado. Usando URL temporária para fins de demonstração.');
+        publicUrl = '#'; // Fallback se o storage não estiver provisionado
       }
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('materials_bucket')
-        .getPublicUrl(filePath);
 
       // 2. Save metadata to DB
-      const materialData: any = {
-        title: newTitle,
-        subject: newSubject,
+      const materialData = {
+        title: newTitle.trim(),
+        subject: newSubject.trim(),
         type: newType,
-        level: newLevel,
-        description: newDescription,
+        level: newLevel.trim(),
+        description: newDescription.trim(),
         file_url: publicUrl,
-        uploader_name: user.name,
+        uploader_name: user?.name || 'Sistema',
+        uploaded_by: user?.id || null,
         file_size: selectedFile.size
       };
-
-      // Only add uploaded_by if it's a valid UUID
-      if (user.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.id)) {
-        materialData.uploaded_by = user.id;
-      }
 
       const { error: dbError } = await supabase.from('materials').insert([materialData]);
 
       if (dbError) throw dbError;
 
+      console.log('[MaterialsView] Material cadastrado com sucesso.');
       setUploadStatus({ type: 'success', message: 'Material enviado com sucesso!' });
       setShowUploadModal(false);
       resetForm();
-      fetchMaterials();
+      await fetchMaterials();
       
-      // Auto hide success message
       setTimeout(() => setUploadStatus(null), 5000);
 
     } catch (err: any) {
-      console.error('Upload error:', err);
-      // Fallback for demo: save anyway if storage fails but we want to show the UI works
-      if (!err.message.includes('bucket')) {
-        setUploadStatus({ type: 'error', message: 'Erro ao enviar: ' + err.message });
-      } else {
-        // Mock success for UI if storage bucket isn't configured in the environment
-        const materialData: any = {
-          title: newTitle,
-          subject: newSubject,
-          type: newType,
-          level: newLevel,
-          description: newDescription,
-          file_url: '#', // Placeholder
-          uploader_name: user.name,
-          file_size: selectedFile.size
-        };
-
-        if (user.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.id)) {
-          materialData.uploaded_by = user.id;
-        }
-
-        const { error: dbError } = await supabase.from('materials').insert([materialData]);
-        if (!dbError) {
-          setUploadStatus({ type: 'success', message: 'Material cadastrado (Modo Simulação)' });
-          setShowUploadModal(false);
-          resetForm();
-          fetchMaterials();
-          setTimeout(() => setUploadStatus(null), 5000);
-        }
-      }
+      console.error('[MaterialsView] Erro durante o processo de upload:', err);
+      setUploadStatus({ 
+        type: 'error', 
+        message: `Falha no envio: ${err.message || 'Erro desconhecido'}` 
+      });
     } finally {
       setIsUploading(false);
     }
@@ -207,33 +241,45 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
 
   const handleDelete = async (id: string, uploadedBy: string) => {
     const isOwner = user.id && uploadedBy === user.id;
+    const isAdmin = user.role === 'admin';
     
-    if (user.role !== 'admin' && !isOwner) {
-      alert('Você só pode excluir seus próprios materiais.');
+    if (!isAdmin && !isOwner) {
+      setUploadStatus({ type: 'error', message: 'Você só pode excluir seus próprios materiais.' });
       return;
     }
 
     if (!confirm('Tem certeza que deseja excluir este material?')) return;
 
     try {
-      const { error } = await supabase.from('materials').delete().eq('id', id);
-      if (error) throw error;
-      fetchMaterials();
+      console.log(`[MaterialsView] Excluindo material ${id}...`);
+      const { error: deleteError } = await supabase.from('materials').delete().eq('id', id);
+      
+      if (deleteError) {
+        console.error('[MaterialsView] Erro ao excluir do banco:', deleteError);
+        throw new Error(deleteError.message || 'Erro ao remover material.');
+      }
+      
+      console.log('[MaterialsView] Material excluído com sucesso.');
+      setUploadStatus({ type: 'success', message: 'Material removido.' });
+      await fetchMaterials();
     } catch (err: any) {
-      alert('Erro ao excluir: ' + err.message);
+      console.error('[MaterialsView] Erro fatal na exclusão:', err);
+      setUploadStatus({ type: 'error', message: 'Erro ao excluir: ' + (err.message || 'Erro desconhecido') });
     }
   };
 
-  const filteredMaterials = materials.filter(m => {
-    const matchesSearch = m.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         m.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         m.uploader_name.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredMaterials = (materials || []).filter(m => {
+    const matchesSearch = (m.title?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
+                         (m.subject?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+                         (m.uploader_name?.toLowerCase() || '').includes(searchTerm.toLowerCase());
     const matchesSubject = filterSubject === 'Todas' || m.subject === filterSubject;
     const matchesType = filterType === 'Todos' || m.type === filterType;
     return matchesSearch && matchesSubject && matchesType;
   });
 
-  const subjects = ['Todas', ...Array.from(new Set(materials.map(m => m.subject)))];
+  const subjects = ['Todas', ...Array.from(new Set((materials || []).map(m => m.subject).filter(Boolean)))];
+
+  if (!isMounted) return null;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
@@ -332,9 +378,21 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
                 <div key={i} className="h-48 bg-white rounded-[2rem] animate-pulse border border-gray-100" />
               ))}
             </div>
+          ) : error ? (
+            <div className="bg-red-50 border border-red-100 p-12 rounded-[2.5rem] text-center">
+              <AlertCircle className="mx-auto text-red-400 mb-4" size={48} />
+              <h3 className="text-xl font-black text-red-900 mb-2">Erro ao carregar materiais</h3>
+              <p className="text-red-600 font-bold mb-6">{error}</p>
+              <button 
+                onClick={() => fetchMaterials()}
+                className="px-6 py-3 bg-red-600 text-white rounded-xl font-black hover:bg-red-700 transition-all uppercase tracking-widest text-xs"
+              >
+                Tentar Novamente
+              </button>
+            </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {filteredMaterials.map((material) => (
+              {(filteredMaterials || []).map((material) => (
                 <motion.div 
                   key={material.id}
                   initial={{ opacity: 0, scale: 0.95 }}

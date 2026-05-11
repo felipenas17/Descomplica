@@ -11,13 +11,14 @@ import {
   BookOpen, 
   Users,
   Menu,
-  Bell,
   Search,
   Plus,
   MessageSquareQuote,
   ShieldCheck,
   FileText
 } from 'lucide-react';
+
+import { NotificationDropdown } from './NotificationDropdown';
 
 // --- Shared Types ---
 export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials';
@@ -111,10 +112,7 @@ const TopBar = ({ title, user }: { title: string, user: any }) => (
           />
         </div>
       )}
-      <div className="relative cursor-pointer">
-        <Bell size={20} className="text-gray-500" />
-        <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-      </div>
+      <NotificationDropdown />
       <div className="w-9 h-9 rounded-full bg-primary border-2 border-primary/20 overflow-hidden cursor-pointer active:scale-95 transition-all relative">
         <Image src="https://picsum.photos/seed/admin/200" alt="Avatar" fill className="object-cover" referrerPolicy="no-referrer" />
       </div>

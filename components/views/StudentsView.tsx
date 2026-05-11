@@ -20,27 +20,48 @@ export default function StudentsView() {
   const [students, setStudents] = React.useState<any[]>([]);
   const [showForm, setShowForm] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [isMounted, setIsMounted] = React.useState(false);
 
   const fetchStudents = React.useCallback(async () => {
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured) {
+      setError('Supabase não configurado.');
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
+    setError(null);
     try {
-      const { data, error } = await supabase.from('students').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
+      console.log('[StudentsView] Carregando alunos...');
+      const { data, error: supabaseError } = await supabase
+        .from('students')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (supabaseError) {
+        console.error('[StudentsView] Erro na query:', JSON.stringify(supabaseError, null, 2));
+        throw new Error(supabaseError.message || 'Erro ao carregar alunos');
+      }
+      
       setStudents(data || []);
-    } catch (err) {
-      console.error('Error fetching students:', err);
+      console.log(`[StudentsView] ${data?.length || 0} alunos encontrados.`);
+    } catch (err: any) {
+      console.error('[StudentsView] Erro fatal:', err);
+      setError(err.message || 'Erro inesperado.');
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   React.useEffect(() => {
+    setIsMounted(true);
     fetchStudents();
   }, [fetchStudents]);
 
   const handleAddStudent = async (data: any) => {
     try {
+      console.log('[StudentsView] Matriculando novo aluno:', data.email);
       const { error } = await supabase.from('students').insert([{
         name: data.name,
         email: data.email,
@@ -49,25 +70,33 @@ export default function StudentsView() {
       }]);
       if (error) throw error;
       
+      console.log('[StudentsView] Aluno matriculado com sucesso.');
       alert('Aluno matriculado com sucesso!');
       fetchStudents();
       setShowForm(false);
     } catch (err: any) {
-      alert('Erro ao matricular: ' + err.message);
+      console.error('[StudentsView] Erro na matrícula:', err);
+      alert('Erro ao matricular: ' + (err.message || 'Erro desconhecido'));
     }
   };
 
   const handleDeleteStudent = async (id: string) => {
     if (window.confirm('Deseja realmente remover este aluno?')) {
       try {
+        console.log(`[StudentsView] Removendo aluno ${id}...`);
         const { error } = await supabase.from('students').delete().eq('id', id);
         if (error) throw error;
-        setStudents(students.filter(s => s.id !== id));
+        
+        console.log('[StudentsView] Aluno removido.');
+        setStudents(prev => prev.filter(s => s.id !== id));
       } catch (err: any) {
-        alert('Erro ao excluir: ' + err.message);
+        console.error('[StudentsView] Erro ao excluir aluno:', err);
+        alert('Erro ao excluir: ' + (err.message || 'Erro desconhecido'));
       }
     }
   };
+
+  if (!isMounted) return null;
 
   return (
     <div className="space-y-10">
@@ -91,9 +120,22 @@ export default function StudentsView() {
         </div>
       </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {students.map(student => (
-          <div key={student.id} className="glass-card rounded-[2rem] overflow-hidden group hover:shadow-2xl hover:shadow-secondary/10 transition-all duration-500 border border-primary/5">
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-64 bg-gray-100 rounded-[2rem] animate-pulse" />
+          ))}
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 border border-red-100 p-12 rounded-[2.5rem] text-center">
+          <UserCheck className="mx-auto text-red-400 mb-4" size={48} />
+          <h3 className="text-xl font-bold text-red-900 mb-2">Erro ao carregar alunos</h3>
+          <p className="text-red-500 font-medium">{error}</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {(students || []).map(student => (
+            <div key={student.id} className="glass-card rounded-[2rem] overflow-hidden group hover:shadow-2xl hover:shadow-secondary/10 transition-all duration-500 border border-primary/5">
             <div className="p-8">
               <div className="flex justify-between items-start mb-6">
                   <div className="relative">
@@ -141,7 +183,8 @@ export default function StudentsView() {
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

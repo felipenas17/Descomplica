@@ -21,36 +21,48 @@ export default function TeachersView() {
   const [teachers, setTeachers] = React.useState<any[]>([]);
   const [showForm, setShowForm] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [isMounted, setIsMounted] = React.useState(false);
 
   const fetchTeachers = React.useCallback(async () => {
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured) {
+      setError('Supabase não configurado.');
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
+    setError(null);
     try {
-      const { data, error } = await supabase.from('teachers').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
+      console.log('[TeachersView] Carregando professores...');
+      const { data, error: supabaseError } = await supabase
+        .from('teachers')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (supabaseError) {
+        console.error('[TeachersView] Erro na query:', JSON.stringify(supabaseError, null, 2));
+        throw new Error(supabaseError.message || 'Erro ao carregar professores');
+      }
+      
       setTeachers(data || []);
-    } catch (err) {
-      console.error('Error fetching teachers:', err);
+      console.log(`[TeachersView] ${data?.length || 0} professores encontrados.`);
+    } catch (err: any) {
+      console.error('[TeachersView] Erro fatal:', err);
+      setError(err.message || 'Erro inesperado.');
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   React.useEffect(() => {
-    let active = true;
-    const load = async () => {
-      if (active) await fetchTeachers();
-    };
-    load();
-    return () => { active = false; };
+    setIsMounted(true);
+    fetchTeachers();
   }, [fetchTeachers]);
 
   const handleAddTeacher = async (data: any) => {
     try {
-      // 1. Create Profile first (if permissions allow)
-      // Note: Real Auth user creation requires Service Role on client or Trigger on server.
-      // We will perform the DB insertion which will trigger the login availability logic.
-      
+      console.log('[TeachersView] Cadastrando novo professor:', data.email);
       const teacherData = {
         name: data.name,
         email: data.email,
@@ -68,28 +80,42 @@ export default function TeachersView() {
 
       if (teacherError) throw teacherError;
 
-      // Simulate a profile creation for the login logic
-      // In a real app, this would be handled by a Supabase Trigger on auth.users -> public.profiles
-      await supabase.from('profiles').insert([{
+      // Sync profile
+      await supabase.from('profiles').upsert([{
+        id: (insertedTeacher as any).id, // Using the new UUID if generated
         email: data.email,
         full_name: data.name,
-        role: 'professor'
+        role: 'professor',
+        needs_password_change: false
       }]);
 
+      console.log('[TeachersView] Professor cadastrado com sucesso.');
       alert(`Professor cadastrado com sucesso! \nAcesso gerado para: ${data.email}\nSenha: ${data.password}`);
       fetchTeachers();
       setShowForm(false);
     } catch (err: any) {
-      console.error('Error adding teacher:', err);
-      alert('Erro ao cadastrar professor: ' + err.message);
+      console.error('[TeachersView] Erro no cadastro:', err);
+      alert('Erro ao cadastrar professor: ' + (err.message || 'Erro desconhecido'));
     }
   };
 
-  const handleDeleteTeacher = (id: string) => {
+  const handleDeleteTeacher = async (id: string) => {
     if (window.confirm('Deseja realmente remover este professor?')) {
-      setTeachers(teachers.filter(t => t.id !== id));
+      try {
+        console.log(`[TeachersView] Removendo professor ${id}...`);
+        const { error } = await supabase.from('teachers').delete().eq('id', id);
+        if (error) throw error;
+        
+        console.log('[TeachersView] Professor removido.');
+        setTeachers(prev => prev.filter(t => t.id !== id));
+      } catch (err: any) {
+        console.error('[TeachersView] Erro ao remover:', err);
+        alert('Erro ao excluir: ' + (err.message || 'Erro desconhecido'));
+      }
     }
   };
+
+  if (!isMounted) return null;
 
   return (
     <div className="space-y-10">
@@ -114,10 +140,22 @@ export default function TeachersView() {
         </div>
       </section>
 
-      {/* Grid of Teachers */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-        {teachers.map(teacher => (
-          <div key={teacher.id} className="glass-card rounded-[2rem] overflow-hidden group hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 border border-primary/5">
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-64 bg-gray-100 rounded-[2rem] animate-pulse" />
+          ))}
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 border border-red-100 p-12 rounded-[2.5rem] text-center">
+          <ShieldCheck className="mx-auto text-red-400 mb-4" size={48} />
+          <h3 className="text-xl font-bold text-red-900 mb-2">Erro ao carregar corpo docente</h3>
+          <p className="text-red-500 font-medium">{error}</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+          {(teachers || []).map(teacher => (
+            <div key={teacher.id} className="glass-card rounded-[2rem] overflow-hidden group hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 border border-primary/5">
             <div className="p-8">
               <div className="flex justify-between items-start mb-6">
                 <div className="relative">
@@ -172,7 +210,8 @@ export default function TeachersView() {
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

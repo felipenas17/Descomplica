@@ -40,21 +40,27 @@ export default function Home() {
 
   const fetchSchedule = React.useCallback(async () => {
     if (!isSupabaseConfigured) {
-      console.log('Supabase not configured. Using mock data.');
+      console.warn('[Home] Supabase não configurado. Utilizando dados fictícios.');
+      setSchedule(INITIAL_SCHEDULE);
       return;
     }
 
     try {
-      const { data, error } = await supabase.from('schedules').select('*').order('date', { ascending: true });
+      console.log('[Home] Buscando horários do Supabase...');
+      const { data, error: supabaseError } = await supabase
+        .from('schedules')
+        .select('*')
+        .order('date', { ascending: true });
       
-      if (error) {
-        console.warn('Supabase Error (falling back to mock data):', error.message);
-        // Fallback to mock data if table is missing or connection fails
+      if (supabaseError) {
+        console.error('[Home] Erro ao buscar horários:', JSON.stringify(supabaseError, null, 2));
+        // Fallback para dados mock em caso de erro de configuração/tabela
         setSchedule(INITIAL_SCHEDULE);
         return;
       }
       
       if (data && data.length > 0) {
+        console.log(`[Home] ${data.length} horários carregados.`);
         const mapped = data.map((item: any) => ({
           id: item.id,
           title: item.subject,
@@ -76,24 +82,20 @@ export default function Home() {
         }));
         setSchedule(mapped);
       } else {
+        console.warn('[Home] Nenhum horário encontrado. Usando mock data.');
         setSchedule(INITIAL_SCHEDULE);
       }
-    } catch (err) {
-      console.error('Unexpected error fetching schedule:', err);
+    } catch (err: any) {
+      console.error('[Home] Erro inesperado no fetchSchedule:', err);
       setSchedule(INITIAL_SCHEDULE);
     }
   }, []);
 
   useEffect(() => {
-    let isMounted = true;
-    const load = async () => {
-      if (isMounted) {
-        await fetchSchedule();
-      }
-    };
-    load();
-    return () => { isMounted = false; };
-  }, [user, fetchSchedule]);
+    let active = true;
+    if (active) fetchSchedule();
+    return () => { active = false; };
+  }, [fetchSchedule]);
 
   const notify = (msg: string) => {
     setNotification(msg);

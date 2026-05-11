@@ -165,3 +165,54 @@ export const MOCK_FINANCIAL_SUMMARY = {
   netProfit: 62830.00,
   defaultRate: 4.8
 };
+
+export type NotificationType = 'new_class' | 'payment_due' | 'substitution_request';
+
+export type AppNotification = {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  priority: 'low' | 'medium' | 'high';
+};
+
+export const MOCK_NOTIFICATIONS: AppNotification[] = [
+  {
+    id: 'n1',
+    type: 'new_class',
+    title: 'Nova aula agendada',
+    message: 'Nova aula de Matemática agendada para Professor Ricardo Santos em 12/05 às 08:00.',
+    timestamp: '2026-05-07T10:00:00Z',
+    read: false,
+    priority: 'medium'
+  },
+  {
+    id: 'n2',
+    type: 'payment_due',
+    title: 'Vencimento de Mensalidade',
+    message: 'A mensalidade de Ana Alice Silva vence em breve (10/05).',
+    timestamp: '2026-05-07T09:15:00Z',
+    read: false,
+    priority: 'high'
+  },
+  {
+    id: 'n3',
+    type: 'substitution_request',
+    title: 'Solicitação de Substituição',
+    message: 'Professor Marco Aurélio solicitou substituição para a aula de 15/05 às 14:00.',
+    timestamp: '2026-05-06T16:45:00Z',
+    read: true,
+    priority: 'high'
+  },
+  {
+    id: 'n4',
+    type: 'new_class',
+    title: 'Nova aula agendada',
+    message: 'Nova aula de Física agendada para Professora Elena Costa em 13/05 às 10:00.',
+    timestamp: '2026-05-06T11:00:00Z',
+    read: true,
+    priority: 'low'
+  }
+];
