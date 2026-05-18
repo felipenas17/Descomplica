@@ -7,13 +7,8 @@ import {
   CheckCircle, 
   Clock, 
   MapPin, 
-  Users, 
-  StickyNote, 
-  ChevronRight,
-  ArrowRight,
-  UserPlus
+  StickyNote
 } from 'lucide-react';
-import { MOCK_EVENTS } from '@/lib/data';
 import FeedbackModal from '@/components/FeedbackModal';
 
 export default function AgendaView({ user, schedule = [], onRefresh }: { user?: any, schedule?: any[], onRefresh?: () => void }) {
@@ -22,11 +17,24 @@ export default function AgendaView({ user, schedule = [], onRefresh }: { user?: 
   const [selectedClass, setSelectedClass] = useState<any>(null);
   const [viewType, setViewType] = useState<'today' | 'weekly'>('weekly');
 
+  // State for attendance
+  const [attendance, setAttendance] = useState([
+    { id: '1', name: 'Lucas Ferreira', status: 'Presente' },
+    { id: '2', name: 'Mariana Duarte', status: 'Agendado' },
+    { id: '3', name: 'Roberto Júnio', status: 'Presente' }
+  ]);
+
+  const toggleAttendance = (id: string) => {
+    setAttendance(prev => prev.map(s => {
+      if (s.id === id) {
+        return { ...s, status: s.status === 'Presente' ? 'Agendado' : 'Presente' };
+      }
+      return s;
+    }));
+  };
+
   const todayDate = new Date();
   const dayNameRaw = todayDate.toLocaleDateString('pt-BR', { weekday: 'short' }).toUpperCase().replace('.', '').slice(0, 3);
-  const dayNumber = todayDate.getDate();
-
-  const [notification, setNotification] = useState<string | null>(null);
 
   // Better filtering logic for professors
   const displayEvents = user?.role === 'professor' 
@@ -40,7 +48,6 @@ export default function AgendaView({ user, schedule = [], onRefresh }: { user?: 
 
   const todayEvents = displayEvents.filter(e => e.day === dayNameRaw);
   const currentClass = todayEvents[0];
-  const nextClass = todayEvents[1];
 
   const DAYS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
@@ -208,11 +215,7 @@ export default function AgendaView({ user, schedule = [], onRefresh }: { user?: 
                 </tr>
               </thead>
               <tbody className="text-sm">
-                {[
-                  { id: '1', name: 'Lucas Ferreira', status: 'Presente' },
-                  { id: '2', name: 'Mariana Duarte', status: 'Agendado' },
-                  { id: '3', name: 'Roberto Júnio', status: 'Presente' }
-                ].map((s) => (
+                {attendance.map((s) => (
                   <tr key={s.id} className="border-b border-primary/5 hover:bg-gray-50/50">
                     <td className="px-8 py-5 font-bold text-gray-900">{s.name}</td>
                     <td className="px-8 py-5">
@@ -221,7 +224,10 @@ export default function AgendaView({ user, schedule = [], onRefresh }: { user?: 
                       </span>
                     </td>
                     <td className="px-8 py-5 text-right">
-                       <button className="p-2 hover:bg-primary/5 rounded-lg text-primary transition-all">
+                       <button 
+                         onClick={() => toggleAttendance(s.id)}
+                         className={`p-2 rounded-lg transition-all ${s.status === 'Presente' ? 'bg-secondary/10 text-secondary' : 'hover:bg-primary/5 text-primary'}`}
+                       >
                           <CheckCircle size={18} />
                        </button>
                     </td>

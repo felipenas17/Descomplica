@@ -1,19 +1,17 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
 import { 
-  Search, 
-  Filter, 
   Plus, 
-  MoreVertical, 
   Trash2,
   Mail, 
   UserCheck,
   GraduationCap,
   ShieldCheck
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { Avatar } from '@/components/ui/Avatar';
 import StudentForm from '@/components/forms/StudentForm';
 
 export default function StudentsView() {
@@ -25,7 +23,7 @@ export default function StudentsView() {
 
   const fetchStudents = React.useCallback(async () => {
     if (!isSupabaseConfigured) {
-      setError('Supabase não configurado.');
+      setError('Supabase não configurado. Verifique as chaves API.');
       setIsLoading(false);
       return;
     }
@@ -33,21 +31,17 @@ export default function StudentsView() {
     setIsLoading(true);
     setError(null);
     try {
-      console.log('[StudentsView] Carregando alunos...');
       const { data, error: supabaseError } = await supabase
         .from('students')
         .select('*')
         .order('created_at', { ascending: false });
       
       if (supabaseError) {
-        console.error('[StudentsView] Erro na query:', JSON.stringify(supabaseError, null, 2));
         throw new Error(supabaseError.message || 'Erro ao carregar alunos');
       }
       
       setStudents(data || []);
-      console.log(`[StudentsView] ${data?.length || 0} alunos encontrados.`);
     } catch (err: any) {
-      console.error('[StudentsView] Erro fatal:', err);
       setError(err.message || 'Erro inesperado.');
     } finally {
       setIsLoading(false);
@@ -60,39 +54,40 @@ export default function StudentsView() {
   }, [fetchStudents]);
 
   const handleAddStudent = async (data: any) => {
+    const loadingToast = toast.loading('Processando matrícula...');
     try {
-      console.log('[StudentsView] Matriculando novo aluno:', data.email);
+      if (!isSupabaseConfigured) throw new Error('Supabase não conectado.');
+
       const { error } = await supabase.from('students').insert([{
         name: data.name,
         email: data.email,
-        phone: data.phone || data.registration,
+        phone: data.phone || '',
+        registration_number: data.registration || '',
+        class_name: data.class || '',
         status: 'Ativo'
       }]);
+
       if (error) throw error;
       
-      console.log('[StudentsView] Aluno matriculado com sucesso.');
-      alert('Aluno matriculado com sucesso!');
+      toast.success('Aluno matriculado com sucesso!', { id: loadingToast });
       fetchStudents();
       setShowForm(false);
     } catch (err: any) {
-      console.error('[StudentsView] Erro na matrícula:', err);
-      alert('Erro ao matricular: ' + (err.message || 'Erro desconhecido'));
+      console.error('[StudentsView] Erro completo na matrícula:', JSON.stringify(err, null, 2));
+      const message = err.message || err.details || 'Verifique as permissões de acesso (RLS).';
+      toast.error('Erro na matrícula: ' + message, { id: loadingToast });
     }
   };
 
   const handleDeleteStudent = async (id: string) => {
-    if (window.confirm('Deseja realmente remover este aluno?')) {
-      try {
-        console.log(`[StudentsView] Removendo aluno ${id}...`);
-        const { error } = await supabase.from('students').delete().eq('id', id);
-        if (error) throw error;
-        
-        console.log('[StudentsView] Aluno removido.');
-        setStudents(prev => prev.filter(s => s.id !== id));
-      } catch (err: any) {
-        console.error('[StudentsView] Erro ao excluir aluno:', err);
-        alert('Erro ao excluir: ' + (err.message || 'Erro desconhecido'));
-      }
+    try {
+      const { error } = await supabase.from('students').delete().eq('id', id);
+      if (error) throw error;
+      
+      toast.success('Aluno removido.');
+      setStudents(prev => prev.filter(s => s.id !== id));
+    } catch (err: any) {
+      toast.error('Erro ao excluir: ' + (err.message || 'Verifique se você tem permissão de admin.'));
     }
   };
 
@@ -139,15 +134,7 @@ export default function StudentsView() {
             <div className="p-8">
               <div className="flex justify-between items-start mb-6">
                   <div className="relative">
-                  <div className="w-20 h-20 rounded-2xl overflow-hidden ring-4 ring-secondary/10 group-hover:ring-secondary/30 transition-all relative bg-gray-100 flex items-center justify-center">
-                    <Image 
-                      src={student.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${student.name}`} 
-                      alt={student.name} 
-                      fill 
-                      className="object-cover group-hover:scale-110 transition-transform duration-500" 
-                      referrerPolicy="no-referrer" 
-                    />
-                  </div>
+                  <Avatar name={student.name} size={80} className="w-20 h-20 rounded-2xl group-hover:scale-110 transition-transform duration-500" />
                   <div className={`absolute -bottom-2 -right-2 w-8 h-8 rounded-full border-4 border-white flex items-center justify-center text-white z-10 ${student.status === 'Ativo' ? 'bg-green-500' : 'bg-red-500'}`}>
                     <ShieldCheck size={14} />
                   </div>
@@ -163,8 +150,19 @@ export default function StudentsView() {
 
               <div className="space-y-1">
                 <h3 className="text-xl font-bold text-gray-900 group-hover:text-secondary transition-colors">{student.name}</h3>
-                <p className="text-secondary font-bold text-xs uppercase tracking-widest">{student.phone || 'Sem Telefone'}</p>
-                <p className="text-gray-400 text-xs">ID: {student.id.slice(0, 8)}</p>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {student.class_name && (
+                    <span className="bg-secondary/10 text-secondary px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                      {student.class_name}
+                    </span>
+                  )}
+                  {student.registration_number && (
+                    <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                      Mat: {student.registration_number}
+                    </span>
+                  )}
+                </div>
+                <p className="text-secondary font-bold text-xs uppercase tracking-widest mt-2">{student.phone || 'Sem Telefone'}</p>
               </div>
 
               <div className="mt-8 pt-8 border-t border-primary/5 space-y-4">

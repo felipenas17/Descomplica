@@ -9,12 +9,9 @@ import {
   CheckCircle2, 
   AlertCircle, 
   Loader2, 
-  ChevronRight, 
   ArrowRight,
   Database,
-  Search,
   Download,
-  Terminal,
   RefreshCw,
   Info
 } from 'lucide-react';
@@ -132,7 +129,7 @@ export default function ImportModal({ isOpen, onClose, onSuccess }: ImportModalP
 
       targetFields.forEach(field => {
         const colName = mapping[field.key];
-        let val = colName ? row[colName] : undefined;
+        const val = colName ? row[colName] : undefined;
 
         if (field.required && (val === undefined || val === '')) {
           rowErrors.push(`Campo obrigatório "${field.label}" está faltando.`);
@@ -173,7 +170,7 @@ export default function ImportModal({ isOpen, onClose, onSuccess }: ImportModalP
     setStep('executing');
     let successCount = 0;
     let failedCount = 0;
-    let duplicateCount = 0;
+    const duplicateCount = 0;
 
     const total = validatedData.length;
     

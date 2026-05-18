@@ -1,16 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
   TrendingUp, 
   TrendingDown, 
   UserPlus, 
-  GraduationCap, 
   ChevronRight,
-  DollarSign,
-  Briefcase,
   Calendar,
   Loader2
 } from 'lucide-react';

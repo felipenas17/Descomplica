@@ -166,7 +166,22 @@ export const MOCK_FINANCIAL_SUMMARY = {
   defaultRate: 4.8
 };
 
-export type NotificationType = 'new_class' | 'payment_due' | 'substitution_request';
+export type NotificationType = 
+  | 'new_class' 
+  | 'payment_due' 
+  | 'substitution_request'
+  | 'new_enrollment' 
+  | 'overdue_payment' 
+  | 'teacher_idle' 
+  | 'feedback_pending' 
+  | 'class_limit'
+  | 'class_cancelled' 
+  | 'schedule_change' 
+  | 'class_upcoming' 
+  | 'class_scheduled' 
+  | 'feedback_required' 
+  | 'student_added' 
+  | 'reminder_grades';
 
 export type AppNotification = {
   id: string;
@@ -176,43 +191,90 @@ export type AppNotification = {
   timestamp: string;
   read: boolean;
   priority: 'low' | 'medium' | 'high';
+  category: 'admin' | 'teacher';
 };
 
 export const MOCK_NOTIFICATIONS: AppNotification[] = [
+  // Admin Notifications
   {
     id: 'n1',
-    type: 'new_class',
-    title: 'Nova aula agendada',
-    message: 'Nova aula de Matemática agendada para Professor Ricardo Santos em 12/05 às 08:00.',
-    timestamp: '2026-05-07T10:00:00Z',
+    type: 'new_enrollment',
+    title: 'Nova Matrícula',
+    message: 'O aluno Carlos Eduardo acaba de ser matriculado no 3º Ano A.',
+    timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(), // 15m ago
     read: false,
-    priority: 'medium'
+    priority: 'medium',
+    category: 'admin'
   },
   {
     id: 'n2',
-    type: 'payment_due',
-    title: 'Vencimento de Mensalidade',
-    message: 'A mensalidade de Ana Alice Silva vence em breve (10/05).',
-    timestamp: '2026-05-07T09:15:00Z',
+    type: 'overdue_payment',
+    title: 'Inadimplência Detectada',
+    message: 'A fatura de Mariana Luz (Ref: Maio/2026) está em atraso há 2 dias.',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2h ago
     read: false,
-    priority: 'high'
+    priority: 'high',
+    category: 'admin'
   },
   {
     id: 'n3',
-    type: 'substitution_request',
-    title: 'Solicitação de Substituição',
-    message: 'Professor Marco Aurélio solicitou substituição para a aula de 15/05 às 14:00.',
-    timestamp: '2026-05-06T16:45:00Z',
-    read: true,
-    priority: 'high'
+    type: 'teacher_idle',
+    title: 'Alerta de Escala',
+    message: 'O Professor Miguel Arraes ainda não possui aulas atribuídas para a próxima quarta-feira.',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), // 5h ago
+    read: false,
+    priority: 'medium',
+    category: 'admin'
   },
   {
     id: 'n4',
-    type: 'new_class',
-    title: 'Nova aula agendada',
-    message: 'Nova aula de Física agendada para Professora Elena Costa em 13/05 às 10:00.',
-    timestamp: '2026-05-06T11:00:00Z',
+    type: 'class_limit',
+    title: 'Limite de Turma Próximo',
+    message: 'A Turma de Robótica Avançada atingiu 90% da capacidade (18/20 alunos).',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1d ago
     read: true,
-    priority: 'low'
+    priority: 'medium',
+    category: 'admin'
+  },
+  // Teacher Notifications
+  {
+    id: 'n5',
+    type: 'class_cancelled',
+    title: 'Aula Cancelada',
+    message: 'Sua aula de Física das 14:00 foi cancelada devido a manutenção na sala Lab 02.',
+    timestamp: new Date(Date.now() - 1000 * 60 * 10).toISOString(), // 10m ago
+    read: false,
+    priority: 'high',
+    category: 'teacher'
+  },
+  {
+    id: 'n6',
+    type: 'class_upcoming',
+    title: 'Aula Iniciando',
+    message: 'Sua aula de Matemática inicia em 15 minutos na Sala 204.',
+    timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // 5m ago
+    read: false,
+    priority: 'high',
+    category: 'teacher'
+  },
+  {
+    id: 'n7',
+    type: 'feedback_required',
+    title: 'Feedback Pendente',
+    message: 'Você ainda não preencheu o relatório de desempenho da Turma B - Inglês.',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(), // 1h ago
+    read: false,
+    priority: 'medium',
+    category: 'teacher'
+  },
+  {
+    id: 'n8',
+    type: 'student_added',
+    title: 'Novo Aluno na Turma',
+    message: 'O aluno Roberto Carlos foi adicionado à sua turma de Cálculo I.',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), // 3h ago
+    read: true,
+    priority: 'low',
+    category: 'teacher'
   }
 ];

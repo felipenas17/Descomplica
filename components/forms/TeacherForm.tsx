@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, User, Mail, Briefcase, Calendar, Key, Copy, Check } from 'lucide-react';
 
 interface TeacherFormProps {
@@ -9,7 +9,7 @@ interface TeacherFormProps {
 }
 
 export default function TeacherForm({ onClose, onSubmit }: TeacherFormProps) {
-  const [generatedPassword, setGeneratedPassword] = useState(() => {
+  const [generatedPassword] = useState(() => {
     const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
     let password = "";
     for (let i = 0; i < 12; i++) {

@@ -1,20 +1,18 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
 import { 
-  Search, 
-  Filter, 
   Plus, 
-  MoreVertical, 
+  Trash2, 
   Mail, 
-  Phone, 
   Award,
   Video,
   UserCheck,
   ShieldCheck,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { Avatar } from '@/components/ui/Avatar';
 import TeacherForm from '@/components/forms/TeacherForm';
 
 export default function TeachersView() {
@@ -26,7 +24,7 @@ export default function TeachersView() {
 
   const fetchTeachers = React.useCallback(async () => {
     if (!isSupabaseConfigured) {
-      setError('Supabase não configurado.');
+      setError('Supabase não configurado. Verifique as chaves API.');
       setIsLoading(false);
       return;
     }
@@ -34,21 +32,17 @@ export default function TeachersView() {
     setIsLoading(true);
     setError(null);
     try {
-      console.log('[TeachersView] Carregando professores...');
       const { data, error: supabaseError } = await supabase
         .from('teachers')
         .select('*')
         .order('created_at', { ascending: false });
       
       if (supabaseError) {
-        console.error('[TeachersView] Erro na query:', JSON.stringify(supabaseError, null, 2));
         throw new Error(supabaseError.message || 'Erro ao carregar professores');
       }
       
       setTeachers(data || []);
-      console.log(`[TeachersView] ${data?.length || 0} professores encontrados.`);
     } catch (err: any) {
-      console.error('[TeachersView] Erro fatal:', err);
       setError(err.message || 'Erro inesperado.');
     } finally {
       setIsLoading(false);
@@ -61,13 +55,13 @@ export default function TeachersView() {
   }, [fetchTeachers]);
 
   const handleAddTeacher = async (data: any) => {
+    const loadingToast = toast.loading('Cadastrando professor...');
     try {
-      console.log('[TeachersView] Cadastrando novo professor:', data.email);
       const teacherData = {
         name: data.name,
         email: data.email,
         subject: data.subject,
-        availability: data.availability ? data.availability.split(',').map((s: string) => s.trim()) : [],
+        availability: data.availability ? (typeof data.availability === 'string' ? data.availability.split(',').map((s: string) => s.trim()) : data.availability) : [],
         avatar: `https://picsum.photos/seed/${data.name}/200`,
         role: 'Professor'
       };
@@ -80,38 +74,36 @@ export default function TeachersView() {
 
       if (teacherError) throw teacherError;
 
-      // Sync profile
-      await supabase.from('profiles').upsert([{
-        id: (insertedTeacher as any).id, // Using the new UUID if generated
-        email: data.email,
-        full_name: data.name,
-        role: 'professor',
-        needs_password_change: false
-      }]);
+      // Sync profile (optional but recommended)
+      if (insertedTeacher) {
+        await supabase.from('profiles').upsert([{
+          id: (insertedTeacher as any).id,
+          email: data.email,
+          full_name: data.name,
+          role: 'professor',
+          needs_password_change: false
+        }]);
+      }
 
-      console.log('[TeachersView] Professor cadastrado com sucesso.');
-      alert(`Professor cadastrado com sucesso! \nAcesso gerado para: ${data.email}\nSenha: ${data.password}`);
+      toast.success('Professor cadastrado com sucesso!', { id: loadingToast });
       fetchTeachers();
       setShowForm(false);
     } catch (err: any) {
       console.error('[TeachersView] Erro no cadastro:', err);
-      alert('Erro ao cadastrar professor: ' + (err.message || 'Erro desconhecido'));
+      const message = err.message || 'Erro ao cadastrar. Verifique as RLS e se o e-mail já existe.';
+      toast.error('Erro no cadastro: ' + message, { id: loadingToast });
     }
   };
 
   const handleDeleteTeacher = async (id: string) => {
-    if (window.confirm('Deseja realmente remover este professor?')) {
-      try {
-        console.log(`[TeachersView] Removendo professor ${id}...`);
-        const { error } = await supabase.from('teachers').delete().eq('id', id);
-        if (error) throw error;
-        
-        console.log('[TeachersView] Professor removido.');
-        setTeachers(prev => prev.filter(t => t.id !== id));
-      } catch (err: any) {
-        console.error('[TeachersView] Erro ao remover:', err);
-        alert('Erro ao excluir: ' + (err.message || 'Erro desconhecido'));
-      }
+    try {
+      const { error } = await supabase.from('teachers').delete().eq('id', id);
+      if (error) throw error;
+      
+      toast.success('Professor removido.');
+      setTeachers(prev => prev.filter(t => t.id !== id));
+    } catch (err: any) {
+      toast.error('Erro ao excluir: ' + (err.message || 'Erro desconhecido'));
     }
   };
 
@@ -158,10 +150,8 @@ export default function TeachersView() {
             <div key={teacher.id} className="glass-card rounded-[2rem] overflow-hidden group hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 border border-primary/5">
             <div className="p-8">
               <div className="flex justify-between items-start mb-6">
-                <div className="relative">
-                  <div className="w-20 h-20 rounded-2xl overflow-hidden ring-4 ring-primary/10 group-hover:ring-primary/30 transition-all relative">
-                    <Image src={teacher.avatar} alt={teacher.name} fill className="object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
-                  </div>
+                  <div className="relative">
+                  <Avatar name={teacher.name} size={80} className="w-20 h-20 rounded-2xl group-hover:scale-110 transition-transform duration-500" />
                   <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-secondary rounded-full border-4 border-white flex items-center justify-center text-black z-10">
                     <UserCheck size={14} />
                   </div>
@@ -171,7 +161,7 @@ export default function TeachersView() {
                   className="p-2 text-gray-300 hover:text-red-500 transition-colors"
                   title="Remover Professor"
                 >
-                  <MoreVertical size={20} />
+                  <Trash2 size={20} />
                 </button>
               </div>
 

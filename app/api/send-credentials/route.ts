@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
-import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 // Lazy initialization of Resend client
 let resendClient: Resend | null = null;
@@ -17,10 +18,46 @@ function getResend() {
 
 export async function POST(req: Request) {
   try {
-    const { name, email, password, role } = await req.json();
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          },
+        },
+      }
+    );
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Verificar se o usuário é admin
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.role !== 'admin') {
+      return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const { name, email, password, role } = body;
 
     if (!email || !password || !name) {
-      return NextResponse.json(
+      return Response.json(
         { error: 'Name, email and password are required' },
         { status: 400 }
       );
@@ -57,13 +94,13 @@ export async function POST(req: Request) {
 
     if (error) {
       console.error('Resend Error:', error);
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return Response.json({ error: error.message }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true, data });
+    return Response.json({ success: true, data });
   } catch (err: any) {
     console.error('API Error:', err);
-    return NextResponse.json(
+    return Response.json(
       { error: err.message || 'Internal Server Error' },
       { status: 500 }
     );

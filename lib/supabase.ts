@@ -22,6 +22,11 @@ if (!isSupabaseConfigured && typeof window !== 'undefined') {
   console.error('❌ Supabase não está configurado adequadamente. Verifique NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY no .env');
 }
 
+// Se o usuário receber erro de "api.supabase.com", provavelmente é erro de rede ou URL configurada errada como api.supabase.com em vez da URL do projeto
+if (typeof window !== 'undefined' && supabaseUrl.includes('api.supabase.com')) {
+  console.error('🚨 ERRO CRÍTICO: Sua URL do Supabase aponta para api.supabase.com. Use a URL do projeto (ex: https://xyz.supabase.co)!');
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,

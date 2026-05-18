@@ -12,6 +12,8 @@ const plusJakarta = Plus_Jakarta_Sans({
   variable: '--font-display',
 });
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Gestão de Escolas | Administração Educacional Moderna',
   description: 'App completo para gestão de horários, professores e controle financeiro de instituições de ensino.',
@@ -25,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body suppressHydrationWarning className="font-sans antialiased">
+      <body className="font-sans antialiased">
         {children}
       </body>
     </html>

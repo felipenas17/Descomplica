@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import Image from 'next/image';
-import { LogIn, User, Lock, Eye, EyeOff } from 'lucide-react';
+import { LogIn, User, Lock, Eye, EyeOff, Mail } from 'lucide-react';
 import { motion } from 'motion/react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import ForgotPasswordModal from './modals/ForgotPasswordModal';
 
 interface LoginProps {
   onLogin: (user: { 
@@ -18,12 +18,14 @@ interface LoginProps {
 
 export default function Login({ onLogin }: LoginProps) {
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [name, setName] = useState('');
   const [role, setRole] = useState<'admin' | 'professor'>('admin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +59,7 @@ export default function Login({ onLogin }: LoginProps) {
           email: cleanEmail,
           password: cleanPassword,
           options: {
+            emailRedirectTo: undefined,
             data: {
               full_name: name,
               role: role,
@@ -81,10 +84,29 @@ export default function Login({ onLogin }: LoginProps) {
           }]);
           
           if (profileSyncError) console.warn('[Login] Aviso: Falha ao sincronizar perfil:', profileSyncError);
+
+          // Tentativa de login automático imediato
+          console.log('[Login] Tentando login automático após registro...');
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password: cleanPassword
+          });
+
+          if (!signInError && signInData.user) {
+            console.log('[Login] Login automático bem-sucedido.');
+            onLogin({
+              id: signInData.user.id,
+              email: signInData.user.email,
+              role: (signInData.user.user_metadata?.role as any) || role,
+              name: signInData.user.user_metadata?.full_name || name,
+              needs_password_change: false
+            });
+            return;
+          }
         }
 
         console.log('[Login] Registro concluído.');
-        alert('Cadastro realizado! Por favor, verifique seu e-mail.');
+        alert('Cadastro realizado! Por favor, verifique seu e-mail ou tente entrar.');
         setIsRegistering(false);
       } else {
         console.log('[Login] Autenticando via Supabase...');
@@ -135,9 +157,9 @@ export default function Login({ onLogin }: LoginProps) {
       
       const lowerMsg = message.toLowerCase();
       if (lowerMsg.includes('invalid login credentials')) {
-        message = 'Usuário ou senha inválidos. Certifique-se de que a conta existe no Supabase ou use o acesso de demonstração abaixo.';
+        message = 'E-mail ou senha incorretos. Verifique suas credenciais.';
       } else if (lowerMsg.includes('email not confirmed')) {
-        message = 'E-mail não confirmado. Por favor, verifique sua caixa de entrada para ativar sua conta.';
+        message = 'Verifique seu e-mail ou entre em contato com o suporte para confirmar sua conta.';
       } else if (lowerMsg.includes('rate limit exceeded')) {
         message = 'Muitas tentativas. Por favor, aguarde alguns minutos ou use o modo demonstração.';
       } else if (lowerMsg.includes('not configured')) {
@@ -151,8 +173,6 @@ export default function Login({ onLogin }: LoginProps) {
       setIsLoading(false);
     }
   };
-
-  const [error, setError] = useState<string | null>(null);
 
   return (
     <div className="min-h-screen bg-background-app flex items-center justify-center p-6 selection:bg-primary/30 selection:text-primary">
@@ -236,7 +256,7 @@ export default function Login({ onLogin }: LoginProps) {
             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">E-mail ou Usuário</label>
             <div className="relative group">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none group-focus-within:text-primary transition-colors text-gray-400">
-                <User size={18} />
+                <Mail size={18} className="text-gray-400" />
               </div>
               <input
                 type="text"
@@ -312,9 +332,13 @@ export default function Login({ onLogin }: LoginProps) {
           >
             {isRegistering ? 'Já tenho uma conta? Fazer login' : 'Não tem conta? Cadastre-se aqui'}
           </button>
-          <p className="text-xs text-gray-400 font-medium italic">
-            Esqueceu seus dados? Contate o <span className="text-primary font-bold not-italic">Suporte de TI</span>
-          </p>
+          
+          <button
+            onClick={() => setIsForgotPasswordOpen(true)}
+            className="text-xs text-gray-400 font-medium italic hover:text-primary transition-colors"
+          >
+            Esqueceu seus dados? <span className="text-primary font-bold not-italic font-sans underline underline-offset-2">Clique aqui</span>
+          </button>
           
           <div className="w-full pt-4 space-y-3">
             <div className="relative flex items-center justify-center">
@@ -324,6 +348,12 @@ export default function Login({ onLogin }: LoginProps) {
           </div>
         </div>
       </motion.div>
+
+      <ForgotPasswordModal 
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+      />
     </div>
   );
 }
+

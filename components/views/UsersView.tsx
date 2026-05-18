@@ -264,7 +264,7 @@ export default function UsersView() {
     const table = activeTab === 'staff' ? 'profiles' : 'students';
     const label = activeTab === 'staff' ? 'usuário' : 'aluno';
     
-    if (window.confirm(`Tem certeza que deseja excluir este ${label}?`)) {
+    {
       try {
         if (isSupabaseConfigured) {
           const { error } = await supabase.from(table).delete().eq('id', id);

@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
 :root {
   /* Design System Variables - Premium Look */
@@ -96,7 +95,7 @@
   .sidebar-dark {
     background: var(--sidebar-dark);
     /* Ensure content is readable in dark sidebar */
-    @apply text-white/90;
+    color: rgba(255, 255, 255, 0.9);
   }
   
   /* Advanced Shadow for Premium feel */

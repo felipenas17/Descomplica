@@ -8,9 +8,7 @@ import {
   Filter, 
   Download, 
   Trash2, 
-  FileDown, 
   BookOpen, 
-  User, 
   Calendar,
   X,
   CheckCircle2,
@@ -120,7 +118,7 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
         return false;
       }
       return !!data;
-    } catch (e) {
+    } catch {
       return false;
     }
   };
@@ -265,6 +263,43 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
     } catch (err: any) {
       console.error('[MaterialsView] Erro fatal na exclusão:', err);
       setUploadStatus({ type: 'error', message: 'Erro ao excluir: ' + (err.message || 'Erro desconhecido') });
+    }
+  };
+
+  const handleDownload = async (fileUrl: string, title: string) => {
+    if (!fileUrl || fileUrl === '#') {
+      setUploadStatus({ type: 'error', message: 'URL do arquivo inválida.' });
+      return;
+    }
+    
+    try {
+      const response = await fetch(fileUrl);
+      if (!response.ok) throw new Error('Falha ao baixar arquivo do servidor.');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      
+      // Get extension from URL
+      const extension = fileUrl.split('.').pop()?.split('?')[0] || '';
+      const fullFileName = extension && !title.toLowerCase().endsWith(`.${extension.toLowerCase()}`) 
+        ? `${title}.${extension}` 
+        : title;
+      
+      a.href = url;
+      a.download = fullFileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: any) {
+      console.error('Erro no download:', err);
+      // Fallback to simple open if blob fails
+      const a = document.createElement('a');
+      a.href = fileUrl;
+      a.target = '_blank';
+      a.download = title;
+      a.click();
     }
   };
 
@@ -444,14 +479,12 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
-                        <a 
-                          href={material.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button 
+                          onClick={() => handleDownload(material.file_url, material.title)}
                           className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-colors"
                         >
                           <Download size={12} /> Baixar
-                        </a>
+                        </button>
                         {(user.role === 'admin' || material.uploaded_by === (user.id || user.email)) && (
                           <button 
                             onClick={() => handleDelete(material.id, material.uploaded_by)}
@@ -467,8 +500,7 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
               ))}
               {filteredMaterials.length === 0 && (
                 <div className="col-span-full py-20 text-center">
-                  <FileDown className="mx-auto text-gray-200 mb-4" size={64} />
-                  <p className="text-gray-400 font-bold text-lg">Nenhum material encontrado com esses filtros.</p>
+                    <p className="text-gray-400 font-bold text-lg">Nenhum material encontrado com esses filtros.</p>
                 </div>
               )}
             </div>

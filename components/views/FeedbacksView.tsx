@@ -4,18 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, 
-  Filter, 
   Star, 
   User, 
   GraduationCap, 
   Calendar,
   AlertCircle,
   Eye,
-  TrendingDown,
   TrendingUp,
   Award,
   ChevronRight,
-  MoreVertical,
   X,
   Zap,
   Loader2

@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Lock, Check, AlertCircle, X, ShieldEllipsis } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Lock, Check, AlertCircle, ShieldEllipsis } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 interface PasswordChangeModalProps {

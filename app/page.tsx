@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppContainer, type View } from '@/components/AppContainer';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import Login from '@/components/Login';
 import QuickActionModal from '@/components/QuickActionModal';
 import DashboardView from '@/components/views/DashboardView';
@@ -10,18 +11,22 @@ import ScheduleView from '@/components/views/ScheduleView';
 import FinanceView from '@/components/views/FinanceView';
 import TeachersView from '@/components/views/TeachersView';
 import StudentsView from '@/components/views/StudentsView';
-import AgendaView from '@/components/views/AgendaView';
+import OperationsView from '@/components/views/operations/OperationsView';
 import FeedbacksView from '@/components/views/FeedbacksView';
 import UsersView from '@/components/views/UsersView';
 import MaterialsView from '@/components/views/MaterialsView';
+import NotificationsView from '@/components/views/NotificationsView';
+import MessagesView from '@/components/views/MessagesView';
 import PasswordChangeModal from '@/components/modals/PasswordChangeModal';
+import ChangePasswordModal from '@/components/modals/ChangePasswordModal';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { Schedule } from '@/types';
 
-const INITIAL_SCHEDULE = [
-  { id: '1', title: 'Matemática Avançada', subject: 'Matemática Avançada', day: 'SEG', startTime: '14:00', endTime: '15:40', room: 'A01', teacherName: 'Ricardo Almeida', studentName: 'Lucas Ferreira', isTestWeek: true, status: 'Confirmado' },
-  { id: '2', title: 'Física Térmica', subject: 'Física Térmica', day: 'SEG', startTime: '16:00', endTime: '17:40', room: 'B04', teacherName: 'Ricardo Almeida', studentName: 'Mariana Duarte', isTestWeek: false, status: 'Confirmado' },
-  { id: '3', title: 'Química Orgânica', subject: 'Química Orgânica', day: 'TER', startTime: '08:00', endTime: '09:40', room: 'C02', teacherName: 'Sandra Mendes', studentName: 'Roberto Júnio', isTestWeek: true, status: 'Pendente' },
-  { id: '4', title: 'Geometria Analítica', subject: 'Geometria Analítica', day: 'QUA', startTime: '14:00', endTime: '15:40', room: 'A01', teacherName: 'Ricardo Almeida', studentName: 'Clara Meireles', isTestWeek: false, status: 'Confirmado' },
+const INITIAL_SCHEDULE: Partial<Schedule>[] = [
+  { id: '1', subject: 'Matemática Avançada', teacher_name: 'Ricardo Almeida', student_name: 'Lucas Ferreira', is_test_week: true, status: 'Confirmado' },
+  { id: '2', subject: 'Física Térmica', teacher_name: 'Ricardo Almeida', student_name: 'Mariana Duarte', is_test_week: false, status: 'Confirmado' },
+  { id: '3', subject: 'Química Orgânica', teacher_name: 'Sandra Mendes', student_name: 'Roberto Júnio', is_test_week: true, status: 'Pendente' },
+  { id: '4', subject: 'Geometria Analítica', teacher_name: 'Ricardo Almeida', student_name: 'Clara Meireles', is_test_week: false, status: 'Confirmado' },
 ];
 
 function getDayFromDate(dateStr: string) {
@@ -31,12 +36,55 @@ function getDayFromDate(dateStr: string) {
 }
 
 export default function Home() {
-  const [user, setUser] = useState<{ role: 'admin' | 'professor', name: string, email?: string, id?: string } | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+  const [user, setUser] = useState<{ role: 'admin' | 'professor', name: string, email?: string, id?: string, needs_password_change?: boolean } | null>(null);
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [showManualPasswordChange, setShowManualPasswordChange] = useState(false);
   const [schedule, setSchedule] = useState<any[]>(INITIAL_SCHEDULE);
   const [notification, setNotification] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+    
+    // Check for existing session
+    async function getSession() {
+      if (!isSupabaseConfigured) return;
+      
+      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+      if (supabaseUser) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', supabaseUser.id)
+          .single();
+        
+        if (profile) {
+          setUser({
+            id: profile.id,
+            email: profile.email,
+            role: profile.role,
+            name: profile.full_name || 'Usuário',
+            needs_password_change: profile.needs_password_change || false
+          });
+          setActiveView(profile.role === 'professor' ? 'agenda' : 'dashboard');
+        } else {
+          setUser({
+            id: supabaseUser.id,
+            email: supabaseUser.email,
+            role: (supabaseUser.user_metadata?.role as any) || 'admin',
+            name: supabaseUser.user_metadata?.full_name || 'Usuário',
+            needs_password_change: supabaseUser.user_metadata?.needs_password_change || false
+          });
+          setActiveView((supabaseUser.user_metadata?.role as any) === 'professor' ? 'agenda' : 'dashboard');
+        }
+      }
+    }
+    
+    getSession();
+  }, []);
+
 
   const fetchSchedule = React.useCallback(async () => {
     if (!isSupabaseConfigured) {
@@ -108,6 +156,8 @@ export default function Home() {
     return () => window.removeEventListener('global-plus-click', handlePlusClick);
   }, []);
 
+  if (!isMounted) return null;
+
   if (!user) {
     return <Login onLogin={(u: any) => {
       setUser(u);
@@ -118,24 +168,32 @@ export default function Home() {
     }} />;
   }
 
-  const addScheduleEvent = (newEvent: any) => {
+  const addScheduleEvent = () => {
     fetchSchedule();
     notify('Aula agendada com sucesso! ✅');
   };
 
   const renderView = () => {
-    switch (activeView) {
-      case 'dashboard': return <DashboardView />;
-      case 'schedule': return <ScheduleView schedule={schedule} onAddEvent={(ev: any) => { addScheduleEvent(ev); fetchSchedule(); }} />;
-      case 'finance': return <FinanceView />;
-      case 'teachers': return <TeachersView />;
-      case 'students': return <StudentsView />;
-      case 'agenda': return <AgendaView user={user} schedule={schedule} onRefresh={fetchSchedule} />;
-      case 'feedbacks': return <FeedbacksView />;
-      case 'users': return <UsersView />;
-      case 'materials': return <MaterialsView user={user} />;
-      default: return <DashboardView />;
-    }
+    return (
+      <ErrorBoundary>
+        {(() => {
+          switch (activeView) {
+            case 'dashboard': return <DashboardView />;
+            case 'schedule': return <OperationsView />;
+            case 'finance': return <FinanceView />;
+            case 'teachers': return <TeachersView />;
+            case 'students': return <StudentsView />;
+            case 'agenda': return <ScheduleView />;
+            case 'feedbacks': return <FeedbacksView />;
+            case 'users': return <UsersView />;
+            case 'materials': return <MaterialsView user={user} />;
+            case 'notifications': return <NotificationsView />;
+            case 'messages': return <MessagesView />;
+            default: return <DashboardView />;
+          }
+        })()}
+      </ErrorBoundary>
+    );
   };
 
   return (
@@ -144,6 +202,7 @@ export default function Home() {
       setView={setActiveView} 
       user={user} 
       onLogout={() => setUser(null)}
+      onOpenChangePassword={() => setShowManualPasswordChange(true)}
     >
       <QuickActionModal 
         isOpen={isModalOpen} 
@@ -159,8 +218,14 @@ export default function Home() {
           notify('Senha alterada com sucesso! 🛡️');
         }}
       />
+
+      <ChangePasswordModal 
+        isOpen={showManualPasswordChange}
+        onClose={() => setShowManualPasswordChange(false)}
+      />
       
       <AnimatePresence>
+
         {notification && (
           <motion.div 
             initial={{ opacity: 0, y: 50 }}

@@ -1,21 +1,22 @@
 'use client';
 
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, Plus, Minus, Calendar, DollarSign, Wallet, Repeat, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Plus, Minus, Calendar, DollarSign, Wallet, Clock, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 interface TransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   type?: 'revenue' | 'expense';
-  onSuccess: () => void;
+  onSuccess: (updatedData?: any) => void;
   transaction?: any;
 }
 
 export default function TransactionModal({ isOpen, onClose, type: initialType = 'revenue', onSuccess, transaction }: TransactionModalProps) {
   const [type, setType] = useState<'revenue' | 'expense'>(transaction?.type || initialType);
   const [loading, setLoading] = useState(false);
+  const [students, setStudents] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     description: transaction?.description || '',
     category: transaction?.category || '',
@@ -27,12 +28,25 @@ export default function TransactionModal({ isOpen, onClose, type: initialType = 
     recurrence_period: (transaction?.recurrence_period || 'Mensal') as 'Semanal' | 'Mensal' | 'Anual',
     start_date: transaction?.start_date || new Date().toISOString().split('T')[0],
     end_date: transaction?.end_date || '',
+    student_id: transaction?.student_id || '',
   });
 
-  // Re-sync form data when transaction changes (e.g. when opening modal for a new transaction)
+  // Load students for selection
+  React.useEffect(() => {
+    async function loadStudents() {
+      try {
+        const { data } = await supabase.from('students').select('id, name').eq('status', 'Ativo');
+        setStudents(data || []);
+      } catch (e) {
+        console.error('Error loading students for transaction modal:', e);
+      }
+    }
+    if (isOpen) loadStudents();
+  }, [isOpen]);
+
+  // Re-sync form data when transaction changes
   React.useEffect(() => {
     if (transaction) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setType(transaction.type);
       setFormData({
         description: transaction.description || '',
@@ -45,6 +59,7 @@ export default function TransactionModal({ isOpen, onClose, type: initialType = 
         recurrence_period: (transaction.recurrence_period || 'Mensal') as 'Semanal' | 'Mensal' | 'Anual',
         start_date: transaction.start_date || new Date().toISOString().split('T')[0],
         end_date: transaction.end_date || '',
+        student_id: transaction.student_id || '',
       });
     } else {
       setType(initialType);
@@ -59,6 +74,7 @@ export default function TransactionModal({ isOpen, onClose, type: initialType = 
         recurrence_period: 'Mensal',
         start_date: new Date().toISOString().split('T')[0],
         end_date: '',
+        student_id: '',
       });
     }
   }, [transaction, initialType, isOpen]);
@@ -72,32 +88,36 @@ export default function TransactionModal({ isOpen, onClose, type: initialType = 
     setLoading(true);
 
     try {
-      const transactionData = {
-        type,
+      const transactionData: any = {
+        type: type === 'revenue' ? 'receita' : 'despesa',
         description: formData.description,
         category: formData.category,
-        value: parseFloat(formData.value),
-        due_date: formData.due_date,
-        payment_method: formData.payment_method,
-        cost_type: type === 'expense' ? formData.cost_type : null,
-        is_recurring: formData.is_recurring,
-        recurrence_period: formData.is_recurring ? formData.recurrence_period : null,
-        start_date: formData.is_recurring ? formData.start_date : null,
-        end_date: (formData.is_recurring && formData.end_date) ? formData.end_date : null,
-        status: transaction?.status || (new Date(formData.due_date) < new Date() ? 'Atrasado' : 'Pendente'),
+        amount: parseFloat(formData.value),
+        date: formData.due_date,
+        student_id: formData.student_id || null,
+        created_by: (await supabase.auth.getUser()).data.user?.id || null
       };
 
       let error;
+      if (transaction?.id?.toString().startsWith('sim-')) {
+        // Simulation mode - we pass back the data to be updated locally
+        console.log('[TransactionModal] Simulação: Lançamento atualizado localmente.', transactionData);
+        alert('Modo Demo: Lançamento atualizado localmente!');
+        onSuccess({ ...transactionData, id: transaction.id, value: transactionData.amount });
+        onClose();
+        return;
+      }
+
       if (transaction?.id) {
         // Edit mode
         const { error: updateError } = await supabase
-          .from('finances')
+          .from('transactions')
           .update(transactionData)
           .eq('id', transaction.id);
         error = updateError;
       } else {
         // Create mode
-        const { error: insertError } = await supabase.from('finances').insert([transactionData]);
+        const { error: insertError } = await supabase.from('transactions').insert([transactionData]);
         error = insertError;
       }
 
@@ -111,13 +131,9 @@ export default function TransactionModal({ isOpen, onClose, type: initialType = 
       
       let errorMessage = 'Ocorreu um erro ao salvar.';
       if (err.message && err.message.includes('PGRST125')) {
-        errorMessage = 'Erro de Sincronização Supabase (PGRST125): A tabela existe, mas o API ainda não a reconheceu. Execute "GRANT ALL ON TABLE public.finances TO anon;" no editor SQL do Supabase ou tente renomear a tabela e voltar ao nome original.';
+        errorMessage = 'Erro de Sincronização Supabase (PGRST125): A tabela existe, mas o API ainda não a reconheceu. Execute "GRANT ALL ON TABLE public.transactions TO anon;" no editor SQL do Supabase.';
       } else if (err.message) {
         errorMessage = err.message;
-      } else if (err.error_description) {
-        errorMessage = err.error_description;
-      } else if (typeof err === 'object') {
-        errorMessage = err.code ? `Erro [${err.code}]: ${err.message || 'Sem mensagem'}` : JSON.stringify(err);
       }
 
       alert('Erro ao salvar lançamento: ' + errorMessage);
@@ -242,6 +258,22 @@ export default function TransactionModal({ isOpen, onClose, type: initialType = 
                   />
                 </div>
               </div>
+
+              {type === 'revenue' && (
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Aluno (Opcional)</label>
+                  <select
+                    value={formData.student_id}
+                    onChange={(e) => setFormData({...formData, student_id: e.target.value})}
+                    className="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none"
+                  >
+                    <option value="">Nenhum aluno selecionado</option>
+                    {students.map(student => (
+                      <option key={student.id} value={student.id}>{student.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
