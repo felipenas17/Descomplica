@@ -1,52 +1,55 @@
 'use client';
-
 import { useState, useCallback, useEffect } from 'react';
-import { AppNotification, MOCK_NOTIFICATIONS } from '@/lib/data';
+import { supabase } from '@/lib/supabase';
 
-export function useNotifications() {
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  read: boolean;
+  created_at: string;
+  user_id: string;
+}
+
+export function useNotifications(userId?: string) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
+  const fetchNotifications = useCallback(async () => {
+    if (!userId) return;
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    setNotifications(data || []);
+  }, [userId]);
+
   useEffect(() => {
-    // Initial load
-    setNotifications(MOCK_NOTIFICATIONS);
+    fetchNotifications();
+    // Polling a cada 30 segundos
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
-    // Simulate "Real-time" notification after 30 seconds
-    const timer = setTimeout(() => {
-      const newNotification: AppNotification = {
-        id: 'n-live-' + Date.now(),
-        type: 'class_upcoming',
-        title: 'Aula em instantes',
-        message: 'Lembrete: Sua próxima aula de Inglês começa em 10 minutos.',
-        timestamp: new Date().toISOString(),
-        read: false,
-        priority: 'high',
-        category: 'teacher'
-      };
-      setNotifications(prev => [newNotification, ...prev]);
-    }, 30000);
-
-    return () => clearTimeout(timer);
+  const markAsRead = useCallback(async (id: string) => {
+    await supabase.from('notifications').update({ read: true }).eq('id', id);
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   }, []);
 
-  const markAsRead = useCallback((id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  }, []);
+  const markAllAsRead = useCallback(async () => {
+    if (!userId) return;
+    await supabase.from('notifications').update({ read: true }).eq('user_id', userId);
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  }, [userId]);
 
-  const markAllAsRead = useCallback(() => {
-    setNotifications([]);
-  }, []);
-
-  const deleteNotification = useCallback((id: string) => {
+  const deleteNotification = useCallback(async (id: string) => {
+    await supabase.from('notifications').delete().eq('id', id);
     setNotifications(prev => prev.filter(n => n.id !== id));
   }, []);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  return {
-    notifications,
-    unreadCount,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification
-  };
+  return { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification };
 }

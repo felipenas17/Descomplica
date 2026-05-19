@@ -1,3 +1,4 @@
+import TeacherScheduleView from '@/components/views/TeacherScheduleView';
 'use client';
 
 import React from 'react';
@@ -73,7 +74,7 @@ const NavItem = React.memo(({
 NavItem.displayName = 'NavItem';
 
 // --- Sidebar Component ---
-const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, unreadCount }: { activeView: View, setView: (v: View) => void, user: any, onLogout: () => void, onOpenChangePassword?: () => void, unreadCount: number }) => (
+const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, unreadCount, unreadMessages, setUnreadMessages }: { activeView: View, setView: (v: View) => void, user: any, onLogout: () => void, onOpenChangePassword?: () => void, unreadCount: number, unreadMessages: number, setUnreadMessages: (n: number) => void }) => (
   <aside className="hidden md:flex flex-col w-[280px] h-screen fixed left-0 top-0 sidebar-dark p-6 z-50">
     <div className="mb-12">
       <h1 className="text-2xl font-bold text-white font-display">Gestão de Escolas</h1>
@@ -90,10 +91,10 @@ const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, un
           <NavItem icon={Users} label="Alunos" active={activeView === 'students'} onClick={() => setView('students')} />
           <NavItem icon={MessageSquareQuote} label="Feedbacks" active={activeView === 'feedbacks'} onClick={() => setView('feedbacks')} />
           <NavItem icon={ShieldCheck} label="Usuários" active={activeView === 'users'} onClick={() => setView('users')} />
-          <NavItem icon={MessageSquare} label="Mensagens" active={activeView === 'messages'} onClick={() => setView('messages')} badge={3} />
-          <NavItem icon={Bell} label="Notificações" active={activeView === 'notifications'} onClick={() => setView('notifications')} badge={unreadCount} />
         </>
       )}
+      <NavItem icon={MessageSquare} label="Mensagens" active={activeView === 'messages'} onClick={() => { setView('messages'); setUnreadMessages(0); }} badge={unreadMessages} />
+      <NavItem icon={Bell} label="Notificações" active={activeView === 'notifications'} onClick={() => setView('notifications')} badge={unreadCount} />
       <NavItem icon={CalendarCheck} label="Agenda & Compromissos" active={activeView === 'agenda'} onClick={() => setView('agenda')} />
       <NavItem icon={FileText} label="Material de Apoio" active={activeView === 'materials'} onClick={() => setView('materials')} />
     </nav>
@@ -342,7 +343,19 @@ const BottomNav = ({ activeView, setView, user }: { activeView: View, setView: (
 
 // --- Main Layout ---
 export function AppContainer({ children, activeView, setView, user, onLogout, onOpenChangePassword }: { children: React.ReactNode, activeView: View, setView: (v: View) => void, user: any, onLogout: () => void, onOpenChangePassword?: () => void }) {
-  const { unreadCount } = useNotifications();
+  const { unreadCount } = useNotifications(user?.id);
+  const [unreadMessages, setUnreadMessages] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!user?.id) return;
+    const fetchUnread = async () => {
+      const { count } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('receiver_id', user.id).eq('read', false);
+      setUnreadMessages(count || 0);
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 15000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
   const viewTitles: Record<View, string> = {
     dashboard: 'Gestão de Escolas',
     schedule: 'Central Operacional Escolar',
@@ -359,7 +372,7 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
 
   return (
     <div className="min-h-screen bg-background-app flex selection:bg-primary/30 selection:text-primary">
-      <Sidebar activeView={activeView} setView={setView} user={user} onLogout={onLogout} onOpenChangePassword={onOpenChangePassword} unreadCount={unreadCount} />
+      <Sidebar activeView={activeView} setView={setView} user={user} onLogout={onLogout} onOpenChangePassword={onOpenChangePassword} unreadCount={unreadCount} unreadMessages={unreadMessages} setUnreadMessages={setUnreadMessages} />
       
       <main className="flex-1 md:ml-[280px] min-h-screen relative pb-32 md:pb-12">
         <TopBar title={viewTitles[activeView]} user={user} setView={setView} onLogout={onLogout} onOpenChangePassword={onOpenChangePassword} />

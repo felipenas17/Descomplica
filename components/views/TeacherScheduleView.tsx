@@ -1,0 +1,376 @@
+'use client';
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { CalendarCheck, Clock, BookOpen, ChevronLeft, ChevronRight, User, MapPin, Play, Square, Star, MessageSquare, CheckCircle } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
+
+const DAY_NAMES = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+const MONTH_NAMES = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  confirmado:    { label: 'CONFIRMADO',    color: 'bg-green-100 text-green-600' },
+  agendado:      { label: 'AGENDADO',      color: 'bg-blue-100 text-blue-600' },
+  cancelado:     { label: 'CANCELADO',     color: 'bg-red-100 text-red-600' },
+  concluido:     { label: 'CONCLUÍDO',     color: 'bg-gray-100 text-gray-500' },
+  em_andamento:  { label: 'EM ANDAMENTO',  color: 'bg-yellow-100 text-yellow-700' },
+};
+
+interface FeedbackForm {
+  rating: number;
+  performance: string;
+  attendance: string;
+  notes: string;
+  homework_given: boolean;
+  homework_description: string;
+}
+
+export default function TeacherScheduleView({ user }: { user?: any }) {
+  const [lessons, setLessons] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<'hoje' | 'semana' | 'mes'>('hoje');
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [feedbackLesson, setFeedbackLesson] = useState<any>(null);
+  const [savingFeedback, setSavingFeedback] = useState(false);
+  const [feedback, setFeedback] = useState<FeedbackForm>({
+    rating: 5, performance: 'Bom', attendance: 'Presente',
+    notes: '', homework_given: false, homework_description: ''
+  });
+
+  const monthDays = useMemo(() => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const days: (Date | null)[] = [];
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
+    return days;
+  }, [currentDate]);
+
+  const fetchLessons = async () => {
+    setLoading(true);
+    try {
+      const today = new Date(); today.setHours(0,0,0,0);
+      let query = supabase.from('schedules').select('*').order('date', { ascending: true });
+      if (user?.id) query = query.eq('teacher_id', user.id);
+      if (period === 'hoje') {
+        query = query.eq('date', today.toISOString().split('T')[0]);
+      } else if (period === 'semana') {
+        const end = new Date(today); end.setDate(today.getDate() + 7);
+        query = query.gte('date', today.toISOString().split('T')[0]).lte('date', end.toISOString().split('T')[0]);
+      } else {
+        const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        query = query.gte('date', today.toISOString().split('T')[0]).lte('date', end.toISOString().split('T')[0]);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      setLessons(data || []);
+    } catch (e) { setLessons([]); } finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchLessons(); }, [period]);
+
+  const startLesson = async (lesson: any) => {
+    const { error } = await supabase.from('schedules').update({ status: 'em_andamento' }).eq('id', lesson.id);
+    if (error) { toast.error('Erro ao iniciar aula'); return; }
+    toast.success('Aula iniciada! ▶');
+    fetchLessons();
+  };
+
+  const openFeedback = (lesson: any) => {
+    setFeedbackLesson(lesson);
+    setFeedback({ rating: 5, performance: 'Bom', attendance: 'Presente', notes: '', homework_given: false, homework_description: '' });
+  };
+
+  const saveFeedback = async () => {
+    if (!feedbackLesson) return;
+    setSavingFeedback(true);
+    try {
+      // Salva feedback
+      const { error: fbError } = await supabase.from('feedbacks').insert({
+        schedule_id: feedbackLesson.id,
+        teacher_id: user?.id,
+        teacher_name: user?.name || feedbackLesson.teacher_name,
+        student_name: feedbackLesson.student_name,
+        student_id: feedbackLesson.student_id || null,
+        subject: feedbackLesson.subject,
+        rating: feedback.rating,
+        performance: feedback.performance,
+        attendance: feedback.attendance,
+        homework_given: feedback.homework_given,
+        homework_description: feedback.homework_description,
+        observations: feedback.notes,
+        class_date: feedbackLesson.date,
+        created_at: new Date().toISOString(),
+      });
+      if (fbError) throw fbError;
+
+      // Muda status para concluido
+      const { error: scError } = await supabase.from('schedules').update({ status: 'concluido' }).eq('id', feedbackLesson.id);
+      if (scError) throw scError;
+
+      // Notifica o admin
+      const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'admin');
+      if (admins && admins.length > 0) {
+        await Promise.all(admins.map((admin: any) =>
+          supabase.from('notifications').insert({
+            user_id: admin.id,
+            title: 'Feedback de aula recebido! 📝',
+            message: `${user?.name || 'Professor'} finalizou a aula de ${feedbackLesson.subject} com ${feedbackLesson.student_name}. Desempenho: ${feedback.performance}. Nota: ${feedback.rating}/5.`,
+            type: 'info',
+            read: false,
+            created_at: new Date().toISOString(),
+          })
+        ));
+      }
+
+      toast.success('Feedback enviado! Aula concluída ✅');
+      setFeedbackLesson(null);
+      fetchLessons();
+    } catch (e: any) {
+      toast.error('Erro ao salvar feedback: ' + e.message);
+    } finally { setSavingFeedback(false); }
+  };
+
+  const today = new Date().toISOString().split('T')[0];
+  const aulasHoje = lessons.filter(l => l.date === today).length;
+  const aulasConfirmadas = lessons.filter(l => l.status === 'confirmado' || l.status === 'em_andamento').length;
+  const aulasConcluidas = lessons.filter(l => l.status === 'concluido').length;
+
+  return (
+    <div className="space-y-6 pb-12">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600">
+            <CalendarCheck size={22} />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Agenda & Compromissos</h1>
+            <p className="text-xs text-gray-400">Suas aulas e compromissos</p>
+          </div>
+        </div>
+        <div className="flex bg-gray-100 p-1 rounded-xl">
+          {(['hoje', 'semana', 'mes'] as const).map(p => (
+            <button key={p} onClick={() => setPeriod(p)}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all ${period === p ? 'bg-white shadow text-purple-600' : 'text-gray-400 hover:text-gray-600'}`}>
+              {p === 'hoje' ? 'Hoje' : p === 'semana' ? 'Semana' : 'Mensal'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label: 'AULAS HOJE', value: aulasHoje, icon: BookOpen, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: 'CONFIRMADAS', value: aulasConfirmadas, icon: CalendarCheck, color: 'text-green-600', bg: 'bg-green-50' },
+          { label: 'CONCLUÍDAS', value: aulasConcluidas, icon: CheckCircle, color: 'text-gray-500', bg: 'bg-gray-50' },
+        ].map(kpi => (
+          <div key={kpi.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className={`w-9 h-9 rounded-xl ${kpi.bg} flex items-center justify-center mb-3`}>
+              <kpi.icon size={18} className={kpi.color} />
+            </div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{kpi.label}</p>
+            <p className="text-2xl font-black text-gray-900 mt-1">{kpi.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Lista de Aulas */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm">
+          <div className="p-5 border-b border-gray-50 flex items-center justify-between">
+            <h2 className="font-bold text-gray-900">{period === 'hoje' ? 'Aulas de Hoje' : period === 'semana' ? 'Aulas desta Semana' : 'Aulas do Mês'}</h2>
+            <span className="text-xs text-gray-400">{lessons.length} aula{lessons.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="p-5 space-y-3">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : lessons.length === 0 ? (
+              <div className="text-center py-12">
+                <CalendarCheck size={40} className="text-gray-200 mx-auto mb-3" />
+                <p className="text-gray-500 font-medium">Tudo em dia!</p>
+                <p className="text-sm text-gray-300 mt-1">Nenhuma aula para este período.</p>
+              </div>
+            ) : lessons.map(lesson => {
+              const status = STATUS_CONFIG[lesson.status || 'agendado'] || STATUS_CONFIG.agendado;
+              const podeIniciar = lesson.status === 'confirmado' || lesson.status === 'agendado';
+              const emAndamento = lesson.status === 'em_andamento';
+              const concluida = lesson.status === 'concluido';
+              return (
+                <div key={lesson.id} className={`flex gap-4 p-4 rounded-xl border transition-all ${emAndamento ? 'border-yellow-200 bg-yellow-50/40' : 'border-gray-100 hover:border-purple-100 hover:bg-purple-50/20'}`}>
+                  <div className={`w-1 rounded-full shrink-0 ${emAndamento ? 'bg-yellow-400' : concluida ? 'bg-gray-300' : 'bg-purple-400'}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 flex-wrap">
+                      <p className="font-semibold text-gray-900 text-sm">{lesson.subject || 'Aula'}</p>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${status.color}`}>{status.label}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-3 mt-2">
+                      {lesson.start_time && <span className="flex items-center gap-1 text-xs text-gray-400"><Clock size={12} />{lesson.start_time}{lesson.end_time ? ` - ${lesson.end_time}` : ''}</span>}
+                      {lesson.student_name && <span className="flex items-center gap-1 text-xs text-gray-400"><User size={12} />{lesson.student_name}</span>}
+                      {lesson.room && <span className="flex items-center gap-1 text-xs text-gray-400"><MapPin size={12} />{lesson.room}</span>}
+                    </div>
+                    {lesson.notes && <p className="text-xs text-gray-400 mt-1 truncate">{lesson.notes}</p>}
+
+                    {/* Botões de ação */}
+                    {!concluida && (
+                      <div className="flex gap-2 mt-3">
+                        {podeIniciar && (
+                          <button onClick={() => startLesson(lesson)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-bold transition-all">
+                            <Play size={12} fill="white" /> Iniciar Aula
+                          </button>
+                        )}
+                        {emAndamento && (
+                          <button onClick={() => openFeedback(lesson)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-all animate-pulse">
+                            <Square size={12} fill="white" /> Finalizar & Feedback
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {concluida && (
+                      <div className="flex items-center gap-1 mt-2 text-xs text-gray-400 font-medium">
+                        <CheckCircle size={12} className="text-green-500" /> Aula concluída com feedback
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Calendário */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <button onClick={() => setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center"><ChevronLeft size={16} className="text-gray-500" /></button>
+            <h3 className="text-xs font-black text-gray-700 uppercase tracking-wider">{MONTH_NAMES[currentDate.getMonth()]} DE {currentDate.getFullYear()}</h3>
+            <button onClick={() => setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center"><ChevronRight size={16} className="text-gray-500" /></button>
+          </div>
+          <div className="grid grid-cols-7 gap-1 mb-2">
+            {DAY_NAMES.map((d, i) => <div key={i} className="text-center text-[10px] font-bold text-gray-400 py-1">{d}</div>)}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {monthDays.map((day, i) => {
+              const isToday = day && day.toDateString() === new Date().toDateString();
+              const hasLesson = day && lessons.some(l => l.date === day.toISOString().split('T')[0]);
+              return (
+                <div key={i} className={`aspect-square flex flex-col items-center justify-center rounded-lg text-xs font-semibold transition-all ${!day ? '' : isToday ? 'bg-purple-600 text-white' : hasLesson ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+                  {day?.getDate()}
+                  {hasLesson && !isToday && <div className="w-1 h-1 bg-purple-400 rounded-full mt-0.5" />}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Modal Feedback */}
+      {feedbackLesson && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-purple-100 flex items-center justify-center">
+                  <MessageSquare size={20} className="text-purple-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-gray-900">Feedback da Aula</h2>
+                  <p className="text-xs text-gray-400">{feedbackLesson.subject} • {feedbackLesson.student_name}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Avaliação */}
+              <div>
+                <label className="text-xs font-black text-gray-500 uppercase tracking-wider block mb-2">Avaliação da Aula</label>
+                <div className="flex gap-2">
+                  {[1,2,3,4,5].map(star => (
+                    <button key={star} onClick={() => setFeedback(f => ({ ...f, rating: star }))}
+                      className="transition-transform hover:scale-110">
+                      <Star size={28} className={star <= feedback.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'} />
+                    </button>
+                  ))}
+                  <span className="ml-2 text-sm font-bold text-gray-600 self-center">{feedback.rating}/5</span>
+                </div>
+              </div>
+
+              {/* Desempenho */}
+              <div>
+                <label className="text-xs font-black text-gray-500 uppercase tracking-wider block mb-2">Desempenho do Aluno</label>
+                <div className="flex gap-2 flex-wrap">
+                  {['Excelente', 'Bom', 'Regular', 'Ruim'].map(p => (
+                    <button key={p} onClick={() => {
+                      const ratingMap: Record<string, number> = { Excelente: 5, Bom: 4, Regular: 3, Ruim: 2 };
+                      setFeedback(f => ({ ...f, performance: p, rating: ratingMap[p] }));
+                    }}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${feedback.performance === p ? 'bg-purple-600 text-white border-purple-600' : 'border-gray-200 text-gray-600 hover:border-purple-300'}`}>
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Presença */}
+              <div>
+                <label className="text-xs font-black text-gray-500 uppercase tracking-wider block mb-2">Presença</label>
+                <div className="flex gap-2">
+                  {['Presente', 'Ausente', 'Atrasado'].map(a => (
+                    <button key={a} onClick={() => setFeedback(f => ({ ...f, attendance: a }))}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${feedback.attendance === a ? 'bg-purple-600 text-white border-purple-600' : 'border-gray-200 text-gray-600 hover:border-purple-300'}`}>
+                      {a}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dever de casa */}
+              <div>
+                <label className="text-xs font-black text-gray-500 uppercase tracking-wider block mb-2">Dever de Casa</label>
+                <div className="flex gap-2 mb-2">
+                  {[{ label: 'Sim', val: true }, { label: 'Não', val: false }].map(opt => (
+                    <button key={opt.label} onClick={() => setFeedback(f => ({ ...f, homework_given: opt.val }))}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${feedback.homework_given === opt.val ? 'bg-purple-600 text-white border-purple-600' : 'border-gray-200 text-gray-600 hover:border-purple-300'}`}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {feedback.homework_given && (
+                  <input type="text" placeholder="Descreva o dever..." value={feedback.homework_description}
+                    onChange={e => setFeedback(f => ({ ...f, homework_description: e.target.value }))}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                )}
+              </div>
+
+              {/* Observações */}
+              <div>
+                <label className="text-xs font-black text-gray-500 uppercase tracking-wider block mb-2">Observações</label>
+                <textarea rows={3} placeholder="O que foi abordado na aula? Pontos de atenção..." value={feedback.notes}
+                  onChange={e => setFeedback(f => ({ ...f, notes: e.target.value }))}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-100 flex gap-3">
+              <button onClick={() => setFeedbackLesson(null)}
+                className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all">
+                Cancelar
+              </button>
+              <button onClick={saveFeedback} disabled={savingFeedback}
+                className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
+                {savingFeedback ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle size={16} />}
+                {savingFeedback ? 'Salvando...' : 'Finalizar Aula'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

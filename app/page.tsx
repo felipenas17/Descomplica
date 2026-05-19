@@ -8,6 +8,7 @@ import Login from '@/components/Login';
 import QuickActionModal from '@/components/QuickActionModal';
 import DashboardView from '@/components/views/DashboardView';
 import ScheduleView from '@/components/views/ScheduleView';
+import TeacherScheduleView from '@/components/views/TeacherScheduleView';
 import FinanceView from '@/components/views/FinanceView';
 import TeachersView from '@/components/views/TeachersView';
 import StudentsView from '@/components/views/StudentsView';
@@ -19,6 +20,7 @@ import NotificationsView from '@/components/views/NotificationsView';
 import MessagesView from '@/components/views/MessagesView';
 import PasswordChangeModal from '@/components/modals/PasswordChangeModal';
 import ChangePasswordModal from '@/components/modals/ChangePasswordModal';
+import UserProfileModal from '@/components/modals/UserProfileModal';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { Schedule } from '@/types';
 
@@ -183,12 +185,12 @@ export default function Home() {
             case 'finance': return <FinanceView />;
             case 'teachers': return <TeachersView />;
             case 'students': return <StudentsView />;
-            case 'agenda': return <ScheduleView />;
+            case 'agenda': return user?.role === 'professor' ? <TeacherScheduleView user={user} /> : <ScheduleView />;
             case 'feedbacks': return <FeedbacksView />;
             case 'users': return <UsersView />;
             case 'materials': return <MaterialsView user={user} />;
-            case 'notifications': return <NotificationsView />;
-            case 'messages': return <MessagesView />;
+            case 'notifications': return <NotificationsView user={user} />;
+            case 'messages': return <MessagesView user={user} />;
             default: return <DashboardView />;
           }
         })()}
@@ -219,9 +221,11 @@ export default function Home() {
         }}
       />
 
-      <ChangePasswordModal 
+      <UserProfileModal
         isOpen={showManualPasswordChange}
         onClose={() => setShowManualPasswordChange(false)}
+        user={user}
+        onUserUpdate={(updated) => setUser(updated)}
       />
       
       <AnimatePresence>

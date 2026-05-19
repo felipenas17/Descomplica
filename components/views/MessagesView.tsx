@@ -1,108 +1,275 @@
 'use client';
 
-import { useState } from 'react';
-import { MessageSquare, Send } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { MessageSquare, Send, Search, X, Users } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
-const CONTACTS = [
-  { id: 1, name: 'Prof. Ana Silva', lastMessage: 'Bom dia! Sobre a aula de amanhã...', time: '09:30', unread: 2, online: true },
-  { id: 2, name: 'João Santos', lastMessage: 'Obrigado pela ajuda!', time: '08:15', unread: 0, online: false },
-  { id: 3, name: 'Coordenação', lastMessage: 'Reunião às 14h confirmada', time: 'Ontem', unread: 1, online: true },
-];
+interface Member { id: string; name: string; role: string; email?: string; }
+interface Message { id: string; sender_id: string; receiver_id: string; text: string; created_at: string; }
 
-const MESSAGES: Record<number, { id: number; text: string; sent: boolean; time: string }[]> = {
-  1: [
-    { id: 1, text: 'Bom dia! Sobre a aula de amanhã...', sent: false, time: '09:30' },
-    { id: 2, text: 'Claro, pode confirmar o horário?', sent: true, time: '09:31' },
-    { id: 3, text: 'Será às 10h na sala 3', sent: false, time: '09:32' },
-  ],
-  2: [
-    { id: 1, text: 'Preciso de ajuda com a tarefa', sent: false, time: '08:10' },
-    { id: 2, text: 'Claro! Qual é a dificuldade?', sent: true, time: '08:12' },
-    { id: 3, text: 'Obrigado pela ajuda!', sent: false, time: '08:15' },
-  ],
-  3: [
-    { id: 1, text: 'Reunião às 14h confirmada', sent: false, time: 'Ontem' },
-    { id: 2, text: 'Ok, estarei lá!', sent: true, time: 'Ontem' },
-  ],
-};
-
-export default function MessagesView() {
-  const [selected, setSelected] = useState<number | null>(null);
+export default function MessagesView({ user }: { user?: any }) {
+  const [conversations, setConversations] = useState<Member[]>([]);
+  const [selected, setSelected] = useState<Member | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const contact = CONTACTS.find(c => c.id === selected);
-  const messages = selected ? MESSAGES[selected] || [] : [];
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [sending, setSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  // Busca conversas existentes (pessoas com quem já trocou mensagem)
+  useEffect(() => {
+    if (!user?.id) return;
+    fetchConversations();
+  }, [user?.id]);
+
+  const fetchConversations = async () => {
+    if (!user?.id) return;
+    const { data } = await supabase.from('messages').select('*')
+      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .order('created_at', { ascending: false });
+
+    if (!data) return;
+
+    // Pega IDs únicos de interlocutores
+    const ids = [...new Set(data.map(m => m.sender_id === user.id ? m.receiver_id : m.sender_id))];
+
+    // Busca info dos interlocutores
+    const [teachersRes, profilesRes] = await Promise.all([
+      supabase.from('teachers').select('id, name, role').in('id', ids),
+      supabase.from('profiles').select('id, full_name, role').in('id', ids),
+    ]);
+
+    const people: Member[] = [];
+    ids.forEach(id => {
+      const t = teachersRes.data?.find(x => x.id === id);
+      const p = profilesRes.data?.find(x => x.id === id);
+      if (t) people.push({ id: t.id, name: t.name, role: 'Professor' });
+      else if (p) people.push({ id: p.id, name: p.full_name || 'Usuário', role: p.role === 'admin' ? 'Admin' : 'Professor' });
+    });
+    setConversations(people);
+  };
+
+  // Busca mensagens da conversa selecionada
+  const fetchMessages = async (otherId: string) => {
+    if (!user?.id) return;
+    const { data } = await supabase.from('messages').select('*')
+      .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${user.id})`)
+      .order('created_at', { ascending: true });
+    setMessages(data || []);
+
+    // Marca como lidas
+    await supabase.from('messages').update({ read: true })
+      .eq('receiver_id', user.id).eq('sender_id', otherId).eq('read', false);
+  };
+
+  // Realtime
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase.channel('messages-realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+        const msg = payload.new as Message;
+        if (msg.sender_id === user.id || msg.receiver_id === user.id) {
+          if (selected && (msg.sender_id === selected.id || msg.receiver_id === selected.id)) {
+            setMessages(prev => prev.find(m => m.id === msg.id) ? prev : [...prev, msg]);
+          }
+          fetchConversations();
+        }
+      }).subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id, selected]);
+
+  useEffect(() => {
+    if (selected) fetchMessages(selected.id);
+  }, [selected]);
+
+  // Busca membros
+  const searchMembers = async (query: string) => {
+    if (!query.trim()) { setMembers([]); return; }
+    setLoadingMembers(true);
+    try {
+      const [teachersRes, profilesRes] = await Promise.all([
+        supabase.from('teachers').select('id, name, role').ilike('name', `%${query}%`).limit(5),
+        supabase.from('profiles').select('id, full_name, role').ilike('full_name', `%${query}%`).limit(5),
+      ]);
+      const teachers = (teachersRes.data || []).map(t => ({ id: t.id, name: t.name, role: 'Professor' }));
+      const profiles = (profilesRes.data || [])
+        .filter(p => p.id !== user?.id)
+        .map(p => ({ id: p.id, name: p.full_name || 'Usuário', role: p.role === 'admin' ? 'Admin' : 'Professor' }));
+      const all = [...teachers, ...profiles].filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i && m.id !== user?.id);
+      setMembers(all);
+    } finally { setLoadingMembers(false); }
+  };
+
+  useEffect(() => {
+    const t = setTimeout(() => searchMembers(searchQuery), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  const selectMember = (member: Member) => {
+    setSelected(member);
+    if (!conversations.find(c => c.id === member.id)) {
+      setConversations(prev => [member, ...prev]);
+    }
+    setShowSearch(false);
+    setSearchQuery('');
+    setMembers([]);
+  };
+
+  const sendMessage = async () => {
+    if (!input.trim() || !selected || !user?.id) return;
+    setSending(true);
+    const text = input.trim();
+    setInput('');
+    const { data: newMsg } = await supabase.from('messages').insert({
+      sender_id: user.id,
+      receiver_id: selected.id,
+      text,
+      read: false,
+      created_at: new Date().toISOString(),
+    }).select().single();
+    if (newMsg) setMessages(prev => [...prev, newMsg]);
+    fetchMessages(selected.id);
+    setSending(false);
+    fetchConversations();
+  };
+
+  const formatTime = (ts: string) => new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className="flex h-[calc(100vh-120px)] gap-4">
-      <div className="w-80 bg-white/70 backdrop-blur rounded-2xl border border-purple-100 flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-purple-100">
-          <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-purple-600" />
-            Mensagens
-          </h2>
+    <div className="flex h-[calc(100vh-140px)] gap-4">
+      {/* Sidebar */}
+      <div className="w-80 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden">
+        <div className="p-4 border-b border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-bold text-gray-900 flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-purple-600" /> Mensagens
+            </h2>
+            <button onClick={() => setShowSearch(!showSearch)}
+              className="w-8 h-8 rounded-xl bg-purple-50 hover:bg-purple-100 flex items-center justify-center text-purple-600 transition-colors">
+              {showSearch ? <X size={16} /> : <Search size={16} />}
+            </button>
+          </div>
+
+          {showSearch && (
+            <div className="relative">
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+                <Search size={14} className="text-gray-400 shrink-0" />
+                <input autoFocus value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Buscar professor ou admin..."
+                  className="flex-1 bg-transparent text-sm focus:outline-none text-gray-700 placeholder-gray-400" />
+                {searchQuery && <button onClick={() => { setSearchQuery(''); setMembers([]); }}><X size={14} className="text-gray-400" /></button>}
+              </div>
+              {(members.length > 0 || loadingMembers || searchQuery) && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-lg z-50 overflow-hidden">
+                  {loadingMembers ? <div className="p-4 text-center text-sm text-gray-400">Buscando...</div>
+                  : members.length === 0 && searchQuery ? <div className="p-4 text-center text-sm text-gray-400">Nenhum membro encontrado</div>
+                  : members.map(m => (
+                    <button key={m.id} onClick={() => selectMember(m)}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-purple-50 transition-colors text-left">
+                      <div className="w-9 h-9 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                        {m.name[0]?.toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate">{m.name}</p>
+                        <p className="text-xs text-gray-400">{m.role}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
+
         <div className="flex-1 overflow-y-auto">
-          {CONTACTS.map(c => (
-            <div key={c.id} onClick={() => setSelected(c.id)}
-              className={`p-4 cursor-pointer hover:bg-purple-50 transition-colors border-b border-gray-100 ${selected === c.id ? 'bg-purple-50' : ''}`}>
+          {conversations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+              <Users size={36} className="text-gray-200 mb-3" />
+              <p className="text-sm text-gray-400 font-medium">Nenhuma conversa</p>
+              <p className="text-xs text-gray-300 mt-1">Clique em 🔍 para buscar um membro</p>
+            </div>
+          ) : conversations.map(conv => (
+            <div key={conv.id} onClick={() => setSelected(conv)}
+              className={`p-4 cursor-pointer hover:bg-purple-50 transition-colors border-b border-gray-50 ${selected?.id === conv.id ? 'bg-purple-50' : ''}`}>
               <div className="flex items-center gap-3">
-                <div className="relative">
-                  <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-semibold text-sm">
-                    {c.name[0]}
-                  </div>
-                  {c.online && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-white" />}
+                <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                  {conv.name[0]?.toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-gray-800 text-sm">{c.name}</span>
-                    <span className="text-xs text-gray-400">{c.time}</span>
-                  </div>
-                  <p className="text-xs text-gray-500 truncate">{c.lastMessage}</p>
+                  <p className="font-semibold text-gray-800 text-sm truncate">{conv.name}</p>
+                  <p className="text-xs text-purple-400">{conv.role}</p>
                 </div>
-                {c.unread > 0 && (
-                  <span className="w-5 h-5 bg-purple-600 text-white text-xs rounded-full flex items-center justify-center">{c.unread}</span>
-                )}
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="flex-1 bg-white/70 backdrop-blur rounded-2xl border border-purple-100 flex flex-col overflow-hidden">
-        {contact ? (
+      {/* Chat */}
+      <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden">
+        {selected ? (
           <>
-            <div className="p-4 border-b border-purple-100 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-purple-600 flex items-center justify-center text-white font-semibold text-sm">{contact.name[0]}</div>
+            <div className="p-4 border-b border-gray-100 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                {selected.name[0]?.toUpperCase()}
+              </div>
               <div>
-                <p className="font-semibold text-gray-800 text-sm">{contact.name}</p>
-                <p className="text-xs text-green-500">{contact.online ? 'Online' : 'Offline'}</p>
+                <p className="font-bold text-gray-900 text-sm">{selected.name}</p>
+                <p className="text-xs text-purple-500">{selected.role}</p>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-              {messages.map(m => (
-                <div key={m.id} className={`flex ${m.sent ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-xs px-4 py-2 rounded-2xl text-sm ${m.sent ? 'bg-purple-600 text-white' : 'bg-white border border-purple-100 text-gray-800'}`}>
+
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 bg-gray-50">
+              {messages.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center">
+                    <MessageSquare size={36} className="text-gray-200 mx-auto mb-2" />
+                    <p className="text-sm text-gray-400">Nenhuma mensagem ainda</p>
+                    <p className="text-xs text-gray-300">Diga olá para {selected.name}!</p>
+                  </div>
+                </div>
+              ) : messages.map(m => (
+                <div key={m.id} className={`flex ${m.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-xs px-4 py-2.5 rounded-2xl text-sm shadow-sm ${m.sender_id === user?.id ? 'bg-purple-600 text-white rounded-br-sm' : 'bg-white border border-gray-100 text-gray-800 rounded-bl-sm'}`}>
                     {m.text}
-                    <p className={`text-xs mt-1 ${m.sent ? 'text-purple-200' : 'text-gray-400'}`}>{m.time}</p>
+                    <p className={`text-xs mt-1 flex items-center justify-end gap-1 ${m.sender_id === user?.id ? 'text-purple-200' : 'text-gray-400'}`}>
+                      {formatTime(m.created_at)}
+                      {m.sender_id === user?.id && (
+                        <span className={`font-bold ${m.read ? 'text-white' : 'text-purple-300'}`}>
+                          {m.read ? '✓✓' : '✓'}
+                        </span>
+                      )}
+                    </p>
                   </div>
                 </div>
               ))}
+              <div ref={messagesEndRef} />
             </div>
-            <div className="p-4 border-t border-purple-100 flex gap-2">
+
+            <div className="p-4 border-t border-gray-100 flex gap-2 bg-white">
               <input value={input} onChange={e => setInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                 placeholder="Digite uma mensagem..."
-                className="flex-1 px-4 py-2 rounded-xl border border-purple-100 bg-white/80 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
-              <button onClick={() => setInput('')}
-                className="w-10 h-10 bg-purple-600 hover:bg-purple-700 text-white rounded-xl flex items-center justify-center transition-colors">
+                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              <button onClick={sendMessage} disabled={!input.trim() || sending}
+                className="w-10 h-10 bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white rounded-xl flex items-center justify-center transition-colors">
                 <Send className="w-4 h-4" />
               </button>
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-400">
+          <div className="flex-1 flex items-center justify-center bg-gray-50">
             <div className="text-center">
-              <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>Selecione uma conversa</p>
+              <div className="w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center mx-auto mb-4">
+                <MessageSquare size={28} className="text-purple-300" />
+              </div>
+              <p className="text-gray-500 font-medium">Selecione uma conversa</p>
+              <p className="text-gray-300 text-sm mt-1">ou clique em 🔍 para iniciar uma nova</p>
             </div>
           </div>
         )}

@@ -13,7 +13,11 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
-  FileBox
+  FileBox,
+  Folder,
+  FolderOpen,
+  ChevronRight,
+  Grid
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'motion/react';
@@ -29,6 +33,7 @@ interface Material {
   created_at: string;
   type: 'Revisão' | 'Exercícios' | 'Teoria';
   level: string;
+  grade: string;
   file_size?: number;
 }
 
@@ -49,6 +54,9 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSubject, setFilterSubject] = useState('Todas');
   const [filterType, setFilterType] = useState('Todos');
+  const [expandedGrade, setExpandedGrade] = useState<string | null>(null);
+  const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'folders' | 'grid'>('folders');
   const [uploadStatus, setUploadStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   // Form State
@@ -56,6 +64,7 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
   const [newSubject, setNewSubject] = useState('');
   const [newType, setNewType] = useState<'Revisão' | 'Exercícios' | 'Teoria'>('Exercícios');
   const [newLevel, setNewLevel] = useState('');
+  const [newGrade, setNewGrade] = useState('1º Ano - Fundamental');
   const [newDescription, setNewDescription] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -112,9 +121,9 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
 
   const validateBucket = async () => {
     try {
-      const { data, error } = await supabase.storage.getBucket('materials_bucket');
+      const { data, error } = await supabase.storage.getBucket('materials');
       if (error) {
-        console.warn('[MaterialsView] Balde "materials_bucket" não encontrado ou inacessível:', error.message);
+        console.warn('[MaterialsView] Balde "materials" não encontrado ou inacessível:', error.message);
         return false;
       }
       return !!data;
@@ -164,17 +173,15 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
       console.log('[MaterialsView] Iniciando upload:', selectedFile.name);
       
       // Validar bucket antes de tentar o upload
-      const bucketExists = await validateBucket();
-      
       let publicUrl = '';
       
-      if (bucketExists) {
+      if (true) {
         const fileExt = selectedFile.name.split('.').pop();
         const fileName = `${crypto.randomUUID()}.${fileExt}`;
         const filePath = `materials/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
-          .from('materials_bucket')
+          .from('materials')
           .upload(filePath, selectedFile, {
             cacheControl: '3600',
             upsert: false
@@ -183,7 +190,7 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
         if (uploadError) throw uploadError;
 
         const { data: urlData } = supabase.storage
-          .from('materials_bucket')
+          .from('materials')
           .getPublicUrl(filePath);
           
         publicUrl = urlData.publicUrl;
@@ -198,6 +205,7 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
         subject: newSubject.trim(),
         type: newType,
         level: newLevel.trim(),
+        grade: newGrade,
         description: newDescription.trim(),
         file_url: publicUrl,
         uploader_name: user?.name || 'Sistema',
@@ -407,7 +415,100 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
             />
           </div>
 
-          {loading ? (
+          {/* Toggle modo */}
+          <div className="flex items-center gap-2 mb-6">
+            <button onClick={() => setViewMode('folders')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${viewMode === 'folders' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+              <Folder size={14} /> Pastas
+            </button>
+            <button onClick={() => setViewMode('grid')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${viewMode === 'grid' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+              <Grid size={14} /> Grade
+            </button>
+          </div>
+
+          {viewMode === 'folders' && !loading && (() => {
+            const byGrade: Record<string, Record<string, Material[]>> = {};
+            filteredMaterials.forEach(m => {
+              const grade = m.grade || m.level || 'Sem Série';
+              const subject = m.subject || 'Sem Matéria';
+              if (!byGrade[grade]) byGrade[grade] = {};
+              if (!byGrade[grade][subject]) byGrade[grade][subject] = [];
+              byGrade[grade][subject].push(m);
+            });
+            if (Object.keys(byGrade).length === 0) return (
+              <div className="py-20 text-center">
+                <Folder size={48} className="text-gray-200 mx-auto mb-4" />
+                <p className="text-gray-400 font-bold">Nenhum material encontrado.</p>
+              </div>
+            );
+            return (
+              <div className="space-y-3">
+                {Object.entries(byGrade).sort(([a],[b]) => a.localeCompare(b)).map(([grade, subjects]) => (
+                  <div key={grade} className="border border-gray-100 rounded-2xl overflow-hidden">
+                    <button onClick={() => setExpandedGrade(expandedGrade === grade ? null : grade)}
+                      className="w-full flex items-center gap-3 p-4 bg-gray-50 hover:bg-purple-50 transition-all text-left">
+                      {expandedGrade === grade ? <FolderOpen size={20} className="text-primary shrink-0" /> : <Folder size={20} className="text-gray-400 shrink-0" />}
+                      <span className="font-black text-gray-800 flex-1">{grade}</span>
+                      <span className="text-xs text-gray-400 font-bold mr-2">{Object.values(subjects).flat().length} material(is)</span>
+                      <ChevronRight size={16} className={`text-gray-400 transition-transform ${expandedGrade === grade ? 'rotate-90' : ''}`} />
+                    </button>
+                    {expandedGrade === grade && (
+                      <div className="p-3 space-y-2 bg-white">
+                        {Object.entries(subjects).sort(([a],[b]) => a.localeCompare(b)).map(([subject, mats]) => {
+                          const key = grade + '__' + subject;
+                          return (
+                            <div key={subject} className="border border-gray-100 rounded-xl overflow-hidden">
+                              <button onClick={() => setExpandedSubject(expandedSubject === key ? null : key)}
+                                className="w-full flex items-center gap-3 p-3 bg-gray-50 hover:bg-purple-50 transition-all text-left">
+                                {expandedSubject === key ? <FolderOpen size={16} className="text-purple-400 shrink-0" /> : <Folder size={16} className="text-gray-300 shrink-0" />}
+                                <span className="font-bold text-gray-700 flex-1 text-sm">{subject}</span>
+                                <span className="text-[10px] text-gray-400 font-bold mr-2">{mats.length} arquivo(s)</span>
+                                <ChevronRight size={14} className={`text-gray-400 transition-transform ${expandedSubject === key ? 'rotate-90' : ''}`} />
+                              </button>
+                              {expandedSubject === key && (
+                                <div className="divide-y divide-gray-50">
+                                  {mats.map(material => (
+                                    <div key={material.id} className="flex items-center gap-3 p-4 hover:bg-gray-50 transition-all">
+                                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                                        <FileText size={18} className="text-primary" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-gray-900 text-sm truncate">{material.title}</p>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                          <span className="text-[10px] text-gray-400 font-bold">{material.type}</span>
+                                          <span className="text-gray-200">•</span>
+                                          <span className="text-[10px] text-gray-400">{new Date(material.created_at).toLocaleDateString('pt-BR')}</span>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <button onClick={() => handleDownload(material.file_url, material.title)}
+                                          className="flex items-center gap-1.5 bg-gray-900 text-white px-3 py-1.5 rounded-lg text-[10px] font-black hover:bg-primary transition-colors">
+                                          <Download size={11} /> Baixar
+                                        </button>
+                                        {(user.role === 'admin' || material.uploaded_by === (user.id || user.email)) && (
+                                          <button onClick={() => handleDelete(material.id, material.uploaded_by)}
+                                            className="p-1.5 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                                            <Trash2 size={13} />
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          {viewMode === 'grid' && loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {[1, 2, 3, 4].map(i => (
                 <div key={i} className="h-48 bg-white rounded-[2rem] animate-pulse border border-gray-100" />
@@ -571,14 +672,23 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Série / Nível</label>
-                    <input 
-                      required
-                      value={newLevel}
-                      onChange={(e) => setNewLevel(e.target.value)}
-                      className="w-full bg-gray-50 border-none rounded-2xl py-4 px-6 font-bold focus:ring-2 focus:ring-primary outline-none transition-all placeholder:text-gray-300"
-                      placeholder="Ex: 9º Ano Fundamental"
-                    />
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Ano / Série</label>
+                    <select
+                      value={newGrade}
+                      onChange={(e) => setNewGrade(e.target.value)}
+                      className="w-full bg-gray-50 border-none rounded-2xl py-4 px-6 font-bold focus:ring-2 focus:ring-primary outline-none transition-all appearance-none"
+                    >
+                      <optgroup label="Ensino Fundamental">
+                        {['1º Ano','2º Ano','3º Ano','4º Ano','5º Ano','6º Ano','7º Ano','8º Ano','9º Ano'].map(g => (
+                          <option key={g} value={g + ' - Fundamental'}>{g} - Fundamental</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Ensino Médio">
+                        {['1º Ano','2º Ano','3º Ano'].map(g => (
+                          <option key={g} value={g + ' - Médio'}>{g} - Médio</option>
+                        ))}
+                      </optgroup>
+                    </select>
                   </div>
                 </div>
 

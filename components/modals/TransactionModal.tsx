@@ -93,6 +93,7 @@ export default function TransactionModal({ isOpen, onClose, type: initialType = 
         description: formData.description,
         category: formData.category,
         amount: parseFloat(formData.value),
+        value: parseFloat(formData.value),
         date: formData.due_date,
         student_id: formData.student_id || null,
         created_by: (await supabase.auth.getUser()).data.user?.id || null
@@ -127,7 +128,7 @@ export default function TransactionModal({ isOpen, onClose, type: initialType = 
       onSuccess();
       onClose();
     } catch (err: any) {
-      console.error('Detailed Save Error:', err);
+      console.error('Detailed Save Error:', JSON.stringify(err), err?.message, err?.code, err?.details, err?.hint);
       
       let errorMessage = 'Ocorreu um erro ao salvar.';
       if (err.message && err.message.includes('PGRST125')) {

@@ -264,7 +264,7 @@ export default function FeedbacksView() {
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
-              className="bg-white w-full max-w-xl h-full md:h-fit md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col"
+              className="bg-white w-full max-w-3xl h-full md:h-[92vh] md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col"
             >
               <div className="p-8 bg-purple-600 text-white flex justify-between items-center">
                 <div className="flex items-center gap-4">
