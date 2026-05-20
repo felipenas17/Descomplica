@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import { X, User, Mail, Hash, Shapes, Phone, Calendar, School, Users, Clock, BookOpen, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 
 interface StudentFormProps {
@@ -33,6 +34,10 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
     frequency: '',
     lesson_duration: '60',
     preferred_time: '',
+    lesson_start_time: '08:00',
+    lesson_end_time: '09:00',
+    recurrence_start: new Date().toISOString().split('T')[0],
+    recurrence_end: '',
     // Extra
     notes: '',
     address: '',
@@ -45,12 +50,47 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
     setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({
+    const studentData = {
       ...formData,
       days_of_week: selectedDays.join(', '),
-    });
+    };
+    onSubmit(studentData);
+
+    // Gera aulas recorrentes se tiver dias e datas configurados
+    if (selectedDays.length > 0 && formData.recurrence_start && formData.recurrence_end && formData.lesson_start_time) {
+      const dayMap: Record<string, number> = {
+        'Segunda': 1, 'Terça': 2, 'Quarta': 3, 'Quinta': 4, 'Sexta': 5, 'Sábado': 6
+      };
+      const start = new Date(formData.recurrence_start + 'T00:00:00');
+      const end = new Date(formData.recurrence_end + 'T00:00:00');
+      const schedulesToCreate = [];
+      const current = new Date(start);
+
+      while (current <= end) {
+        const dayOfWeek = current.getDay();
+        const matchesDay = selectedDays.some(d => dayMap[d] === dayOfWeek);
+        if (matchesDay) {
+          schedulesToCreate.push({
+            date: current.toISOString().split('T')[0],
+            start_time: formData.lesson_start_time,
+            end_time: formData.lesson_end_time,
+            subject: 'A definir',
+            student_name: formData.name,
+            status: 'confirmado',
+            notes: 'Aula recorrente gerada automaticamente',
+            created_at: new Date().toISOString(),
+          });
+        }
+        current.setDate(current.getDate() + 1);
+      }
+
+      if (schedulesToCreate.length > 0) {
+        await supabase.from('schedules').insert(schedulesToCreate);
+        alert(schedulesToCreate.length + ' aulas geradas automaticamente! ✅');
+      }
+    }
   };
 
   const inputClass = "w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-transparent transition-all";
@@ -187,6 +227,48 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
               </div>
               {selectedDays.length > 0 && (
                 <p className="text-xs text-purple-500 mt-2 font-semibold">{selectedDays.length}x por semana — {selectedDays.join(', ')}</p>
+              )}
+            </div>
+
+            {/* Horário Fixo */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className={labelClass}>Horário de Início</label>
+                <div className="relative">
+                  <Clock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                  <input type="time" value={formData.lesson_start_time} onChange={e => update('lesson_start_time', e.target.value)} className={inputClass} />
+                </div>
+              </div>
+              <div>
+                <label className={labelClass}>Horário de Término</label>
+                <div className="relative">
+                  <Clock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                  <input type="time" value={formData.lesson_end_time} onChange={e => update('lesson_end_time', e.target.value)} className={inputClass} />
+                </div>
+              </div>
+            </div>
+
+            {/* Período de Recorrência */}
+            <div className="mb-4 p-4 bg-purple-50 rounded-2xl border border-purple-100">
+              <p className="text-xs font-black text-purple-600 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <Calendar size={12} /> Período de Recorrência
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelClass}>Data de Início</label>
+                  <input type="date" value={formData.recurrence_start} onChange={e => update('recurrence_start', e.target.value)}
+                    className="w-full bg-white border border-purple-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                </div>
+                <div>
+                  <label className={labelClass}>Data de Término</label>
+                  <input type="date" value={formData.recurrence_end} onChange={e => update('recurrence_end', e.target.value)}
+                    className="w-full bg-white border border-purple-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                </div>
+              </div>
+              {selectedDays.length > 0 && formData.recurrence_start && formData.recurrence_end && (
+                <p className="text-xs text-purple-600 font-bold mt-3">
+                  ✅ As aulas serão geradas automaticamente toda(s) {selectedDays.join(', ')} das {formData.lesson_start_time} às {formData.lesson_end_time}
+                </p>
               )}
             </div>
 
