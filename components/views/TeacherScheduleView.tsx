@@ -106,6 +106,37 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
       });
       if (fbError) throw fbError;
 
+      // Registra falta se ausente
+      if (feedback.attendance === 'Ausente') {
+        await supabase.from('absences').insert({
+          student_id: feedbackLesson.student_id || null,
+          student_name: feedbackLesson.student_name,
+          feedback_id: fbError ? null : null,
+          schedule_id: feedbackLesson.id,
+          absence_date: feedbackLesson.date,
+          notified_advance: false,
+          replenishment_done: false,
+          extra_class_purchased: false,
+          notes: feedback.notes || '',
+          created_at: new Date().toISOString(),
+        });
+
+        // Notifica admin sobre a falta
+        const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'admin');
+        if (admins && admins.length > 0) {
+          await Promise.all(admins.map((admin: any) =>
+            supabase.from('notifications').insert({
+              user_id: admin.id,
+              title: '⚠️ Falta registrada!',
+              message: feedbackLesson.student_name + ' faltou na aula de ' + feedbackLesson.subject + ' em ' + new Date(feedbackLesson.date).toLocaleDateString('pt-BR') + '. Verifique se houve aviso prévio.',
+              type: 'info',
+              read: false,
+              created_at: new Date().toISOString(),
+            })
+          ));
+        }
+      }
+
       // Muda status para concluido
       const { error: scError } = await supabase.from('schedules').update({ status: 'concluido' }).eq('id', feedbackLesson.id);
       if (scError) throw scError;
