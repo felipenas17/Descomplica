@@ -17,6 +17,7 @@ import FeedbacksView from '@/components/views/FeedbacksView';
 import UsersView from '@/components/views/UsersView';
 import MaterialsView from '@/components/views/MaterialsView';
 import NotificationsView from '@/components/views/NotificationsView';
+import AbsencesView from '@/components/views/AbsencesView';
 import MessagesView from '@/components/views/MessagesView';
 import PasswordChangeModal from '@/components/modals/PasswordChangeModal';
 import ChangePasswordModal from '@/components/modals/ChangePasswordModal';
@@ -71,6 +72,48 @@ export default function Home() {
             needs_password_change: profile.needs_password_change || false
           });
           setActiveView(profile.role === 'professor' ? 'agenda' : 'dashboard');
+
+          if (profile.role === 'admin') {
+            const today = new Date();
+            const { data: birthdayStudents } = await supabase
+              .from('students')
+              .select('id, name, birth_date')
+              .not('birth_date', 'is', null);
+
+            for (const student of (birthdayStudents || [])) {
+              if (!student.birth_date) continue;
+              const parts = student.birth_date.split('-');
+              const bdMonth = parseInt(parts[1]);
+              const bdDay = parseInt(parts[2]);
+              const bdThisYear = new Date(today.getFullYear(), bdMonth - 1, bdDay);
+              const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+              const diffDays = Math.round((bdThisYear.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
+              if (diffDays < 0 || diffDays > 5) continue;
+              const title = diffDays === 0 ? '🎂 Aniversário HOJE!' : '🎂 Aniversário em ' + diffDays + ' dia(s)!';
+              const message = diffDays === 0
+                ? student.name + ' faz aniversário HOJE! Não esqueça de parabenizar! 🎉'
+                : student.name + ' faz aniversário em ' + diffDays + ' dia(s)! Hora de planejar! 🎂';
+              const todayStr = todayMidnight.toISOString().split('T')[0];
+              const { data: existing } = await supabase
+                .from('notifications')
+                .select('id')
+                .eq('user_id', profile.id)
+                .ilike('message', '%' + student.name + '%')
+                .gte('created_at', todayStr)
+                .limit(1);
+              if (!existing || existing.length === 0) {
+                await supabase.from('notifications').insert({
+                  user_id: profile.id,
+                  title,
+                  message,
+                  type: 'info',
+                  read: false,
+                  created_at: new Date().toISOString(),
+                });
+              }
+            }
+          }
+
         } else {
           setUser({
             id: supabaseUser.id,
@@ -190,6 +233,7 @@ export default function Home() {
             case 'users': return <UsersView />;
             case 'materials': return <MaterialsView user={user} />;
             case 'notifications': return <NotificationsView user={user} />;
+            case 'absences': return <AbsencesView />;
             case 'messages': return <MessagesView user={user} />;
             default: return <DashboardView />;
           }

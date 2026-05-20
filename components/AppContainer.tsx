@@ -15,6 +15,7 @@ import {
   MessageSquare,
   MessageSquareQuote,
   ShieldCheck,
+  UserX,
   FileText,
   Lock,
   ChevronDown,
@@ -30,7 +31,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useNotifications } from '@/hooks/useNotifications';
 
 // --- Shared Types ---
-export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials' | 'messages' | 'notifications';
+export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials' | 'messages' | 'notifications' | 'absences';
 
 interface SearchResult {
   id: string;
@@ -90,6 +91,7 @@ const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, un
           <NavItem icon={GraduationCap} label="Professores" active={activeView === 'teachers'} onClick={() => setView('teachers')} />
           <NavItem icon={Users} label="Alunos" active={activeView === 'students'} onClick={() => setView('students')} />
           <NavItem icon={MessageSquareQuote} label="Feedbacks" active={activeView === 'feedbacks'} onClick={() => setView('feedbacks')} />
+          <NavItem icon={UserX} label="Controle de Faltas" active={activeView === 'absences'} onClick={() => setView('absences')} />
           <NavItem icon={ShieldCheck} label="Usuários" active={activeView === 'users'} onClick={() => setView('users')} />
         </>
       )}
@@ -367,7 +369,8 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
     users: 'Usuários & Acessos',
     materials: 'Material de Apoio',
     messages: 'Mensagens',
-    notifications: 'Notificações'
+    notifications: 'Notificações',
+    absences: 'Controle de Faltas'
   };
 
   return (
