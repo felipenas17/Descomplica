@@ -58,6 +58,11 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
     };
     onSubmit(studentData);
 
+    // Fecha se não tiver recorrência configurada
+    if (!(selectedDays.length > 0 && formData.recurrence_start && formData.recurrence_end)) {
+      onClose();
+    }
+
     // Gera aulas recorrentes se tiver dias e datas configurados
     if (selectedDays.length > 0 && formData.recurrence_start && formData.recurrence_end && formData.lesson_start_time) {
       const dayMap: Record<string, number> = {
@@ -89,6 +94,7 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
       if (schedulesToCreate.length > 0) {
         await supabase.from('schedules').insert(schedulesToCreate);
         alert(schedulesToCreate.length + ' aulas geradas automaticamente! ✅');
+      onClose();
       }
     }
   };
