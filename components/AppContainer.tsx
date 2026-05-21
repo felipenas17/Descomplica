@@ -31,7 +31,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useNotifications } from '@/hooks/useNotifications';
 
 // --- Shared Types ---
-export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials' | 'messages' | 'notifications' | 'absences';
+export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials' | 'messages' | 'notifications' | 'absences' | 'contracts';
 
 interface SearchResult {
   id: string;
@@ -92,6 +92,8 @@ const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, un
           <NavItem icon={Users} label="Alunos" active={activeView === 'students'} onClick={() => setView('students')} />
           <NavItem icon={MessageSquareQuote} label="Feedbacks" active={activeView === 'feedbacks'} onClick={() => setView('feedbacks')} />
           <NavItem icon={UserX} label="Controle de Faltas" active={activeView === 'absences'} onClick={() => setView('absences')} />
+          <NavItem icon={FileSignature} label="Contratos" active={activeView === 'contracts'} onClick={() => setView('contracts')} />
+          <NavItem icon={FileSignature} label="Contratos" active={activeView === 'contracts'} onClick={() => setView('contracts')} />
           <NavItem icon={ShieldCheck} label="Usuários" active={activeView === 'users'} onClick={() => setView('users')} />
         </>
       )}
@@ -370,7 +372,9 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
     materials: 'Material de Apoio',
     messages: 'Mensagens',
     notifications: 'Notificações',
-    absences: 'Controle de Faltas'
+    absences: 'Controle de Faltas',
+    contracts: 'Contratos',
+    contracts: 'Contratos'
   };
 
   return (
