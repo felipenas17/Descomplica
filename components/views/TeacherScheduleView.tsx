@@ -18,12 +18,11 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 interface FeedbackForm {
-  rating: number;
-  performance: string;
   attendance: string;
+  discipline: string;
+  content: string;
+  resources: string;
   notes: string;
-  homework_given: boolean;
-  homework_description: string;
 }
 
 export default function TeacherScheduleView({ user }: { user?: any }) {
@@ -101,11 +100,10 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
         student_name: feedbackLesson.student_name,
         student_id: feedbackLesson.student_id || null,
         subject: feedbackLesson.subject,
-        rating: feedback.rating,
-        performance: feedback.performance,
         attendance: feedback.attendance,
-        homework_given: feedback.homework_given,
-        homework_description: feedback.homework_description,
+        discipline: feedback.discipline,
+        content: feedback.content,
+        resources: feedback.resources,
         observations: feedback.notes,
         class_date: feedbackLesson.date,
         created_at: new Date().toISOString(),
