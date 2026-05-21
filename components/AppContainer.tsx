@@ -92,8 +92,7 @@ const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, un
           <NavItem icon={Users} label="Alunos" active={activeView === 'students'} onClick={() => setView('students')} />
           <NavItem icon={MessageSquareQuote} label="Feedbacks" active={activeView === 'feedbacks'} onClick={() => setView('feedbacks')} />
           <NavItem icon={UserX} label="Controle de Faltas" active={activeView === 'absences'} onClick={() => setView('absences')} />
-          <NavItem icon={FileSignature} label="Contratos" active={activeView === 'contracts'} onClick={() => setView('contracts')} />
-          <NavItem icon={FileSignature} label="Contratos" active={activeView === 'contracts'} onClick={() => setView('contracts')} />
+          <NavItem icon={FileText} label="Contratos" active={activeView === 'contracts'} onClick={() => setView('contracts')} />
           <NavItem icon={ShieldCheck} label="Usuários" active={activeView === 'users'} onClick={() => setView('users')} />
         </>
       )}
