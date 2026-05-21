@@ -141,7 +141,9 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
       'application/msword', 
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'image/jpeg',
-      'image/png'
+      'image/jpg',
+      'image/png',
+      'image/webp'
     ];
     
     // Limite de 10MB
@@ -486,7 +488,7 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
                                           className="flex items-center gap-1.5 bg-gray-900 text-white px-3 py-1.5 rounded-lg text-[10px] font-black hover:bg-primary transition-colors">
                                           <Download size={11} /> Baixar
                                         </button>
-                                        {(user.role === 'admin' || material.uploaded_by === (user.id || user.email)) && (
+                                        {user.role === 'admin' && (
                                           <button onClick={() => handleDelete(material.id, material.uploaded_by)}
                                             className="p-1.5 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
                                             <Trash2 size={13} />
@@ -666,8 +668,12 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
                       onChange={(e) => setNewType(e.target.value as any)}
                       className="w-full bg-gray-50 border-none rounded-2xl py-4 px-6 font-bold focus:ring-2 focus:ring-primary outline-none transition-all appearance-none"
                     >
+                      <option value="Lista de Exercícios">Lista de Exercícios</option>
+                      <option value="Apostila">Apostila</option>
+                      <option value="Resumo">Resumo</option>
+                      <option value="Template">Template</option>
+                      <option value="Jogos">Jogos</option>
                       <option value="Revisão">Revisão</option>
-                      <option value="Exercícios">Exercícios</option>
                       <option value="Teoria">Teoria</option>
                     </select>
                   </div>
@@ -711,7 +717,7 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
                     <input 
                       type="file" 
                       className="hidden" 
-                      accept=".pdf,.doc,.docx"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
                       onChange={handleFileChange}
                     />
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
