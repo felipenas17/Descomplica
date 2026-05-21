@@ -13,6 +13,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   agendado:      { label: 'AGENDADO',      color: 'bg-blue-100 text-blue-600' },
   cancelado:     { label: 'CANCELADO',     color: 'bg-red-100 text-red-600' },
   concluido:     { label: 'CONCLUÍDO',     color: 'bg-gray-100 text-gray-500' },
+  aguardando_confirmacao: { label: 'AGUARD. CONFIRMAÇÃO', color: 'bg-orange-100 text-orange-600' },
   em_andamento:  { label: 'EM ANDAMENTO',  color: 'bg-yellow-100 text-yellow-700' },
 };
 
@@ -78,6 +79,11 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
     fetchLessons();
   };
 
+  const markAttendance = async (lesson: any, status: string) => {
+    await supabase.from('schedules').update({ attendance_status: status }).eq('id', lesson.id);
+    fetchLessons();
+  };
+
   const openFeedback = (lesson: any) => {
     setFeedbackLesson(lesson);
     setFeedback({ rating: 5, performance: 'Bom', attendance: 'Presente', notes: '', homework_given: false, homework_description: '' });
@@ -137,11 +143,24 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
         }
       }
 
-      // Muda status para concluido
-      const { error: scError } = await supabase.from('schedules').update({ status: 'concluido' }).eq('id', feedbackLesson.id);
+      // Muda status para aguardando confirmação do admin
+      const { error: scError } = await supabase.from('schedules').update({ status: 'aguardando_confirmacao', attendance_status: feedback.attendance }).eq('id', feedbackLesson.id);
       if (scError) throw scError;
 
-      // Notifica o admin
+      // Notifica o admin para confirmar a aula
+      if (admins && admins.length > 0) {
+        await Promise.all(admins.map((admin: any) =>
+          supabase.from('notifications').insert({
+            user_id: admin.id,
+            title: '✅ Confirmar aula: ' + feedbackLesson.subject,
+            message: user?.name + ' finalizou a aula de ' + feedbackLesson.subject + ' com ' + feedbackLesson.student_name + '. Presença: ' + feedback.attendance + '. Confirme para registrar como concluída.',
+            type: 'confirm_class',
+            read: false,
+            schedule_id: feedbackLesson.id,
+            created_at: new Date().toISOString(),
+          })
+        ));
+      }
       const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'admin');
       if (admins && admins.length > 0) {
         await Promise.all(admins.map((admin: any) =>
@@ -156,7 +175,7 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
         ));
       }
 
-      toast.success('Feedback enviado! Aula concluída ✅');
+      toast.success('Feedback enviado! Aguardando confirmação do admin ⏳');
       setFeedbackLesson(null);
       fetchLessons();
     } catch (e: any) {
@@ -247,21 +266,32 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
                     </div>
                     {lesson.notes && <p className="text-xs text-gray-400 mt-1 truncate">{lesson.notes}</p>}
 
-                    {/* Botões de ação */}
-                    {!concluida && (
-                      <div className="flex gap-2 mt-3">
-                        {podeIniciar && (
-                          <button onClick={() => startLesson(lesson)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-bold transition-all">
-                            <Play size={12} fill="white" /> Iniciar Aula
-                          </button>
-                        )}
-                        {emAndamento && (
+                    {/* Botões de presença */}
+                    {!concluida && lesson.status !== 'aguardando_confirmacao' && (
+                      <div className="flex gap-2 mt-3 flex-wrap">
+                        <button onClick={() => markAttendance(lesson, 'presente')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${lesson.attendance_status === 'presente' ? 'bg-green-500 text-white' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}>
+                          ✅ Presente
+                        </button>
+                        <button onClick={() => markAttendance(lesson, 'falta')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${lesson.attendance_status === 'falta' ? 'bg-red-500 text-white' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}>
+                          ❌ Falta
+                        </button>
+                        <button onClick={() => markAttendance(lesson, 'justificada')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${lesson.attendance_status === 'justificada' ? 'bg-yellow-500 text-white' : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'}`}>
+                          📋 Justificada
+                        </button>
+                        {lesson.attendance_status && (
                           <button onClick={() => openFeedback(lesson)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-all animate-pulse">
-                            <Square size={12} fill="white" /> Finalizar & Feedback
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-all">
+                            Finalizar & Enviar →
                           </button>
                         )}
+                      </div>
+                    )}
+                    {lesson.status === 'aguardando_confirmacao' && (
+                      <div className="flex items-center gap-1 mt-2 text-xs text-yellow-600 font-medium">
+                        ⏳ Aguardando confirmação do admin
                       </div>
                     )}
                     {concluida && (
