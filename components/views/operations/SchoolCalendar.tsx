@@ -57,6 +57,9 @@ export default function SchoolCalendar({ user }: { user?: any }) {
   const [saving, setSaving] = useState(false);
   const [teachers, setTeachers] = useState<{id: string, name: string}[]>([]);
   const [students, setStudents] = useState<{id: string, name: string}[]>([]);
+  const [dragLesson, setDragLesson] = useState<Lesson | null>(null);
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [rescheduleData, setRescheduleData] = useState({ newDate: '', newTime: '', reason: '' });
 
   const fetchTeachersAndStudents = async () => {
     const [teachersRes, studentsRes] = await Promise.all([
@@ -68,6 +71,32 @@ export default function SchoolCalendar({ user }: { user?: any }) {
   };
 
   const isAdmin = user?.role === 'admin' || !user?.role;
+
+  const handleDrop = (newDate: string, newTime: string) => {
+    if (!dragLesson || !isAdmin) return;
+    setRescheduleData({ newDate, newTime, reason: '' });
+    setShowRescheduleModal(true);
+  };
+
+  const confirmReschedule = async () => {
+    if (!dragLesson || !rescheduleData.reason.trim()) {
+      toast.error('Por favor, informe o motivo da remarcação!');
+      return;
+    }
+    try {
+      await supabase.from('schedules').update({
+        date: rescheduleData.newDate,
+        start_time: rescheduleData.newTime,
+        notes: (dragLesson.notes ? dragLesson.notes + ' | ' : '') + 'Remarcado: ' + rescheduleData.reason,
+      }).eq('id', dragLesson.id);
+      toast.success('Aula remarcada! ✅');
+      setShowRescheduleModal(false);
+      setDragLesson(null);
+      fetchLessons();
+    } catch (e: any) {
+      toast.error('Erro ao remarcar: ' + e.message);
+    }
+  };
 
   useEffect(() => { fetchLessons(); }, [currentDate, view]);
 
@@ -517,6 +546,51 @@ export default function SchoolCalendar({ user }: { user?: any }) {
                 className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2">
                 {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Plus size={16} />}
                 {saving ? 'Salvando...' : 'Incluir Aula'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+
+      {/* Modal Remarcação */}
+      {showRescheduleModal && dragLesson && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-black text-gray-900">Remarcar Aula</h2>
+              <button onClick={() => { setShowRescheduleModal(false); setDragLesson(null); }}
+                className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"><X size={20} /></button>
+            </div>
+            <div className="p-4 bg-purple-50 rounded-2xl mb-4">
+              <p className="font-black text-gray-900">{dragLesson.subject}</p>
+              <p className="text-sm text-gray-500">{dragLesson.student_name} • {dragLesson.date}</p>
+              <p className="text-xs text-purple-600 font-bold mt-1">
+                Nova data: {rescheduleData.newDate} às {rescheduleData.newTime}
+              </p>
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">
+                Motivo da Remarcação <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={rescheduleData.reason}
+                onChange={e => setRescheduleData(r => ({ ...r, reason: e.target.value }))}
+                placeholder="Ex: Aluno pediu, Feriado, Professor indisponível..."
+                rows={3}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300"
+                autoFocus
+              />
+              <p className="text-xs text-gray-400 mt-1">Campo obrigatório para fins de rastreabilidade</p>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => { setShowRescheduleModal(false); setDragLesson(null); }}
+                className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all">
+                Cancelar
+              </button>
+              <button onClick={confirmReschedule} disabled={!rescheduleData.reason.trim()}
+                className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all">
+                Confirmar Remarcação
               </button>
             </div>
           </div>
