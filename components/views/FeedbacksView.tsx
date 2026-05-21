@@ -360,49 +360,44 @@ _Professora Descomplica — ${new Date().toLocaleDateString('pt-BR')}_`
                   </div>
                 </div>
 
-                <div className="space-y-6">
-                  <div className="p-6 border-2 border-gray-50 rounded-3xl space-y-4">
-                    <div className="flex justify-between border-b pb-4 border-gray-50">
-                      <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Desempenho</span>
-                      <span className="font-black text-purple-600">{selectedFeedback.performance}</span>
+                <div className="space-y-4">
+                  {/* Presença e Disciplina */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-gray-50 rounded-2xl">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Presença</p>
+                      <span className={`text-sm font-black ${selectedFeedback.attendance === 'Presente' ? 'text-green-600' : selectedFeedback.attendance === 'Justificada' ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {selectedFeedback.attendance || '---'}
+                      </span>
                     </div>
-                    <div className="flex justify-between border-b pb-4 border-gray-50">
-                      <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Participação</span>
-                      <span className="font-black text-purple-600">{selectedFeedback.participation}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Nota da Aula</span>
-                      <div className="flex gap-0.5">
-                        {[1, 2, 3, 4, 5].map(s => (
-                          <Star 
-                            key={s} 
-                            size={16} 
-                            fill={s <= (selectedFeedback.rating || 0) ? "#FFD700" : "none"} 
-                            stroke={s <= (selectedFeedback.rating || 0) ? "#FFD700" : "#E5E7EB"}
-                          />
-                        ))}
-                      </div>
+                    <div className="p-4 bg-gray-50 rounded-2xl">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Disciplina</p>
+                      <p className="text-sm font-black text-gray-900">{selectedFeedback.discipline || '---'}</p>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Conteúdo Abordado</label>
-                      <div className="p-5 bg-purple-50 text-purple-900 rounded-3xl text-sm font-bold leading-relaxed">
-                        {selectedFeedback.content}
-                      </div>
+                  {/* Conteúdo */}
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Conteúdo Abordado</label>
+                    <div className="p-4 bg-purple-50 text-purple-900 rounded-2xl text-sm font-bold">
+                      {selectedFeedback.content || 'Não informado.'}
                     </div>
-                    <div>
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2 text-rose-500">Dificuldades</label>
-                      <div className="p-5 bg-rose-50 text-rose-900 rounded-3xl text-sm font-bold leading-relaxed border border-rose-100">
-                        {selectedFeedback.difficulties || 'Nenhuma dificuldade reportada.'}
-                      </div>
+                  </div>
+
+                  {/* Recursos */}
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Recursos Utilizados</label>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedFeedback.resources ? selectedFeedback.resources.split(', ').map((r: string) => (
+                        <span key={r} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold">{r}</span>
+                      )) : <span className="text-sm text-gray-400">Não informado.</span>}
                     </div>
-                    <div>
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Observações</label>
-                      <div className="p-5 bg-gray-50 text-gray-700 rounded-3xl text-sm font-medium italic border border-gray-100">
-                        &quot;{selectedFeedback.observations || 'Sem observações extras.'}&quot;
-                      </div>
+                  </div>
+
+                  {/* Observações */}
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Observações</label>
+                    <div className="p-4 bg-gray-50 text-gray-700 rounded-2xl text-sm italic border border-gray-100">
+                      &quot;{selectedFeedback.observations || 'Sem observações extras.'}&quot;
                     </div>
                   </div>
                 </div>
