@@ -31,7 +31,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useNotifications } from '@/hooks/useNotifications';
 
 // --- Shared Types ---
-export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials' | 'messages' | 'notifications' | 'absences' | 'contracts';
+export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials' | 'messages' | 'notifications' | 'absences' | 'contracts' | 'teacher_feedbacks';
 
 interface SearchResult {
   id: string;
@@ -100,6 +100,7 @@ const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, un
       <NavItem icon={Bell} label="Notificações" active={activeView === 'notifications'} onClick={() => setView('notifications')} badge={unreadCount} />
       <NavItem icon={CalendarCheck} label="Agenda & Compromissos" active={activeView === 'agenda'} onClick={() => setView('agenda')} />
       <NavItem icon={FileText} label="Material de Apoio" active={activeView === 'materials'} onClick={() => setView('materials')} />
+      <NavItem icon={MessageSquareQuote} label="Meus Feedbacks" active={activeView === 'teacher_feedbacks'} onClick={() => setView('teacher_feedbacks')} />
     </nav>
 
     <div className="mt-auto pt-6 border-t border-white/10">
@@ -373,7 +374,9 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
     notifications: 'Notificações',
     absences: 'Controle de Faltas',
     contracts: 'Contratos',
-    contracts: 'Contratos'
+    teacher_feedbacks: 'Meus Feedbacks',
+    contracts: 'Contratos',
+    teacher_feedbacks: 'Meus Feedbacks'
   };
 
   return (
