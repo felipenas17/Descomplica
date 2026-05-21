@@ -34,6 +34,7 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
     frequency: '',
     lesson_duration: '60',
     preferred_time: '',
+    monthly_value: '',
     lesson_start_time: '08:00',
     lesson_end_time: '09:00',
     recurrence_start: new Date().toISOString().split('T')[0],
@@ -55,6 +56,7 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
     const studentData = {
       ...formData,
       days_of_week: selectedDays.join(', '),
+      monthly_value: parseFloat(formData.monthly_value) || 0,
     };
     onSubmit(studentData);
 
@@ -234,6 +236,17 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
               {selectedDays.length > 0 && (
                 <p className="text-xs text-purple-500 mt-2 font-semibold">{selectedDays.length}x por semana — {selectedDays.join(', ')}</p>
               )}
+            </div>
+
+            {/* Valor Mensal */}
+            <div className="mb-4">
+              <label className={labelClass}>Valor da Mensalidade (R$) *</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">R$</span>
+                <input type="number" step="0.01" value={formData.monthly_value} onChange={e => update('monthly_value', e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-transparent transition-all"
+                  placeholder="0,00" />
+              </div>
             </div>
 
             {/* Horário Fixo */}
