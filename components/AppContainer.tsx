@@ -82,7 +82,7 @@ const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, un
       <p className="text-xs text-white/40 uppercase tracking-widest mt-1">School Administration</p>
     </div>
 
-    <nav className="flex-1 flex flex-col gap-2">
+    <nav className="flex-1 flex flex-col gap-2 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent pr-1">
       {user?.role === 'admin' && (
         <>
           <NavItem icon={LayoutDashboard} label="Dashboard" active={activeView === 'dashboard'} onClick={() => setView('dashboard')} />
