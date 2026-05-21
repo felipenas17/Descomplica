@@ -45,7 +45,7 @@ export default function FinanceView() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'entradas' | 'saidas'>('dashboard');
   const [filterMonth, setFilterMonth] = useState(MONTHS_FULL[new Date().getMonth()]);
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
-  const [periodMode, setPeriodMode] = useState<'month' | 'period'>('month');
+  const [periodMode, setPeriodMode] = useState<'month' | 'period' | 'year'>('month');
   const [periodFrom, setPeriodFrom] = useState(MONTHS_FULL[0]);
   const [periodTo, setPeriodTo] = useState(MONTHS_FULL[new Date().getMonth()]);
   const [showPayModal, setShowPayModal] = useState<any>(null);
@@ -83,6 +83,7 @@ export default function FinanceView() {
 
   const monthPayments = payments.filter(p => {
     if (periodMode === 'month') return p.month === filterMonth && p.year === filterYear;
+    if (periodMode === 'year') return p.year === filterYear;
     const fromIdx = MONTHS_FULL.indexOf(periodFrom);
     const toIdx = MONTHS_FULL.indexOf(periodTo);
     const mIdx = MONTHS_FULL.indexOf(p.month);
@@ -90,6 +91,7 @@ export default function FinanceView() {
   });
   const monthExpenses = expenses.filter(e => {
     if (periodMode === 'month') return e.month === filterMonth && e.year === filterYear;
+    if (periodMode === 'year') return e.year === filterYear;
     const fromIdx = MONTHS_FULL.indexOf(periodFrom);
     const toIdx = MONTHS_FULL.indexOf(periodTo);
     const mIdx = MONTHS_FULL.indexOf(e.month);
