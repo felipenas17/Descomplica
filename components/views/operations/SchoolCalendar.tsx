@@ -565,9 +565,16 @@ export default function SchoolCalendar({ user }: { user?: any }) {
             <div className="p-4 bg-purple-50 rounded-2xl mb-4">
               <p className="font-black text-gray-900">{dragLesson.subject}</p>
               <p className="text-sm text-gray-500">{dragLesson.student_name} • {dragLesson.date}</p>
-              <p className="text-xs text-purple-600 font-bold mt-1">
-                Nova data: {rescheduleData.newDate} às {rescheduleData.newTime}
-              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Nova Data</label>
+                <input type="date" value={rescheduleData.newDate} onChange={e => setRescheduleData(r => ({ ...r, newDate: e.target.value }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Novo Horário</label>
+                <input type="time" value={rescheduleData.newTime} onChange={e => setRescheduleData(r => ({ ...r, newTime: e.target.value }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              </div>
             </div>
             <div>
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">
