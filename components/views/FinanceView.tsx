@@ -711,9 +711,31 @@ export default function FinanceView() {
                     {MONTHS_FULL.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
-                <div className="flex items-center gap-2 mt-6">
-                  <input type="checkbox" checked={expenseForm.is_recurring} onChange={e => setExpenseForm(f => ({ ...f, is_recurring: e.target.checked }))} className="w-5 h-5 accent-purple-600" />
-                  <label className="text-sm font-bold text-gray-700">Recorrente</label>
+                <div className="space-y-3 mt-6">
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" id="recorrente" checked={expenseForm.is_recurring} 
+                      onChange={e => setExpenseForm(f => ({ ...f, is_recurring: e.target.checked, recorrente_ate: '' }))} 
+                      className="w-5 h-5 accent-purple-600" />
+                    <label htmlFor="recorrente" className="text-sm font-bold text-gray-700">Recorrente</label>
+                  </div>
+                  {expenseForm.is_recurring && (
+                    <div className="p-3 bg-purple-50 rounded-xl border border-purple-100">
+                      <label className="text-[10px] font-black text-purple-600 uppercase tracking-widest block mb-2">Repetir até qual mês?</label>
+                      <select value={expenseForm.recorrente_ate} 
+                        onChange={e => setExpenseForm(f => ({ ...f, recorrente_ate: e.target.value }))}
+                        className="w-full bg-white border border-purple-200 rounded-xl py-2.5 px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-purple-300">
+                        <option value="">Selecione o mês final...</option>
+                        {MONTHS_FULL.slice(MONTHS_FULL.indexOf(expenseForm.month)).map(m => (
+                          <option key={m} value={m}>{m} {expenseForm.year}</option>
+                        ))}
+                      </select>
+                      {expenseForm.recorrente_ate && (
+                        <p className="text-xs text-purple-600 font-bold mt-2">
+                          ✅ Serão criadas {MONTHS_FULL.indexOf(expenseForm.recorrente_ate) - MONTHS_FULL.indexOf(expenseForm.month) + 1} despesa(s) de {expenseForm.month} até {expenseForm.recorrente_ate}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
