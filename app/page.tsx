@@ -18,6 +18,7 @@ import UsersView from '@/components/views/UsersView';
 import MaterialsView from '@/components/views/MaterialsView';
 import NotificationsView from '@/components/views/NotificationsView';
 import AbsencesView from '@/components/views/AbsencesView';
+import ContractsView from '@/components/views/ContractsView';
 import MessagesView from '@/components/views/MessagesView';
 import PasswordChangeModal from '@/components/modals/PasswordChangeModal';
 import ChangePasswordModal from '@/components/modals/ChangePasswordModal';
@@ -234,6 +235,7 @@ export default function Home() {
             case 'materials': return <MaterialsView user={user} />;
             case 'notifications': return <NotificationsView user={user} />;
             case 'absences': return <AbsencesView />;
+            case 'contracts': return <ContractsView />;
             case 'messages': return <MessagesView user={user} />;
             default: return <DashboardView />;
           }
