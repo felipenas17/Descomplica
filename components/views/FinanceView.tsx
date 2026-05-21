@@ -191,6 +191,20 @@ export default function FinanceView() {
     finally { setSaving(false); }
   };
 
+  const deleteExpense = async (id: string) => {
+    if (!confirm('Excluir esta despesa?')) return;
+    await supabase.from('expenses').delete().eq('id', id);
+    fetchData();
+    toast.success('Despesa excluída!');
+  };
+
+  const deletePayment = async (id: string) => {
+    if (!confirm('Excluir este lançamento?')) return;
+    await supabase.from('monthly_payments').delete().eq('id', id);
+    fetchData();
+    toast.success('Lançamento excluído!');
+  };
+
   const saveExpense = async () => {
     setSaving(true);
     try {
@@ -506,6 +520,10 @@ export default function FinanceView() {
                             Marcar Pago
                           </button>
                         )}
+                        <button onClick={() => deletePayment(payment.id)}
+                          className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-bold transition-all">
+                          🗑
+                        </button>
                       </div>
                     </div>
                   );
@@ -562,6 +580,10 @@ export default function FinanceView() {
                           Pagar
                         </button>
                       )}
+                      <button onClick={() => deleteExpense(expense.id)}
+                        className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-bold transition-all">
+                        🗑
+                      </button>
                     </div>
                   </div>
                 ))}
