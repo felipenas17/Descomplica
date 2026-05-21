@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { X, User, Mail, Hash, Shapes, Phone, Calendar, School, Users, Clock, BookOpen, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import { X, User, Mail, Hash, Phone, Calendar, School, Users, Clock, BookOpen, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 
 interface StudentFormProps {
   onClose: () => void;
@@ -13,42 +13,56 @@ const DAYS_OF_WEEK = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado
 
 export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [daySchedules, setDaySchedules] = useState<Record<string, { start: string; end: string }>>({});
   const [showExtra, setShowExtra] = useState(false);
   const [formData, setFormData] = useState({
-    // Básico
     name: '',
     email: '',
     registration: '',
-    class: '',
-    // Contato
+    enrollment_type: 'nova',
     phone: '',
     parent_name: '',
     parent_phone: '',
-    // Perfil
+    parent_email: '',
+    parent_cpf: '',
+    parent_rg: '',
+    parent_profession: '',
     age: '',
     birth_date: '',
+    sex: '',
     school: '',
     grade: '',
-    // Aulas
+    segment: '',
+    school_shift: '',
+    special_needs: [] as string[],
+    has_allergy: '',
+    allergy_details: '',
     lesson_type: 'individual',
-    frequency: '',
     lesson_duration: '60',
-    preferred_time: '',
     monthly_value: '',
-    lesson_start_time: '08:00',
-    lesson_end_time: '09:00',
     recurrence_start: new Date().toISOString().split('T')[0],
     recurrence_end: '',
-    // Extra
     notes: '',
     address: '',
+    address_complement: '',
+    city: '',
+    neighborhood: '',
+    cep: '',
     how_found: '',
   });
 
-  const update = (field: string, value: string) => setFormData(p => ({ ...p, [field]: value }));
+  const update = (field: string, value: any) => setFormData(p => ({ ...p, [field]: value }));
 
   const toggleDay = (day: string) => {
-    setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
+    setSelectedDays(prev => {
+      const next = prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day];
+      if (!prev.includes(day)) {
+        setDaySchedules(ds => ({ ...ds, [day]: { start: '08:00', end: '09:00' } }));
+      } else {
+        setDaySchedules(ds => { const n = { ...ds }; delete n[day]; return n; });
+      }
+      return next;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,17 +70,17 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
     const studentData = {
       ...formData,
       days_of_week: selectedDays.join(', '),
+      day_schedules: JSON.stringify(daySchedules),
       monthly_value: parseFloat(formData.monthly_value) || 0,
+      special_needs: Array.isArray(formData.special_needs) ? formData.special_needs.join(', ') : formData.special_needs,
     };
     onSubmit(studentData);
 
-    // Fecha se não tiver recorrência configurada
     if (!(selectedDays.length > 0 && formData.recurrence_start && formData.recurrence_end)) {
       onClose();
     }
 
-    // Gera aulas recorrentes se tiver dias e datas configurados
-    if (selectedDays.length > 0 && formData.recurrence_start && formData.recurrence_end && formData.lesson_start_time) {
+    if (selectedDays.length > 0 && formData.recurrence_start && formData.recurrence_end) {
       const dayMap: Record<string, number> = {
         'Segunda': 1, 'Terça': 2, 'Quarta': 3, 'Quinta': 4, 'Sexta': 5, 'Sábado': 6
       };
@@ -77,12 +91,13 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
 
       while (current <= end) {
         const dayOfWeek = current.getDay();
-        const matchesDay = selectedDays.some(d => dayMap[d] === dayOfWeek);
-        if (matchesDay) {
+        const matchingDay = selectedDays.find(d => dayMap[d] === dayOfWeek);
+        if (matchingDay) {
+          const sched = daySchedules[matchingDay] || { start: '08:00', end: '09:00' };
           schedulesToCreate.push({
             date: current.toISOString().split('T')[0],
-            start_time: formData.lesson_start_time,
-            end_time: formData.lesson_end_time,
+            start_time: sched.start,
+            end_time: sched.end,
             subject: 'A definir',
             student_name: formData.name,
             status: 'confirmado',
@@ -96,7 +111,7 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
       if (schedulesToCreate.length > 0) {
         await supabase.from('schedules').insert(schedulesToCreate);
         alert(schedulesToCreate.length + ' aulas geradas automaticamente! ✅');
-      onClose();
+        onClose();
       }
     }
   };
@@ -109,7 +124,6 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
       <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
 
-        {/* Header */}
         <div className="sticky top-0 bg-white rounded-t-3xl p-6 border-b border-gray-100 flex justify-between items-center z-10">
           <div>
             <h2 className="text-2xl font-black text-purple-600">Matrícula de Aluno</h2>
@@ -127,6 +141,21 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
             <p className="text-xs font-black text-gray-300 uppercase tracking-widest mb-4 flex items-center gap-2">
               <User size={12} /> Dados Básicos
             </p>
+
+            {/* Tipo de matrícula */}
+            <div className="mb-4">
+              <label className={labelClass}>Tipo de Matrícula</label>
+              <div className="flex gap-2">
+                {[{ value: 'nova', label: '🆕 Nova Matrícula' }, { value: 'renovacao', label: '🔄 Renovação' }].map(opt => (
+                  <button type="button" key={opt.value}
+                    onClick={() => update('enrollment_type', opt.value)}
+                    className={`flex-1 p-3 rounded-2xl border-2 transition-all text-center text-sm font-bold ${formData.enrollment_type === opt.value ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className={labelClass}>Nome do Aluno *</label>
@@ -150,10 +179,15 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
                 </div>
               </div>
               <div>
-                <label className={labelClass}>Turma / Classe *</label>
-                <div className="relative">
-                  <Shapes size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
-                  <input value={formData.class} onChange={e => update('class', e.target.value)} required className={inputClass} placeholder="Ex: 3º Ano B" />
+                <label className={labelClass}>Turno que Estuda</label>
+                <div className="flex gap-2">
+                  {[{ value: 'manha', label: '🌅 Manhã' }, { value: 'tarde', label: '☀️ Tarde' }].map(opt => (
+                    <button type="button" key={opt.value}
+                      onClick={() => update('school_shift', opt.value)}
+                      className={`flex-1 p-3 rounded-2xl border-2 transition-all text-center text-sm font-bold ${formData.school_shift === opt.value ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>
+                      {opt.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -180,19 +214,86 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
                 </div>
               </div>
               <div>
+                <label className={labelClass}>Sexo</label>
+                <div className="flex gap-2">
+                  {[{ value: 'M', label: '♂ Masc.' }, { value: 'F', label: '♀ Fem.' }].map(opt => (
+                    <button type="button" key={opt.value}
+                      onClick={() => update('sex', opt.value)}
+                      className={`flex-1 p-3 rounded-2xl border-2 transition-all text-center text-xs font-bold ${formData.sex === opt.value ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-200 text-gray-500'}`}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className={labelClass}>Segmento</label>
+                <div className="relative">
+                  <BookOpen size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                  <select value={formData.segment} onChange={e => update('segment', e.target.value)} className={selectClass}>
+                    <option value="">Selecione...</option>
+                    <option value="fundamental1">Fundamental 1</option>
+                    <option value="fundamental2">Fundamental 2</option>
+                    <option value="medio">Ensino Médio</option>
+                  </select>
+                </div>
+              </div>
+              <div>
                 <label className={labelClass}>Ano Escolar</label>
                 <div className="relative">
                   <BookOpen size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
                   <input value={formData.grade} onChange={e => update('grade', e.target.value)} className={inputClass} placeholder="Ex: 7º Ano" />
                 </div>
               </div>
-              <div className="md:col-span-3">
+              <div>
                 <label className={labelClass}>Escola do Aluno</label>
                 <div className="relative">
                   <School size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
-                  <input value={formData.school} onChange={e => update('school', e.target.value)} className={inputClass} placeholder="Nome da escola que frequenta" />
+                  <input value={formData.school} onChange={e => update('school', e.target.value)} className={inputClass} placeholder="Nome da escola" />
                 </div>
               </div>
+            </div>
+
+            {/* Condições Especiais */}
+            <div className="mt-4">
+              <label className={labelClass}>O aluno possui alguma condição especial?</label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {['Deficiência física','Deficiência intelectual','Deficiência auditiva','Deficiência visual','TEA (Autismo)','Dislexia','TDAH','Nenhuma'].map(cond => (
+                  <button type="button" key={cond}
+                    onClick={() => {
+                      const curr = Array.isArray(formData.special_needs) ? formData.special_needs : [];
+                      const next = curr.includes(cond) ? curr.filter(c => c !== cond) : [...curr, cond];
+                      setFormData(p => ({ ...p, special_needs: next }));
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${Array.isArray(formData.special_needs) && formData.special_needs.includes(cond) ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                    {cond}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Alergia */}
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>Possui alergia?</label>
+                <div className="flex gap-2">
+                  {[{ value: 'sim', label: '✅ Sim' }, { value: 'nao', label: '❌ Não' }].map(opt => (
+                    <button type="button" key={opt.value}
+                      onClick={() => update('has_allergy', opt.value)}
+                      className={`flex-1 p-3 rounded-2xl border-2 transition-all text-center text-sm font-bold ${formData.has_allergy === opt.value ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-200 text-gray-500'}`}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {formData.has_allergy === 'sim' && (
+                <div>
+                  <label className={labelClass}>Quais alergias?</label>
+                  <div className="relative">
+                    <FileText size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                    <input value={formData.allergy_details} onChange={e => update('allergy_details', e.target.value)} className={inputClass} placeholder="Descreva as alergias..." />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -221,10 +322,10 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
               </div>
             </div>
 
-            {/* Dias da Semana */}
+            {/* Dias da Semana com horário individual */}
             <div className="mb-4">
-              <label className={labelClass}>Dias da Semana</label>
-              <div className="flex flex-wrap gap-2">
+              <label className={labelClass}>Dias da Semana e Horários</label>
+              <div className="flex flex-wrap gap-2 mb-3">
                 {DAYS_OF_WEEK.map(day => (
                   <button type="button" key={day}
                     onClick={() => toggleDay(day)}
@@ -234,7 +335,25 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
                 ))}
               </div>
               {selectedDays.length > 0 && (
-                <p className="text-xs text-purple-500 mt-2 font-semibold">{selectedDays.length}x por semana — {selectedDays.join(', ')}</p>
+                <div className="space-y-2">
+                  {selectedDays.map(day => (
+                    <div key={day} className="flex items-center gap-3 bg-purple-50 rounded-xl px-4 py-2">
+                      <span className="text-xs font-black text-purple-700 w-12">{day.slice(0, 3)}</span>
+                      <div className="flex items-center gap-2 flex-1">
+                        <Clock size={14} className="text-purple-400" />
+                        <input type="time"
+                          value={daySchedules[day]?.start || '08:00'}
+                          onChange={e => setDaySchedules(ds => ({ ...ds, [day]: { ...ds[day], start: e.target.value } }))}
+                          className="bg-white border border-purple-200 rounded-lg py-1 px-2 text-xs focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                        <span className="text-xs text-gray-400">até</span>
+                        <input type="time"
+                          value={daySchedules[day]?.end || '09:00'}
+                          onChange={e => setDaySchedules(ds => ({ ...ds, [day]: { ...ds[day], end: e.target.value } }))}
+                          className="bg-white border border-purple-200 rounded-lg py-1 px-2 text-xs focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 
@@ -249,21 +368,18 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
               </div>
             </div>
 
-            {/* Horário Fixo */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className={labelClass}>Horário de Início</label>
-                <div className="relative">
-                  <Clock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
-                  <input type="time" value={formData.lesson_start_time} onChange={e => update('lesson_start_time', e.target.value)} className={inputClass} />
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Horário de Término</label>
-                <div className="relative">
-                  <Clock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
-                  <input type="time" value={formData.lesson_end_time} onChange={e => update('lesson_end_time', e.target.value)} className={inputClass} />
-                </div>
+            {/* Duração */}
+            <div className="mb-4">
+              <label className={labelClass}>Duração da Aula</label>
+              <div className="relative">
+                <Clock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                <select value={formData.lesson_duration} onChange={e => update('lesson_duration', e.target.value)} className={selectClass}>
+                  <option value="30">30 minutos</option>
+                  <option value="45">45 minutos</option>
+                  <option value="60">1 hora</option>
+                  <option value="90">1h30</option>
+                  <option value="120">2 horas</option>
+                </select>
               </div>
             </div>
 
@@ -286,37 +402,9 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
               </div>
               {selectedDays.length > 0 && formData.recurrence_start && formData.recurrence_end && (
                 <p className="text-xs text-purple-600 font-bold mt-3">
-                  ✅ As aulas serão geradas automaticamente toda(s) {selectedDays.join(', ')} das {formData.lesson_start_time} às {formData.lesson_end_time}
+                  ✅ Aulas geradas automaticamente nos dias selecionados com os horários definidos
                 </p>
               )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className={labelClass}>Duração da Aula</label>
-                <div className="relative">
-                  <Clock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
-                  <select value={formData.lesson_duration} onChange={e => update('lesson_duration', e.target.value)} className={selectClass}>
-                    <option value="30">30 minutos</option>
-                    <option value="45">45 minutos</option>
-                    <option value="60">1 hora</option>
-                    <option value="90">1h30</option>
-                    <option value="120">2 horas</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Horário Preferido</label>
-                <div className="relative">
-                  <Clock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
-                  <select value={formData.preferred_time} onChange={e => update('preferred_time', e.target.value)} className={selectClass}>
-                    <option value="">Sem preferência</option>
-                    <option value="manha">Manhã (7h-12h)</option>
-                    <option value="tarde">Tarde (12h-18h)</option>
-                    <option value="noite">Noite (18h-22h)</option>
-                  </select>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -327,30 +415,58 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className={labelClass}>Telefone do Aluno</label>
+                <label className={labelClass}>Telefone Secundário</label>
                 <div className="relative">
                   <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
-                  <input value={formData.phone} onChange={e => update('phone', e.target.value)} className={inputClass} placeholder="(11) 99999-9999" />
+                  <input value={formData.phone} onChange={e => update('phone', e.target.value)} className={inputClass} placeholder="(22) 99999-9999" />
                 </div>
               </div>
               <div>
-                <label className={labelClass}>Nome do Responsável</label>
+                <label className={labelClass}>Nome do Responsável *</label>
                 <div className="relative">
                   <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
-                  <input value={formData.parent_name} onChange={e => update('parent_name', e.target.value)} className={inputClass} placeholder="Nome do pai/mãe" />
+                  <input value={formData.parent_name} onChange={e => update('parent_name', e.target.value)} className={inputClass} placeholder="Nome completo" />
+                </div>
+              </div>
+              <div>
+                <label className={labelClass}>Celular do Responsável *</label>
+                <div className="relative">
+                  <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                  <input value={formData.parent_phone} onChange={e => update('parent_phone', e.target.value)} className={inputClass} placeholder="(22) 99999-9999" />
+                </div>
+              </div>
+              <div>
+                <label className={labelClass}>Profissão do Responsável</label>
+                <div className="relative">
+                  <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                  <input value={formData.parent_profession} onChange={e => update('parent_profession', e.target.value)} className={inputClass} placeholder="Ex: Professora" />
+                </div>
+              </div>
+              <div>
+                <label className={labelClass}>CPF do Responsável</label>
+                <div className="relative">
+                  <Hash size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                  <input value={formData.parent_cpf} onChange={e => update('parent_cpf', e.target.value)} className={inputClass} placeholder="000.000.000-00" />
+                </div>
+              </div>
+              <div>
+                <label className={labelClass}>RG do Responsável</label>
+                <div className="relative">
+                  <Hash size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                  <input value={formData.parent_rg} onChange={e => update('parent_rg', e.target.value)} className={inputClass} placeholder="0000000-0" />
                 </div>
               </div>
               <div className="md:col-span-2">
-                <label className={labelClass}>Telefone do Responsável</label>
+                <label className={labelClass}>E-mail do Responsável</label>
                 <div className="relative">
-                  <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
-                  <input value={formData.parent_phone} onChange={e => update('parent_phone', e.target.value)} className={inputClass} placeholder="(11) 99999-9999" />
+                  <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                  <input type="email" value={formData.parent_email} onChange={e => update('parent_email', e.target.value)} className={inputClass} placeholder="responsavel@email.com" />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* SEÇÃO 5: Informações Extras (expansível) */}
+          {/* SEÇÃO 5: Informações Adicionais */}
           <div className="border border-gray-100 rounded-2xl overflow-hidden">
             <button type="button" onClick={() => setShowExtra(!showExtra)}
               className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
@@ -362,11 +478,41 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
 
             {showExtra && (
               <div className="p-4 border-t border-gray-100 space-y-4">
-                <div>
-                  <label className={labelClass}>Endereço</label>
-                  <div className="relative">
-                    <FileText size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
-                    <input value={formData.address} onChange={e => update('address', e.target.value)} className={inputClass} placeholder="Rua, número, bairro..." />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className={labelClass}>Rua / Avenida</label>
+                    <div className="relative">
+                      <FileText size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                      <input value={formData.address} onChange={e => update('address', e.target.value)} className={inputClass} placeholder="Rua, número..." />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Complemento</label>
+                    <div className="relative">
+                      <FileText size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                      <input value={formData.address_complement} onChange={e => update('address_complement', e.target.value)} className={inputClass} placeholder="Apto, bloco..." />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Bairro</label>
+                    <div className="relative">
+                      <FileText size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                      <input value={formData.neighborhood} onChange={e => update('neighborhood', e.target.value)} className={inputClass} placeholder="Bairro" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Cidade</label>
+                    <div className="relative">
+                      <FileText size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                      <input value={formData.city} onChange={e => update('city', e.target.value)} className={inputClass} placeholder="Cidade" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelClass}>CEP</label>
+                    <div className="relative">
+                      <FileText size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                      <input value={formData.cep} onChange={e => update('cep', e.target.value)} className={inputClass} placeholder="00000-000" />
+                    </div>
                   </div>
                 </div>
                 <div>
@@ -385,9 +531,9 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
                   </div>
                 </div>
                 <div>
-                  <label className={labelClass}>Observações / Necessidades Especiais</label>
+                  <label className={labelClass}>Observações</label>
                   <textarea value={formData.notes} onChange={e => update('notes', e.target.value)}
-                    rows={3} placeholder="Dificuldades de aprendizado, alergias, informações importantes..."
+                    rows={3} placeholder="Informações importantes..."
                     className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
                 </div>
               </div>
