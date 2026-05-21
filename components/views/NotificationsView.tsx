@@ -4,6 +4,8 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bell, Search, CheckCircle2, Trash2, Clock, Calendar, Info, Check } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 const getTimeAgo = (timestamp: string) => {
   const now = new Date();
@@ -17,6 +19,31 @@ const getTimeAgo = (timestamp: string) => {
 };
 
 export default function NotificationsView({ user }: { user?: any }) {
+  const confirmClass = async (notification: any) => {
+    if (!notification.schedule_id) return;
+    // Confirma a aula
+    await supabase.from('schedules').update({ 
+      status: 'concluido',
+      admin_confirmed: true 
+    }).eq('id', notification.schedule_id);
+    // Marca notificação como lida
+    await supabase.from('notifications').update({ read: true }).eq('id', notification.id);
+    toast.success('Aula confirmada! ✅');
+    window.location.reload();
+  };
+
+  const rejectClass = async (notification: any) => {
+    if (!notification.schedule_id) return;
+    // Volta status para confirmado
+    await supabase.from('schedules').update({ 
+      status: 'confirmado',
+      attendance_status: null,
+      admin_confirmed: false
+    }).eq('id', notification.schedule_id);
+    await supabase.from('notifications').update({ read: true }).eq('id', notification.id);
+    toast.error('Aula recusada! O professor foi notificado.');
+    window.location.reload();
+  };
   const { notifications, markAsRead, markAllAsRead, deleteNotification, unreadCount } = useNotifications(user?.id);
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -93,6 +120,18 @@ export default function NotificationsView({ user }: { user?: any }) {
                     </div>
                   </div>
                   <p className={`text-sm leading-relaxed max-w-3xl ${!n.read ? 'text-gray-700 font-medium' : 'text-gray-500'}`}>{n.message}</p>
+                  {n.title?.includes('Confirmar aula') && !n.read && (
+                    <div className="flex gap-2 mt-3">
+                      <button onClick={() => confirmClass(n)}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl text-xs font-bold transition-all">
+                        ✅ Confirmar Aula
+                      </button>
+                      <button onClick={() => rejectClass(n)}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl text-xs font-bold transition-all">
+                        ❌ Recusar
+                      </button>
+                    </div>
+                  )}
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pt-2">
                     {new Date(n.created_at).toLocaleString('pt-BR')}
                   </p>
