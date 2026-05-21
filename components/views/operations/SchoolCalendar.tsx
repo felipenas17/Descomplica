@@ -58,6 +58,9 @@ export default function SchoolCalendar({ user }: { user?: any }) {
   const [teachers, setTeachers] = useState<{id: string, name: string}[]>([]);
   const [students, setStudents] = useState<{id: string, name: string}[]>([]);
   const [dragLesson, setDragLesson] = useState<Lesson | null>(null);
+  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+  const [editingLesson, setEditingLesson] = useState<any>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [rescheduleData, setRescheduleData] = useState({ newDate: '', newTime: '', reason: '' });
 
@@ -71,6 +74,29 @@ export default function SchoolCalendar({ user }: { user?: any }) {
   };
 
   const isAdmin = user?.role === 'admin' || !user?.role;
+
+  const saveEdit = async () => {
+    if (!editingLesson) return;
+    setSavingEdit(true);
+    try {
+      await supabase.from('schedules').update({
+        date: editingLesson.date,
+        start_time: editingLesson.time_start,
+        end_time: editingLesson.time_end,
+        subject: editingLesson.subject,
+        teacher_id: editingLesson.teacher_id,
+        teacher_name: teachers.find(t => t.id === editingLesson.teacher_id)?.name || editingLesson.teacher_name,
+        room: editingLesson.room,
+        notes: editingLesson.notes,
+      }).eq('id', editingLesson.id);
+      toast.success('Aula atualizada! ✅');
+      setSelectedLesson(null);
+      setEditingLesson(null);
+      fetchLessons();
+    } catch (e: any) {
+      toast.error('Erro: ' + e.message);
+    } finally { setSavingEdit(false); }
+  };
 
   const handleDrop = (newDate: string, newTime: string) => {
     if (!dragLesson || !isAdmin) return;
@@ -603,6 +629,57 @@ export default function SchoolCalendar({ user }: { user?: any }) {
           </div>
         </div>
       )}
+      {/* Modal Editar Aula */}
+      {selectedLesson && editingLesson && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white rounded-t-3xl">
+              <h2 className="text-xl font-black text-gray-900">Detalhes da Aula</h2>
+              <button onClick={() => { setSelectedLesson(null); setEditingLesson(null); }} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"><X size={20} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Data</label>
+                  <input type="date" value={editingLesson.date || ""} onChange={e => setEditingLesson((l) => ({ ...l, date: e.target.value }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Horário Início</label>
+                  <input type="time" value={editingLesson.time_start || ""} onChange={e => setEditingLesson((l) => ({ ...l, time_start: e.target.value }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Horário Fim</label>
+                  <input type="time" value={editingLesson.time_end || ""} onChange={e => setEditingLesson((l) => ({ ...l, time_end: e.target.value }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Sala</label>
+                  <input type="text" value={editingLesson.room || ""} onChange={e => setEditingLesson((l) => ({ ...l, room: e.target.value }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="Ex: Sala 1" />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Disciplina</label>
+                <input type="text" value={editingLesson.subject || ""} onChange={e => setEditingLesson((l) => ({ ...l, subject: e.target.value }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="Ex: Matematica" />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Professor</label>
+                <select value={editingLesson.teacher_id || ""} onChange={e => setEditingLesson((l) => ({ ...l, teacher_id: e.target.value }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
+                  <option value="">Selecione...</option>
+                  {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Observacoes / Motivo de alteracao</label>
+                <textarea rows={3} value={editingLesson.notes || ""} onChange={e => setEditingLesson((l) => ({ ...l, notes: e.target.value }))} placeholder="Ex: Remarcado a pedido do aluno..." className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-100 flex gap-3">
+              <button onClick={() => { setSelectedLesson(null); setEditingLesson(null); }} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all">Cancelar</button>
+              <button onClick={saveEdit} disabled={savingEdit} className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all">{savingEdit ? "Salvando..." : "Salvar Alteracoes"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
