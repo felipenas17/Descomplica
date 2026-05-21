@@ -590,6 +590,20 @@ export default function FinanceView() {
                   ))}
                 </div>
               </div>
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Comprovante <span className="text-gray-300 font-normal">(opcional)</span></label>
+                <label className={`w-full border-2 border-dashed rounded-xl p-4 flex items-center gap-3 cursor-pointer transition-all ${comprovante ? 'border-purple-300 bg-purple-50' : 'border-gray-200 hover:border-purple-200'}`}>
+                  <input type="file" accept="image/*,.pdf" onChange={e => setComprovante(e.target.files?.[0] || null)} className="hidden" />
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${comprovante ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-400'}`}>
+                    📎
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-700">{comprovante ? comprovante.name : 'Anexar comprovante'}</p>
+                    <p className="text-xs text-gray-400">{comprovante ? (comprovante.size / 1024).toFixed(0) + ' KB' : 'Foto ou PDF — opcional'}</p>
+                  </div>
+                  {comprovante && <button type="button" onClick={e => { e.preventDefault(); setComprovante(null); }} className="ml-auto text-gray-400 hover:text-red-500">✕</button>}
+                </label>
+              </div>
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={() => setShowPayModal(null)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold">Cancelar</button>
