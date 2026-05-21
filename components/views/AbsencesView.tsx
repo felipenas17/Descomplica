@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 export default function AbsencesView() {
   const [absences, setAbsences] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'notified' | 'not_notified' | 'pending_replenishment'>('all');
+  const [filter, setFilter] = useState<'all' | 'justified' | 'fault' | 'pending_replenishment'>('all');
 
   const fetchAbsences = async () => {
     setLoading(true);
@@ -41,8 +41,8 @@ export default function AbsencesView() {
   };
 
   const filtered = absences.filter(a => {
-    if (filter === 'notified') return a.notified_advance;
-    if (filter === 'not_notified') return !a.notified_advance;
+    if (filter === 'justified') return a.notified_advance;
+    if (filter === 'fault') return !a.notified_advance;
     if (filter === 'pending_replenishment') return a.notified_advance && !a.replenishment_done;
     return true;
   });
@@ -61,8 +61,8 @@ export default function AbsencesView() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Total de Faltas', value: absences.length, icon: UserX, color: 'text-red-500', bg: 'bg-red-50' },
-          { label: 'Avisaram', value: absences.filter(a => a.notified_advance).length, icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50' },
-          { label: 'Não Avisaram', value: absences.filter(a => !a.notified_advance).length, icon: XCircle, color: 'text-red-500', bg: 'bg-red-50' },
+          { label: 'Justificado', value: absences.filter(a => a.notified_advance).length, icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50' },
+          { label: 'Falta', value: absences.filter(a => !a.notified_advance).length, icon: XCircle, color: 'text-red-500', bg: 'bg-red-50' },
           { label: 'Reposições Pendentes', value: absences.filter(a => a.notified_advance && !a.replenishment_done).length, icon: RefreshCw, color: 'text-yellow-500', bg: 'bg-yellow-50' },
         ].map(kpi => (
           <div key={kpi.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
@@ -107,8 +107,8 @@ export default function AbsencesView() {
           <div className="flex bg-gray-100 p-1 rounded-xl gap-1 flex-wrap">
             {[
               { key: 'all', label: 'Todas' },
-              { key: 'notified', label: 'Avisaram' },
-              { key: 'not_notified', label: 'Não Avisaram' },
+              { key: 'justified', label: 'Justificado' },
+              { key: 'fault', label: 'Falta' },
               { key: 'pending_replenishment', label: 'Reposição Pendente' },
             ].map(f => (
               <button key={f.key} onClick={() => setFilter(f.key as any)}
@@ -137,7 +137,7 @@ export default function AbsencesView() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-bold text-gray-900">{absence.student_name}</p>
                       <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${absence.notified_advance ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                        {absence.notified_advance ? '✓ Avisou' : '✗ Não avisou'}
+                        {absence.notified_advance ? '✓ Justificado' : '✗ Não avisou'}
                       </span>
                       {absence.replenishment_done && (
                         <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-600">✓ Reposto</span>
@@ -158,7 +158,7 @@ export default function AbsencesView() {
                   <div className="flex gap-2 flex-wrap">
                     <button onClick={() => toggleNotified(absence.id, absence.notified_advance)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${absence.notified_advance ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                      {absence.notified_advance ? '✓ Avisou' : 'Marcar Avisou'}
+                      {absence.notified_advance ? '✓ Justificado' : 'Marcar Justificado'}
                     </button>
                     {absence.notified_advance && !absence.replenishment_done && (
                       <button onClick={() => markReplenishment(absence.id)}
