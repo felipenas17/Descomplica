@@ -45,6 +45,9 @@ export default function FinanceView() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'entradas' | 'saidas'>('dashboard');
   const [filterMonth, setFilterMonth] = useState(MONTHS_FULL[new Date().getMonth()]);
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
+  const [periodMode, setPeriodMode] = useState<'month' | 'period'>('month');
+  const [periodFrom, setPeriodFrom] = useState(MONTHS_FULL[0]);
+  const [periodTo, setPeriodTo] = useState(MONTHS_FULL[new Date().getMonth()]);
   const [showPayModal, setShowPayModal] = useState<any>(null);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
@@ -78,8 +81,20 @@ export default function FinanceView() {
     setLoading(false);
   };
 
-  const monthPayments = payments.filter(p => p.month === filterMonth && p.year === filterYear);
-  const monthExpenses = expenses.filter(e => e.month === filterMonth && e.year === filterYear);
+  const monthPayments = payments.filter(p => {
+    if (periodMode === 'month') return p.month === filterMonth && p.year === filterYear;
+    const fromIdx = MONTHS_FULL.indexOf(periodFrom);
+    const toIdx = MONTHS_FULL.indexOf(periodTo);
+    const mIdx = MONTHS_FULL.indexOf(p.month);
+    return p.year === filterYear && mIdx >= fromIdx && mIdx <= toIdx;
+  });
+  const monthExpenses = expenses.filter(e => {
+    if (periodMode === 'month') return e.month === filterMonth && e.year === filterYear;
+    const fromIdx = MONTHS_FULL.indexOf(periodFrom);
+    const toIdx = MONTHS_FULL.indexOf(periodTo);
+    const mIdx = MONTHS_FULL.indexOf(e.month);
+    return e.year === filterYear && mIdx >= fromIdx && mIdx <= toIdx;
+  });
 
   const totalEntradas = monthPayments.reduce((a, p) => a + (p.final_amount || p.amount || 0), 0);
   const totalRecebido = monthPayments.filter(p => p.status === 'paid').reduce((a, p) => a + (p.final_amount || p.amount || 0), 0);
@@ -366,6 +381,42 @@ export default function FinanceView() {
                   </ResponsiveContainer>
                 </div>
               </div>
+
+              {/* Insights Inteligentes */}
+              {(() => {
+                const insights = [];
+                const totalAlunos = students.length;
+                const receitaPorAluno = totalAlunos > 0 ? totalEntradas / totalAlunos : 0;
+                const margemLucro = totalEntradas > 0 ? ((totalEntradas - totalSaidas) / totalEntradas * 100) : 0;
+                const custoAluguel = monthExpenses.filter(e => e.category_name === 'Aluguel').reduce((a,e) => a+e.amount, 0);
+                const pctAluguel = totalEntradas > 0 ? (custoAluguel / totalEntradas * 100) : 0;
+
+                if (inadimplentes > 0) insights.push({ icon: '🚨', color: 'border-red-200 bg-red-50', text: `Você tem ${inadimplentes} aluno(s) inadimplente(s) — risco de ${(inadimplentes * receitaPorAluno).toLocaleString('pt-BR', {style:'currency',currency:'BRL'})} em receita.`, action: 'Enviar cobrança via WhatsApp' });
+                if (pctAluguel > 40) insights.push({ icon: '⚠️', color: 'border-yellow-200 bg-yellow-50', text: `Aluguel representa ${pctAluguel.toFixed(0)}% da sua receita. Para equilibrar, você precisa de pelo menos ${Math.ceil(custoAluguel / receitaPorAluno)} alunos só para cobrir o aluguel.`, action: null });
+                if (margemLucro < 20 && totalEntradas > 0) insights.push({ icon: '📉', color: 'border-orange-200 bg-orange-50', text: `Margem de lucro atual: ${margemLucro.toFixed(0)}%. Para chegar a 30%, você precisa aumentar a receita em ${((totalSaidas * 1.3 - totalEntradas)).toLocaleString('pt-BR', {style:'currency',currency:'BRL'})} ou reduzir custos.`, action: null });
+                if (totalAlunos > 0 && totalAlunos < 5) insights.push({ icon: '💡', color: 'border-blue-200 bg-blue-50', text: `Com ${totalAlunos} aluno(s), focar em aulas em grupo pode aumentar sua receita sem aumentar horas trabalhadas. 1 aula dupla = 2x receita no mesmo horário.`, action: null });
+                if (totalRecebido >= totalEntradas && totalEntradas > 0) insights.push({ icon: '🎉', color: 'border-green-200 bg-green-50', text: `Parabéns! 100% da receita deste período foi recebida. Ótima taxa de adimplência!`, action: null });
+                if (insights.length === 0) insights.push({ icon: '✅', color: 'border-green-200 bg-green-50', text: 'Suas finanças estão saudáveis! Continue monitorando mensalmente.', action: null });
+
+                return (
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                    <h3 className="font-black text-gray-900 mb-4 flex items-center gap-2">
+                      <span>🧠</span> Insights do Negócio
+                    </h3>
+                    <div className="space-y-3">
+                      {insights.map((insight, i) => (
+                        <div key={i} className={`p-4 rounded-xl border ${insight.color} flex items-start gap-3`}>
+                          <span className="text-xl shrink-0">{insight.icon}</span>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-800">{insight.text}</p>
+                            {insight.action && <p className="text-xs font-black text-purple-600 mt-1">→ {insight.action}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Resultado comparativo */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
