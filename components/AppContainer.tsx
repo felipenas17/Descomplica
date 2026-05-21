@@ -21,6 +21,7 @@ import {
   ChevronDown,
   LogOut,
   Bell,
+  Star,
   Loader2
 } from 'lucide-react';
 
@@ -31,7 +32,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useNotifications } from '@/hooks/useNotifications';
 
 // --- Shared Types ---
-export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials' | 'messages' | 'notifications' | 'absences' | 'contracts' | 'teacher_feedbacks';
+export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials' | 'messages' | 'notifications' | 'absences' | 'contracts' | 'teacher_feedbacks' | 'teacher_evaluations';
 
 interface SearchResult {
   id: string;
@@ -93,6 +94,7 @@ const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, un
           <NavItem icon={MessageSquareQuote} label="Feedbacks" active={activeView === 'feedbacks'} onClick={() => setView('feedbacks')} />
           <NavItem icon={UserX} label="Controle de Aulas" active={activeView === 'absences'} onClick={() => setView('absences')} />
           <NavItem icon={FileText} label="Contratos" active={activeView === 'contracts'} onClick={() => setView('contracts')} />
+          <NavItem icon={Star} label="Avaliar Professores" active={activeView === 'teacher_evaluations'} onClick={() => setView('teacher_evaluations')} />
           <NavItem icon={ShieldCheck} label="Usuários" active={activeView === 'users'} onClick={() => setView('users')} />
         </>
       )}
@@ -375,8 +377,10 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
     absences: 'Controle de Aulas',
     contracts: 'Contratos',
     teacher_feedbacks: 'Meus Feedbacks',
+    teacher_evaluations: 'Avaliação de Professores',
     contracts: 'Contratos',
-    teacher_feedbacks: 'Meus Feedbacks'
+    teacher_feedbacks: 'Meus Feedbacks',
+    teacher_evaluations: 'Avaliação de Professores'
   };
 
   return (

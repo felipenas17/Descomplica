@@ -20,6 +20,7 @@ import NotificationsView from '@/components/views/NotificationsView';
 import AbsencesView from '@/components/views/AbsencesView';
 import ContractsView from '@/components/views/ContractsView';
 import TeacherFeedbacksView from '@/components/views/TeacherFeedbacksView';
+import TeacherEvaluationsView from '@/components/views/TeacherEvaluationsView';
 import MessagesView from '@/components/views/MessagesView';
 import PasswordChangeModal from '@/components/modals/PasswordChangeModal';
 import ChangePasswordModal from '@/components/modals/ChangePasswordModal';
@@ -238,6 +239,7 @@ export default function Home() {
             case 'absences': return <AbsencesView />;
             case 'contracts': return <ContractsView />;
             case 'teacher_feedbacks': return <TeacherFeedbacksView user={user} />;
+            case 'teacher_evaluations': return <TeacherEvaluationsView />;
             case 'messages': return <MessagesView user={user} />;
             default: return <DashboardView />;
           }
