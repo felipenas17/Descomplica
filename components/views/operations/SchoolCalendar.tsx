@@ -551,7 +551,7 @@ export default function SchoolCalendar({ user }: { user?: any }) {
           </div>
         </div>
       )}
-    </div>
+      
 
       {/* Modal Remarcação */}
       {showRescheduleModal && dragLesson && (
