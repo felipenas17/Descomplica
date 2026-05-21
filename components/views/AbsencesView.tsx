@@ -1,181 +1,175 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { UserX, CheckCircle, XCircle, RefreshCw, Plus, Calendar, AlertTriangle, BookOpen } from 'lucide-react';
+import { BookOpen, CheckCircle, XCircle, RefreshCw, Calendar, Search, Filter, User, Clock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
 export default function AbsencesView() {
-  const [absences, setAbsences] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [teachers, setTeachers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'justified' | 'fault' | 'pending_replenishment'>('all');
+  const [filterTeacher, setFilterTeacher] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterDate, setFilterDate] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const fetchAbsences = async () => {
+  useEffect(() => { fetchData(); }, []);
+
+  const fetchData = async () => {
     setLoading(true);
-    const { data } = await supabase.from('absences').select('*').order('absence_date', { ascending: false });
-    setAbsences(data || []);
+    const [schedulesRes, teachersRes] = await Promise.all([
+      supabase.from('schedules').select('*').order('date', { ascending: false }),
+      supabase.from('teachers').select('id, name').order('name'),
+    ]);
+    setSchedules(schedulesRes.data || []);
+    setTeachers(teachersRes.data || []);
     setLoading(false);
   };
 
-  useEffect(() => { fetchAbsences(); }, []);
-
-  const toggleNotified = async (id: string, current: boolean) => {
-    await supabase.from('absences').update({ notified_advance: !current }).eq('id', id);
-    fetchAbsences();
-    toast.success(!current ? 'Marcado como avisado ✅' : 'Marcado como não avisado');
+  const markNotified = async (id: string, current: boolean) => {
+    await supabase.from('schedules').update({ attendance_status: current ? null : 'justificada' }).eq('id', id);
+    fetchData();
+    toast.success(current ? 'Marcado como falta' : 'Marcado como justificado ✅');
   };
 
-  const markReplenishment = async (id: string) => {
-    await supabase.from('absences').update({
-      replenishment_done: true,
-      replenishment_date: new Date().toISOString().split('T')[0]
-    }).eq('id', id);
-    fetchAbsences();
-    toast.success('Reposição registrada! ✅');
-  };
-
-  const toggleExtraClass = async (id: string, current: boolean) => {
-    await supabase.from('absences').update({ extra_class_purchased: !current }).eq('id', id);
-    fetchAbsences();
-    toast.success(!current ? 'Aula extra registrada! 💰' : 'Aula extra removida');
-  };
-
-  const filtered = absences.filter(a => {
-    if (filter === 'justified') return a.notified_advance;
-    if (filter === 'fault') return !a.notified_advance;
-    if (filter === 'pending_replenishment') return a.notified_advance && !a.replenishment_done;
-    return true;
+  const filtered = schedules.filter(s => {
+    const matchSearch = !searchTerm || 
+      s.student_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.teacher_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.subject?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchTeacher = !filterTeacher || s.teacher_id === filterTeacher;
+    const matchDate = !filterDate || s.date === filterDate;
+    const matchStatus = filterStatus === 'all' ? true :
+      filterStatus === 'concluido' ? s.status === 'concluido' :
+      filterStatus === 'confirmado' ? (s.status === 'confirmado' || s.status === 'agendado') :
+      filterStatus === 'aguardando' ? s.status === 'aguardando_confirmacao' :
+      filterStatus === 'falta' ? s.attendance_status === 'falta' || s.attendance_status === 'Ausente' :
+      filterStatus === 'justificada' ? s.attendance_status === 'justificada' || s.attendance_status === 'Justificada' : true;
+    return matchSearch && matchTeacher && matchDate && matchStatus;
   });
 
-  // Agrupa por aluno
-  const byStudent: Record<string, any[]> = {};
-  absences.forEach(a => {
-    const key = a.student_name || 'Sem nome';
-    if (!byStudent[key]) byStudent[key] = [];
-    byStudent[key].push(a);
-  });
+  const total = schedules.length;
+  const concluidas = schedules.filter(s => s.status === 'concluido' && s.admin_confirmed).length;
+  const aguardando = schedules.filter(s => s.status === 'aguardando_confirmacao').length;
+  const faltas = schedules.filter(s => s.attendance_status === 'falta' || s.attendance_status === 'Ausente').length;
+  const justificadas = schedules.filter(s => s.attendance_status === 'justificada' || s.attendance_status === 'Justificada').length;
+
+  const getStatusLabel = (s: any) => {
+    if (s.status === 'concluido' && s.admin_confirmed) return { label: 'Concluída', color: 'bg-green-100 text-green-700' };
+    if (s.status === 'aguardando_confirmacao') return { label: 'Aguard. Confirmação', color: 'bg-orange-100 text-orange-700' };
+    if (s.status === 'concluido') return { label: 'Concluída', color: 'bg-green-100 text-green-700' };
+    if (s.status === 'cancelado') return { label: 'Cancelada', color: 'bg-red-100 text-red-700' };
+    return { label: 'Agendada', color: 'bg-blue-100 text-blue-700' };
+  };
+
+  const getAttendanceLabel = (s: any) => {
+    if (s.attendance_status === 'Presente' || s.attendance_status === 'presente') return { label: 'Presente', color: 'text-green-600' };
+    if (s.attendance_status === 'falta' || s.attendance_status === 'Ausente') return { label: 'Falta', color: 'text-red-600' };
+    if (s.attendance_status === 'justificada' || s.attendance_status === 'Justificada') return { label: 'Justificada', color: 'text-yellow-600' };
+    return null;
+  };
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* Header */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="space-y-6 pb-12">
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
-          { label: 'Total de Faltas', value: absences.length, icon: UserX, color: 'text-red-500', bg: 'bg-red-50' },
-          { label: 'Justificado', value: absences.filter(a => a.notified_advance).length, icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50' },
-          { label: 'Falta', value: absences.filter(a => !a.notified_advance).length, icon: XCircle, color: 'text-red-500', bg: 'bg-red-50' },
-          { label: 'Reposições Pendentes', value: absences.filter(a => a.notified_advance && !a.replenishment_done).length, icon: RefreshCw, color: 'text-yellow-500', bg: 'bg-yellow-50' },
+          { label: 'Total de Aulas', value: total, color: 'text-purple-600', bg: 'bg-purple-50', filter: 'all' },
+          { label: 'Concluídas', value: concluidas, color: 'text-green-600', bg: 'bg-green-50', filter: 'concluido' },
+          { label: 'Aguardando', value: aguardando, color: 'text-orange-600', bg: 'bg-orange-50', filter: 'aguardando' },
+          { label: 'Faltas', value: faltas, color: 'text-red-600', bg: 'bg-red-50', filter: 'falta' },
+          { label: 'Justificadas', value: justificadas, color: 'text-yellow-600', bg: 'bg-yellow-50', filter: 'justificada' },
         ].map(kpi => (
-          <div key={kpi.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <div className={`w-9 h-9 rounded-xl ${kpi.bg} flex items-center justify-center mb-3`}>
-              <kpi.icon size={18} className={kpi.color} />
-            </div>
+          <button key={kpi.label} onClick={() => setFilterStatus(kpi.filter)}
+            className={`bg-white rounded-2xl border shadow-sm p-5 text-left transition-all hover:shadow-md ${filterStatus === kpi.filter ? 'border-purple-300 ring-2 ring-purple-100' : 'border-gray-100'}`}>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{kpi.label}</p>
-            <p className="text-2xl font-black text-gray-900 mt-1">{kpi.value}</p>
-          </div>
+            <p className={`text-2xl font-black mt-1 ${kpi.color}`}>{kpi.value}</p>
+          </button>
         ))}
       </div>
 
-      {/* Resumo por aluno */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <h2 className="font-black text-gray-900 mb-4 flex items-center gap-2">
-          <AlertTriangle size={18} className="text-yellow-500" /> Resumo por Aluno
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {Object.entries(byStudent).map(([name, faults]) => (
-            <div key={name} className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-              <p className="font-bold text-gray-900 text-sm">{name}</p>
-              <div className="flex gap-3 mt-2 flex-wrap">
-                <span className="text-xs text-red-500 font-bold">{faults.length} falta(s)</span>
-                <span className="text-xs text-green-500 font-bold">{faults.filter(f => f.notified_advance).length} avisou</span>
-                <span className="text-xs text-yellow-500 font-bold">{faults.filter(f => f.notified_advance && !f.replenishment_done).length} reposição pendente</span>
-                <span className="text-xs text-purple-500 font-bold">{faults.filter(f => f.extra_class_purchased).length} aula(s) extra(s)</span>
-              </div>
-            </div>
-          ))}
-          {Object.keys(byStudent).length === 0 && (
-            <p className="text-gray-400 text-sm col-span-full text-center py-4">Nenhuma falta registrada ainda.</p>
-          )}
+      {/* Filtros */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input type="text" placeholder="Buscar aluno, professor..." value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+          </div>
+          <div className="relative">
+            <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <select value={filterTeacher} onChange={e => setFilterTeacher(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 appearance-none">
+              <option value="">Todos os professores</option>
+              {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </div>
+          <div className="relative">
+            <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+          </div>
+          <button onClick={() => { setFilterTeacher(''); setFilterDate(''); setFilterStatus('all'); setSearchTerm(''); }}
+            className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-sm font-bold transition-all">
+            Limpar Filtros
+          </button>
         </div>
       </div>
 
-      {/* Filtros */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+      {/* Lista */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-gray-100 flex items-center justify-between">
           <h2 className="font-black text-gray-900 flex items-center gap-2">
-            <BookOpen size={18} className="text-purple-500" /> Histórico de Faltas
+            <BookOpen size={18} className="text-purple-500" /> Todas as Aulas
           </h2>
-          <div className="flex bg-gray-100 p-1 rounded-xl gap-1 flex-wrap">
-            {[
-              { key: 'all', label: 'Todas' },
-              { key: 'justified', label: 'Justificado' },
-              { key: 'fault', label: 'Falta' },
-              { key: 'pending_replenishment', label: 'Reposição Pendente' },
-            ].map(f => (
-              <button key={f.key} onClick={() => setFilter(f.key as any)}
-                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${filter === f.key ? 'bg-white shadow text-purple-600' : 'text-gray-400 hover:text-gray-600'}`}>
-                {f.label}
-              </button>
-            ))}
-          </div>
+          <span className="text-xs text-gray-400 font-bold">{filtered.length} resultado(s)</span>
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
-          </div>
+          <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" /></div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-12">
-            <UserX size={40} className="text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-400 font-bold">Nenhuma falta encontrada.</p>
+          <div className="text-center py-16">
+            <BookOpen size={48} className="text-gray-200 mx-auto mb-4" />
+            <p className="text-gray-400 font-bold">Nenhuma aula encontrada.</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filtered.map(absence => (
-              <div key={absence.id} className={`p-4 rounded-xl border transition-all ${absence.notified_advance ? 'border-green-100 bg-green-50/30' : 'border-red-100 bg-red-50/30'}`}>
-                <div className="flex items-start justify-between gap-4 flex-wrap">
-                  <div className="flex-1">
+          <div className="divide-y divide-gray-50">
+            {filtered.map(s => {
+              const status = getStatusLabel(s);
+              const attendance = getAttendanceLabel(s);
+              return (
+                <div key={s.id} className="p-4 flex items-center gap-4 hover:bg-gray-50 transition-all flex-wrap">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-bold text-gray-900">{absence.student_name}</p>
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${absence.notified_advance ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                        {absence.notified_advance ? '✓ Justificado' : '✗ Não avisou'}
-                      </span>
-                      {absence.replenishment_done && (
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-600">✓ Reposto</span>
-                      )}
-                      {absence.extra_class_purchased && (
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-100 text-purple-600">💰 Aula Extra</span>
-                      )}
+                      <p className="font-bold text-gray-900 text-sm">{s.subject || 'Aula'}</p>
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${status.color}`}>{status.label}</span>
+                      {attendance && <span className={`text-[10px] font-black ${attendance.color}`}>{attendance.label}</span>}
                     </div>
                     <div className="flex gap-3 mt-1 flex-wrap">
-                      <span className="text-xs text-gray-400 flex items-center gap-1">
-                        <Calendar size={11} /> {absence.absence_date ? new Date(absence.absence_date + 'T00:00:00').toLocaleDateString('pt-BR') : '---'}
-                      </span>
-                      {absence.notes && <span className="text-xs text-gray-400">{absence.notes}</span>}
+                      {s.date && <span className="text-xs text-gray-400 flex items-center gap-1"><Calendar size={11} />{new Date(s.date + 'T00:00:00').toLocaleDateString('pt-BR')}</span>}
+                      {s.start_time && <span className="text-xs text-gray-400 flex items-center gap-1"><Clock size={11} />{s.start_time}{s.end_time ? ' - ' + s.end_time : ''}</span>}
+                      {s.student_name && <span className="text-xs text-gray-400 flex items-center gap-1"><User size={11} />{s.student_name}</span>}
+                      {s.teacher_name && <span className="text-xs text-gray-400">Prof: {s.teacher_name}</span>}
                     </div>
                   </div>
-
-                  {/* Ações */}
-                  <div className="flex gap-2 flex-wrap">
-                    <button onClick={() => toggleNotified(absence.id, absence.notified_advance)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${absence.notified_advance ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                      {absence.notified_advance ? '✓ Justificado' : 'Marcar Justificado'}
+                  {/* Ação para marcar justificada */}
+                  {(s.attendance_status === 'falta' || s.attendance_status === 'Ausente') && (
+                    <button onClick={() => markNotified(s.id, false)}
+                      className="px-3 py-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg text-xs font-bold transition-all shrink-0">
+                      Marcar Justificada
                     </button>
-                    {absence.notified_advance && !absence.replenishment_done && (
-                      <button onClick={() => markReplenishment(absence.id)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-100 text-blue-700 hover:bg-blue-200 transition-all flex items-center gap-1">
-                        <RefreshCw size={11} /> Marcar Reposição
-                      </button>
-                    )}
-                    {!absence.notified_advance && (
-                      <button onClick={() => toggleExtraClass(absence.id, absence.extra_class_purchased)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${absence.extra_class_purchased ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                        {absence.extra_class_purchased ? '💰 Aula Extra' : 'Comprou Aula Extra?'}
-                      </button>
-                    )}
-                  </div>
+                  )}
+                  {(s.attendance_status === 'justificada' || s.attendance_status === 'Justificada') && (
+                    <button onClick={() => markNotified(s.id, true)}
+                      className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-bold transition-all shrink-0">
+                      Marcar Falta
+                    </button>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

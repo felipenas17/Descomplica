@@ -91,7 +91,7 @@ const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, un
           <NavItem icon={GraduationCap} label="Professores" active={activeView === 'teachers'} onClick={() => setView('teachers')} />
           <NavItem icon={Users} label="Alunos" active={activeView === 'students'} onClick={() => setView('students')} />
           <NavItem icon={MessageSquareQuote} label="Feedbacks" active={activeView === 'feedbacks'} onClick={() => setView('feedbacks')} />
-          <NavItem icon={UserX} label="Controle de Faltas" active={activeView === 'absences'} onClick={() => setView('absences')} />
+          <NavItem icon={UserX} label="Controle de Aulas" active={activeView === 'absences'} onClick={() => setView('absences')} />
           <NavItem icon={FileText} label="Contratos" active={activeView === 'contracts'} onClick={() => setView('contracts')} />
           <NavItem icon={ShieldCheck} label="Usuários" active={activeView === 'users'} onClick={() => setView('users')} />
         </>
@@ -372,7 +372,7 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
     materials: 'Material de Apoio',
     messages: 'Mensagens',
     notifications: 'Notificações',
-    absences: 'Controle de Faltas',
+    absences: 'Controle de Aulas',
     contracts: 'Contratos',
     teacher_feedbacks: 'Meus Feedbacks',
     contracts: 'Contratos',
