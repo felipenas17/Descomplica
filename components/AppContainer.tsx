@@ -102,7 +102,10 @@ const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, un
       <NavItem icon={Bell} label="Notificações" active={activeView === 'notifications'} onClick={() => setView('notifications')} badge={unreadCount} />
       <NavItem icon={CalendarCheck} label="Agenda & Compromissos" active={activeView === 'agenda'} onClick={() => setView('agenda')} />
       <NavItem icon={FileText} label="Material de Apoio" active={activeView === 'materials'} onClick={() => setView('materials')} />
-      <NavItem icon={MessageSquareQuote} label="Meus Feedbacks" active={activeView === 'teacher_feedbacks'} onClick={() => setView('teacher_feedbacks')} />
+      {user?.role === 'professor' && (
+        <NavItem icon={MessageSquareQuote} label="Meus Feedbacks" active={activeView === 'teacher_feedbacks'} onClick={() => setView('teacher_feedbacks')} />
+      )}
+
     </nav>
 
     <div className="mt-auto pt-6 border-t border-white/10">
