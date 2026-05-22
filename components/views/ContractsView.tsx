@@ -158,13 +158,6 @@ export default function ContractsView() {
   };
 
   const printContract = (contract: any) => {
-    const months: Record<string, string> = {
-      'janeiro': 'janeiro', 'fevereiro': 'fevereiro', 'março': 'março',
-      'abril': 'abril', 'maio': 'maio', 'junho': 'junho',
-      'julho': 'julho', 'agosto': 'agosto', 'setembro': 'setembro',
-      'outubro': 'outubro', 'novembro': 'novembro', 'dezembro': 'dezembro'
-    };
-
     const html = generateContractHTML(contract);
 
     const win = window.open('', '_blank');
