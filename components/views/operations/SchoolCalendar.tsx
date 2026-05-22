@@ -230,6 +230,7 @@ export default function SchoolCalendar({ user }: { user?: any }) {
   };
 
   const saveLesson = async () => {
+    console.log('saveLesson chamado', newLesson);
     if (!newLesson.subject || !newLesson.date) {
       toast.error('Preencha pelo menos a matéria e a data!');
       return;
