@@ -308,9 +308,7 @@ export default function Login({ onLogin }: LoginProps) {
             )}
           </button>
 
-          {!isRegistering && (
-            
-          )}
+
         </form>
 
         <div className="mt-8 pt-8 border-t border-primary/5 flex flex-col items-center gap-4">
