@@ -208,9 +208,46 @@ export default function FinanceView() {
   const saveExpense = async () => {
     setSaving(true);
     try {
-      await supabase.from('expenses').insert({ ...expenseForm, status: 'pending', created_at: new Date().toISOString() });
-      toast.success('Despesa registrada! ✅');
-      setShowExpenseModal(false); fetchData();
+      if (expenseForm.is_recurring && expenseForm.recorrente_ate) {
+        const fromIdx = MONTHS_FULL.indexOf(expenseForm.month);
+        const toIdx = MONTHS_FULL.indexOf(expenseForm.recorrente_ate);
+        const inserts = [];
+        for (let i = fromIdx; i <= toIdx; i++) {
+          const month = MONTHS_FULL[i];
+          const dueDay = expenseForm.due_date ? expenseForm.due_date.split('-')[2] : '10';
+          const dueDate = expenseForm.year + '-' + String(i + 1).padStart(2, '0') + '-' + dueDay;
+          inserts.push({
+            category_name: expenseForm.category_name,
+            description: expenseForm.description,
+            amount: expenseForm.amount,
+            month,
+            year: expenseForm.year,
+            due_date: dueDate,
+            is_recurring: true,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+          });
+        }
+        const { error } = await supabase.from('expenses').insert(inserts);
+        if (error) throw error;
+        toast.success(inserts.length + ' despesa(s) criada(s)! ✅');
+      } else {
+        const { error } = await supabase.from('expenses').insert({
+          category_name: expenseForm.category_name,
+          description: expenseForm.description,
+          amount: expenseForm.amount,
+          month: expenseForm.month,
+          year: expenseForm.year,
+          due_date: expenseForm.due_date,
+          is_recurring: expenseForm.is_recurring,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+        });
+        if (error) throw error;
+        toast.success('Despesa registrada! ✅');
+      }
+      setShowExpenseModal(false);
+      fetchData();
     } catch (e: any) { toast.error('Erro: ' + e.message); }
     finally { setSaving(false); }
   };
