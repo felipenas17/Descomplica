@@ -62,7 +62,7 @@ export default function TeachersView() {
         availability: selectedDaysEdit.join(', '),
         availability_schedule: JSON.stringify(daySchedulesEdit),
       }).eq('id', editingTeacher.id);
-      console.error('Update error:', error);
+      console.error('Update error full:', JSON.stringify(error), error?.message, error?.details, error?.hint, error?.code);
       if (error) throw error;
       toast.success('Professor atualizado! ✅');
       setEditingTeacher(null);
