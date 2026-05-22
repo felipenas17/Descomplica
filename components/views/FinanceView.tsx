@@ -190,7 +190,11 @@ export default function FinanceView() {
     try {
       await supabase.from('expenses').update({ status: 'paid', paid_date: paymentDate }).eq('id', showPayExpenseModal.id);
       toast.success('Despesa paga! ✅');
-      setShowPayExpenseModal(null); fetchData();
+      if (showPayExpenseModal.category_name === 'Salário Professor' && showPayExpenseModal.teacher_id) {
+        await sendComprovanteToChat(showPayExpenseModal);
+      }
+      setShowPayExpenseModal(null);
+      fetchData();
     } catch (e: any) { toast.error('Erro: ' + e.message); }
     finally { setSaving(false); }
   };
