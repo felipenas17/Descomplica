@@ -124,7 +124,7 @@ export default function SchoolCalendar({ user }: { user?: any }) {
     }
   };
 
-  useEffect(() => { fetchLessons(); }, [currentDate, view]);
+  useEffect(() => { fetchLessons(); fetchTeachersAndStudents(); }, [currentDate, view]);
 
   const fetchLessons = async () => {
     setLoading(true);
