@@ -67,8 +67,8 @@ export default function AbsencesView() {
         subject: showRemarcarModal.subject,
         student_name: showRemarcarModal.student_name,
         student_id: showRemarcarModal.student_id,
-        teacher_id: showRemarcarModal.teacher_id,
-        teacher_name: showRemarcarModal.teacher_name,
+        teacher_id: (remarcarData as any).teacher_id || showRemarcarModal.teacher_id,
+        teacher_name: teachers.find(t => t.id === ((remarcarData as any).teacher_id || showRemarcarModal.teacher_id))?.name || showRemarcarModal.teacher_name,
         notes: remarcarData.notes || 'Reposicao da aula de ' + showRemarcarModal.date,
         status: 'confirmado',
         reposicao_pendente: false,
@@ -269,6 +269,15 @@ export default function AbsencesView() {
               <p className="text-xs text-gray-400 mt-1">Aula original: {showRemarcarModal.date ? new Date(showRemarcarModal.date + 'T00:00:00').toLocaleDateString('pt-BR') : ''}</p>
             </div>
             <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Professor</label>
+                <select value={(remarcarData as any).teacher_id || showRemarcarModal.teacher_id || ''}
+                  onChange={e => setRemarcarData(r => ({ ...r, teacher_id: e.target.value } as any))}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
+                  <option value="">Mesmo professor ({showRemarcarModal.teacher_name})</option>
+                  {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Nova Data</label>
                 <input type="date" value={remarcarData.date} onChange={e => setRemarcarData(r => ({ ...r, date: e.target.value }))}
