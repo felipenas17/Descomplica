@@ -13,6 +13,9 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
 
 export default function ContractsView() {
   const [contracts, setContracts] = useState<any[]>([]);
+  const [showUploadModal, setShowUploadModal] = useState<any>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -86,6 +89,24 @@ export default function ContractsView() {
     } catch (e: any) {
       toast.error('Erro: ' + e.message);
     } finally { setSaving(false); }
+  };
+
+  const uploadSignedContract = async () => {
+    if (!showUploadModal || !uploadFile) return;
+    setUploading(true);
+    try {
+      const ext = uploadFile.name.split('.').pop();
+      const path = 'contratos/' + showUploadModal.id + '.' + ext;
+      const { error: upErr } = await supabase.storage.from('materials').upload(path, uploadFile, { upsert: true });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from('materials').getPublicUrl(path);
+      await supabase.from('contracts').update({ status: 'signed', signed_file_url: data.publicUrl }).eq('id', showUploadModal.id);
+      toast.success('Contrato assinado salvo! ✅');
+      setShowUploadModal(null);
+      setUploadFile(null);
+      fetchContracts();
+    } catch (e: any) { toast.error('Erro: ' + e.message); }
+    finally { setUploading(false); }
   };
 
   const markAsSigned = async (id: string) => {
@@ -293,8 +314,20 @@ export default function ContractsView() {
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold transition-all">
                     <Download size={12} /> Imprimir
                   </button>
+                  {contract.signed_file_url && (
+                    <a href={contract.signed_file_url} target="_blank" rel="noopener noreferrer"
+                      className="px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-xs font-bold transition-all flex items-center gap-1">
+                      📄 Ver Contrato
+                    </a>
+                  )}
+                  {contract.status === 'signed' && !contract.signed_file_url && (
+                    <button onClick={() => setShowUploadModal(contract)}
+                      className="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-bold transition-all">
+                      📎 Anexar Assinado
+                    </button>
+                  )}
                   {contract.status === 'pending' && (
-                    <button onClick={() => markAsSigned(contract.id)}
+                    <button onClick={() => setShowUploadModal(contract)}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-xs font-bold transition-all">
                       <CheckCircle size={12} /> Marcar Assinado
                     </button>
@@ -412,5 +445,40 @@ export default function ContractsView() {
         </div>
       )}
     </div>
+  
+      {/* Modal Upload Contrato Assinado */}
+      {showUploadModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-black text-gray-900">Anexar Contrato Assinado</h2>
+              <button onClick={() => { setShowUploadModal(null); setUploadFile(null); }} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400">✕</button>
+            </div>
+            <div className="p-4 bg-purple-50 rounded-2xl mb-4">
+              <p className="font-black text-gray-900">{showUploadModal.student_name}</p>
+              <p className="text-sm text-gray-500">Contrato #{showUploadModal.id?.slice(-8)}</p>
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Arquivo do Contrato Assinado</label>
+              <label className={`w-full border-2 border-dashed rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer transition-all ${uploadFile ? 'border-purple-300 bg-purple-50' : 'border-gray-200 hover:border-purple-200'}`}>
+                <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => setUploadFile(e.target.files?.[0] || null)} className="hidden" />
+                <span className="text-3xl">{uploadFile ? '📄' : '📎'}</span>
+                <div className="text-center">
+                  <p className="text-sm font-bold text-gray-700">{uploadFile ? uploadFile.name : 'Clique para selecionar'}</p>
+                  <p className="text-xs text-gray-400">{uploadFile ? (uploadFile.size / 1024).toFixed(0) + ' KB' : 'PDF, JPG ou PNG'}</p>
+                </div>
+              </label>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => { setShowUploadModal(null); setUploadFile(null); }} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold">Cancelar</button>
+              <button onClick={uploadSignedContract} disabled={uploading || !uploadFile}
+                className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2">
+                {uploading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : '✅'}
+                {uploading ? 'Enviando...' : 'Salvar Contrato'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
   );
 }
