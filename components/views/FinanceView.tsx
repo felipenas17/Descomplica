@@ -293,14 +293,23 @@ export default function FinanceView() {
     }
 
     // Envia no chat
-    const linhas = [
-      'Comprovante de Pagamento',
+    const msgText = [
+      'PROFESSORA DESCOMPLICA - ESPACO PEDAGOGICO',
+      'CNPJ: 55.010.967/0001-46',
+      '---',
+      'COMPROVANTE DE PAGAMENTO',
+      'N: ' + numComprovante,
+      '---',
       'Professor(a): ' + expense.teacher_name,
+      'Referencia: ' + (expense.month || '') + ' ' + ano,
+      'Periodo: ' + periodoInicio + ' a ' + periodoFim,
+      'Aulas realizadas: ' + totalAulas + ' aula(s)',
       'Valor: ' + Number(expense.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-      'Aulas: ' + totalAulas + ' aula(s) | Periodo: ' + periodoInicio + ' a ' + periodoFim,
-      pdfUrl ? 'Download PDF: ' + pdfUrl : '',
-    ].filter(Boolean);
-    const msgText = linhas.join(' | ');
+      'Data pagamento: ' + dataPgto,
+      '---',
+      'Pagamento confirmado!',
+      pdfUrl ? '📥 Baixar PDF: ' + pdfUrl : '',
+    ].filter(Boolean).join('\n');
 
     const { data: userData } = await supabase.auth.getUser();
     await supabase.from('messages').insert({
