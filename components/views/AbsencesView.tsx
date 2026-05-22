@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, CheckCircle, XCircle, RefreshCw, Calendar, Search, Filter, User, Clock } from 'lucide-react';
+import { BookOpen, CheckCircle, XCircle, RefreshCw, Calendar, Search, Filter, User, Clock, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
@@ -9,6 +9,9 @@ export default function AbsencesView() {
   const [schedules, setSchedules] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showRemarcarModal, setShowRemarcarModal] = useState<any>(null);
+  const [remarcarData, setRemarcarData] = useState({ date: '', start_time: '08:00', end_time: '09:00', notes: '' });
+  const [savingRemarcar, setSavingRemarcar] = useState(false);
   const [filterTeacher, setFilterTeacher] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterDate, setFilterDate] = useState('');
@@ -39,6 +42,37 @@ export default function AbsencesView() {
     await supabase.from('schedules').update({ status: 'cancelado', admin_confirmed: false }).eq('id', id);
     fetchData();
     toast.error('Aula recusada!');
+  };
+
+  const remarcarAula = async () => {
+    if (!showRemarcarModal || !remarcarData.date) {
+      toast.error('Informe a nova data!');
+      return;
+    }
+    setSavingRemarcar(true);
+    try {
+      await supabase.from('schedules').insert({
+        date: remarcarData.date,
+        start_time: remarcarData.start_time,
+        end_time: remarcarData.end_time,
+        subject: showRemarcarModal.subject,
+        student_name: showRemarcarModal.student_name,
+        student_id: showRemarcarModal.student_id,
+        teacher_id: showRemarcarModal.teacher_id,
+        teacher_name: showRemarcarModal.teacher_name,
+        room: showRemarcarModal.room,
+        notes: remarcarData.notes || 'Reposicao da aula de ' + showRemarcarModal.date,
+        status: 'confirmado',
+        reposicao_pendente: false,
+        created_at: new Date().toISOString(),
+      });
+      await supabase.from('schedules').update({ reposicao_pendente: false, notes: (showRemarcarModal.notes || '') + ' | Remarcado para ' + remarcarData.date }).eq('id', showRemarcarModal.id);
+      toast.success('Aula remarcada! ✅');
+      setShowRemarcarModal(null);
+      setRemarcarData({ date: '', start_time: '08:00', end_time: '09:00', notes: '' });
+      fetchData();
+    } catch (e: any) { toast.error('Erro: ' + e.message); }
+    finally { setSavingRemarcar(false); }
   };
 
   const markReposicao = async (id: string) => {
@@ -218,9 +252,15 @@ export default function AbsencesView() {
                     </div>
                   )}
                   {s.reposicao_pendente && (
-                    <span className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold shrink-0">
-                      🔄 Reposição Pendente
-                    </span>
+                    <div className="flex gap-2 shrink-0">
+                      <span className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold">
+                        🔄 Reposição Pendente
+                      </span>
+                      <button onClick={() => { setShowRemarcarModal(s); setRemarcarData({ date: '', start_time: s.start_time || '08:00', end_time: s.end_time || '09:00', notes: 'Reposicao da aula de ' + (s.date || '') }); }}
+                        className="px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-xs font-bold transition-all">
+                        📅 Remarcar
+                      </button>
+                    </div>
                   )}
                 </div>
               );
@@ -229,5 +269,57 @@ export default function AbsencesView() {
         )}
       </div>
     </div>
+  
+      {/* Modal Remarcar Aula */}
+      {showRemarcarModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-black text-gray-900">Remarcar Aula</h2>
+              <button onClick={() => setShowRemarcarModal(null)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"><X size={20} /></button>
+            </div>
+            <div className="p-4 bg-purple-50 rounded-2xl mb-4">
+              <p className="font-black text-gray-900">{showRemarcarModal.subject}</p>
+              <p className="text-sm text-gray-500">{showRemarcarModal.student_name} • Prof: {showRemarcarModal.teacher_name}</p>
+              <p className="text-xs text-gray-400 mt-1">Aula original: {showRemarcarModal.date ? new Date(showRemarcarModal.date + 'T00:00:00').toLocaleDateString('pt-BR') : ''}</p>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Nova Data *</label>
+                <input type="date" value={remarcarData.date} onChange={e => setRemarcarData(r => ({ ...r, date: e.target.value }))}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Horário Início</label>
+                  <input type="time" value={remarcarData.start_time} onChange={e => setRemarcarData(r => ({ ...r, start_time: e.target.value }))}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Horário Fim</label>
+                  <input type="time" value={remarcarData.end_time} onChange={e => setRemarcarData(r => ({ ...r, end_time: e.target.value }))}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Observação</label>
+                <textarea rows={3} value={remarcarData.notes} onChange={e => setRemarcarData(r => ({ ...r, notes: e.target.value }))}
+                  placeholder="Ex: Reposicao da aula do dia 10/05..."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowRemarcarModal(null)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all">
+                Cancelar
+              </button>
+              <button onClick={remarcarAula} disabled={savingRemarcar || !remarcarData.date}
+                className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
+                {savingRemarcar ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : '📅'}
+                {savingRemarcar ? 'Salvando...' : 'Confirmar Remarcação'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
   );
 }
