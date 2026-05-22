@@ -41,6 +41,7 @@ export default function FinanceView() {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
+  const [teachers, setTeachers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'entradas' | 'saidas'>('dashboard');
   const [filterMonth, setFilterMonth] = useState(MONTHS_FULL[new Date().getMonth()]);
@@ -62,22 +63,25 @@ export default function FinanceView() {
     category_name: '', description: '', amount: 0,
     month: MONTHS_FULL[new Date().getMonth()],
     year: new Date().getFullYear(), due_date: '', is_recurring: false,
+    recorrente_ate: '', teacher_id: '', teacher_name: '',
   });
 
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     setLoading(true);
-    const [paymentsRes, expensesRes, categoriesRes, studentsRes] = await Promise.all([
+    const [paymentsRes, expensesRes, categoriesRes, studentsRes, teachersRes] = await Promise.all([
       supabase.from('monthly_payments').select('*').order('due_date'),
       supabase.from('expenses').select('*').order('due_date'),
       supabase.from('expense_categories').select('*').order('name'),
       supabase.from('students').select('id, name, monthly_value').order('name'),
+      supabase.from('teachers').select('id, name').order('name'),
     ]);
     setPayments(paymentsRes.data || []);
     setExpenses(expensesRes.data || []);
     setCategories(categoriesRes.data || []);
     setStudents(studentsRes.data || []);
+    setTeachers((teachersRes as any).data || []);
     setLoading(false);
   };
 
@@ -746,6 +750,18 @@ export default function FinanceView() {
                   {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
               </div>
+              {expenseForm.category_name === 'Salário Professor' && (
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Professor</label>
+                  <select value={expenseForm.teacher_id} onChange={e => {
+                    const t = teachers.find(x => x.id === e.target.value);
+                    setExpenseForm(f => ({ ...f, teacher_id: e.target.value, teacher_name: t?.name || '', description: 'Salário ' + (t?.name || '') }));
+                  }} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
+                    <option value="">Selecione o professor...</option>
+                    {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Descrição</label>
                 <input type="text" value={expenseForm.description} onChange={e => setExpenseForm(f => ({ ...f, description: e.target.value }))}
