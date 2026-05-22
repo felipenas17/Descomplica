@@ -3,10 +3,10 @@ export function generateContractHTML(contract: any): string {
     const open = attr ? '<' + tag + ' ' + attr + '>' : '<' + tag + '>';
     return open + content + '</' + tag + '>';
   };
-  const sc = '<div class="signature">';
-  const sl = '<div class="signature-line">';
-  const hr = '<hr/>';
-  const closediv = '</div>';
+  const sc = ('<' + 'div class="signature">');
+  const sl = ('<' + 'div class="signature-line">');
+  const hr = ('<' + 'hr/>');
+  const closediv = ('<' + '/div>');
   return (
     '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Contrato</title>' +
     '<style>body{font-family:Arial,sans-serif;font-size:12pt;margin:2cm}' +
