@@ -12,6 +12,8 @@ export default function AbsencesView() {
   const [filterTeacher, setFilterTeacher] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterDate, setFilterDate] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => { fetchData(); }, []);
@@ -52,13 +54,16 @@ export default function AbsencesView() {
       s.subject?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchTeacher = !filterTeacher || s.teacher_id === filterTeacher;
     const matchDate = !filterDate || s.date === filterDate;
+    const matchDateRange = (!filterDateFrom && !filterDateTo) || 
+      (filterDateFrom && filterDateTo ? s.date >= filterDateFrom && s.date <= filterDateTo :
+       filterDateFrom ? s.date >= filterDateFrom : s.date <= filterDateTo);
     const matchStatus = filterStatus === 'all' ? true :
       filterStatus === 'concluido' ? s.status === 'concluido' :
       filterStatus === 'confirmado' ? (s.status === 'confirmado' || s.status === 'agendado') :
       filterStatus === 'aguardando' ? s.status === 'aguardando_confirmacao' :
       filterStatus === 'falta' ? s.attendance_status === 'falta' || s.attendance_status === 'Ausente' :
       filterStatus === 'justificada' ? s.attendance_status === 'justificada' || s.attendance_status === 'Justificada' : true;
-    return matchSearch && matchTeacher && matchDate && matchStatus;
+    return matchSearch && matchTeacher && matchDate && matchDateRange && matchStatus;
   });
 
   const total = schedules.length;
@@ -120,10 +125,17 @@ export default function AbsencesView() {
           </div>
           <div className="relative">
             <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+            <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
+              placeholder="De" />
           </div>
-          <button onClick={() => { setFilterTeacher(''); setFilterDate(''); setFilterStatus('all'); setSearchTerm(''); }}
+          <div className="relative">
+            <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
+              placeholder="Até" />
+          </div>
+          <button onClick={() => { setFilterTeacher(''); setFilterDate(''); setFilterDateFrom(''); setFilterDateTo(''); setFilterStatus('all'); setSearchTerm(''); }}
             className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-sm font-bold transition-all">
             Limpar Filtros
           </button>
