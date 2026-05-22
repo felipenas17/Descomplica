@@ -41,6 +41,12 @@ export default function AbsencesView() {
     toast.error('Aula recusada!');
   };
 
+  const markReposicao = async (id: string) => {
+    await supabase.from('schedules').update({ reposicao_pendente: true }).eq('id', id);
+    fetchData();
+    toast.success('Marcado como Reposição Pendente! 🔄');
+  };
+
   const markNotified = async (id: string, current: boolean) => {
     await supabase.from('schedules').update({ attendance_status: current ? null : 'justificada' }).eq('id', id);
     fetchData();
@@ -62,7 +68,8 @@ export default function AbsencesView() {
       filterStatus === 'confirmado' ? (s.status === 'confirmado' || s.status === 'agendado') :
       filterStatus === 'aguardando' ? s.status === 'aguardando_confirmacao' :
       filterStatus === 'falta' ? s.attendance_status === 'falta' || s.attendance_status === 'Ausente' :
-      filterStatus === 'justificada' ? s.attendance_status === 'justificada' || s.attendance_status === 'Justificada' : true;
+      filterStatus === 'justificada' ? s.attendance_status === 'justificada' || s.attendance_status === 'Justificada' :
+      filterStatus === 'reposicao' ? s.reposicao_pendente === true : true;
     return matchSearch && matchTeacher && matchDate && matchDateRange && matchStatus;
   });
 
@@ -97,6 +104,7 @@ export default function AbsencesView() {
           { label: 'Aguardando', value: aguardando, color: 'text-orange-600', bg: 'bg-orange-50', filter: 'aguardando' },
           { label: 'Faltas', value: faltas, color: 'text-red-600', bg: 'bg-red-50', filter: 'falta' },
           { label: 'Justificadas', value: justificadas, color: 'text-yellow-600', bg: 'bg-yellow-50', filter: 'justificada' },
+        { label: 'Reposição Pendente', value: schedules.filter(s => s.reposicao_pendente).length, color: 'text-blue-600', bg: 'bg-blue-50', filter: 'reposicao' },
         ].map(kpi => (
           <button key={kpi.label} onClick={() => setFilterStatus(kpi.filter)}
             className={`bg-white rounded-2xl border shadow-sm p-5 text-left transition-all hover:shadow-md ${filterStatus === kpi.filter ? 'border-purple-300 ring-2 ring-purple-100' : 'border-gray-100'}`}>
@@ -197,11 +205,22 @@ export default function AbsencesView() {
                       Marcar Justificada
                     </button>
                   )}
-                  {(s.attendance_status === 'justificada' || s.attendance_status === 'Justificada') && (
-                    <button onClick={() => markNotified(s.id, true)}
-                      className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-bold transition-all shrink-0">
-                      Marcar Falta
-                    </button>
+                  {(s.attendance_status === 'justificada' || s.attendance_status === 'Justificada') && !s.reposicao_pendente && (
+                    <div className="flex gap-2 shrink-0">
+                      <button onClick={() => markNotified(s.id, true)}
+                        className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-bold transition-all">
+                        Marcar Falta
+                      </button>
+                      <button onClick={() => markReposicao(s.id)}
+                        className="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-bold transition-all">
+                        🔄 Reposição
+                      </button>
+                    </div>
+                  )}
+                  {s.reposicao_pendente && (
+                    <span className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold shrink-0">
+                      🔄 Reposição Pendente
+                    </span>
                   )}
                 </div>
               );
