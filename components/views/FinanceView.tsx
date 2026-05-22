@@ -293,15 +293,14 @@ export default function FinanceView() {
     }
 
     // Envia no chat
-    const msgText = '📄 *Comprovante de Pagamento*
-' +
-      'Professor(a): ' + expense.teacher_name + '
-' +
-      'Valor: ' + Number(expense.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) + '
-' +
-      'Aulas: ' + totalAulas + ' aula(s) | Periodo: ' + periodoInicio + ' a ' + periodoFim + '
-' +
-      (pdfUrl ? '📥 Download: ' + pdfUrl : '');
+    const linhas = [
+      'Comprovante de Pagamento',
+      'Professor(a): ' + expense.teacher_name,
+      'Valor: ' + Number(expense.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+      'Aulas: ' + totalAulas + ' aula(s) | Periodo: ' + periodoInicio + ' a ' + periodoFim,
+      pdfUrl ? 'Download PDF: ' + pdfUrl : '',
+    ].filter(Boolean);
+    const msgText = linhas.join(' | ');
 
     const { data: userData } = await supabase.auth.getUser();
     await supabase.from('messages').insert({
