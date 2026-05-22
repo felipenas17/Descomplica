@@ -47,21 +47,22 @@ export default function TeachersView() {
       const { error } = await supabase.from('teachers').update({
         name: editingTeacher.name,
         email: editingTeacher.email,
-        phone: editingTeacher.phone,
-        cpf: editingTeacher.cpf,
-        age: editingTeacher.age,
-        sex: editingTeacher.sex,
-        subject: editingTeacher.subject,
-        formation: editingTeacher.formation,
-        payment_method: editingTeacher.payment_method,
-        pix_key: editingTeacher.pix_key,
-        address: editingTeacher.address,
-        neighborhood: editingTeacher.neighborhood,
-        city: editingTeacher.city,
-        cep: editingTeacher.cep,
+        phone: editingTeacher.phone || null,
+        cpf: editingTeacher.cpf || null,
+        age: editingTeacher.age || null,
+        sex: editingTeacher.sex || null,
+        subject: editingTeacher.subject || null,
+        formation: editingTeacher.formation || null,
+        payment_method: editingTeacher.payment_method || null,
+        pix_key: editingTeacher.pix_key || null,
+        address: editingTeacher.address || null,
+        neighborhood: editingTeacher.neighborhood || null,
+        city: editingTeacher.city || null,
+        cep: editingTeacher.cep || null,
         availability: selectedDaysEdit.join(', '),
         availability_schedule: JSON.stringify(daySchedulesEdit),
       }).eq('id', editingTeacher.id);
+      console.error('Update error:', error);
       if (error) throw error;
       toast.success('Professor atualizado! ✅');
       setEditingTeacher(null);
