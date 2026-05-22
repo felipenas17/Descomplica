@@ -142,8 +142,8 @@ export default function NotificationsView({ user }: { user?: any }) {
                       <Check size={20} />
                     </button>
                   )}
-                  <button onClick={() => deleteNotification(n.id)} className="p-3 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all" title="Excluir">
-                    <Trash2 size={20} />
+                  <button onClick={() => deleteNotification(n.id)} className="p-3 bg-gray-50 text-gray-400 hover:bg-gray-200 rounded-xl transition-all" title="Arquivar">
+                    <Trash2 size={16} />
                   </button>
                 </div>
               </div>
