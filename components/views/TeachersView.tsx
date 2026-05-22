@@ -13,6 +13,7 @@ export default function TeachersView() {
   const [editingTeacher, setEditingTeacher] = React.useState<any>(null);
   const [savingEdit, setSavingEdit] = React.useState(false);
   const [showExtraEdit, setShowExtraEdit] = React.useState(false);
+  const [viewingTeacher, setViewingTeacher] = React.useState<any>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isMounted, setIsMounted] = React.useState(false);
@@ -161,6 +162,108 @@ export default function TeachersView() {
   return (
     <div className="space-y-10">
       {showForm && <TeacherForm onClose={() => setShowForm(false)} onSubmit={handleAddTeacher} />}
+
+      {/* Modal Perfil Completo */}
+      {viewingTeacher && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-br from-purple-600 to-purple-800 p-6 rounded-t-3xl relative">
+              <button onClick={() => setViewingTeacher(null)} className="absolute top-4 right-4 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center text-white">
+                <X size={16} />
+              </button>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-white text-2xl font-black">
+                  {viewingTeacher.name?.[0]?.toUpperCase()}
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-white">{viewingTeacher.name}</h2>
+                  <p className="text-purple-200 text-sm">{viewingTeacher.subject}</p>
+                  {viewingTeacher.formation && <p className="text-purple-300 text-xs mt-1">{viewingTeacher.formation}</p>}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Contato */}
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Contato</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'E-mail', value: viewingTeacher.email },
+                    { label: 'Telefone', value: viewingTeacher.phone },
+                    { label: 'CPF', value: viewingTeacher.cpf },
+                    { label: 'Sexo', value: viewingTeacher.sex === 'M' ? 'Masculino' : viewingTeacher.sex === 'F' ? 'Feminino' : null },
+                    { label: 'Idade', value: viewingTeacher.age ? viewingTeacher.age + ' anos' : null },
+                  ].filter(i => i.value).map(item => (
+                    <div key={item.label} className="p-3 bg-gray-50 rounded-xl">
+                      <p className="text-[10px] font-black text-gray-400 uppercase">{item.label}</p>
+                      <p className="text-sm font-bold text-gray-900 mt-0.5">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Disponibilidade */}
+              {viewingTeacher.availability_schedule && (() => {
+                try {
+                  const sched = JSON.parse(viewingTeacher.availability_schedule);
+                  const days = Object.entries(sched);
+                  if (days.length === 0) return null;
+                  return (
+                    <div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Disponibilidade</p>
+                      <div className="space-y-2">
+                        {days.map(([day, times]: any) => (
+                          <div key={day} className="flex items-center gap-3 p-3 bg-purple-50 rounded-xl">
+                            <span className="text-xs font-black text-purple-700 w-16">{day}</span>
+                            <span className="text-xs text-gray-600 font-bold">{times.start} – {times.end}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                } catch { return null; }
+              })()}
+
+              {/* Pagamento */}
+              {viewingTeacher.payment_method && (
+                <div>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Forma de Recebimento</p>
+                  <div className="p-3 bg-gray-50 rounded-xl">
+                    <p className="text-sm font-bold text-gray-900">
+                      {viewingTeacher.payment_method === 'pix' ? '💠 PIX' : viewingTeacher.payment_method === 'dinheiro' ? '💵 Dinheiro' : '🏦 Transferência'}
+                    </p>
+                    {viewingTeacher.pix_key && <p className="text-xs text-gray-500 mt-1">Chave: {viewingTeacher.pix_key}</p>}
+                  </div>
+                </div>
+              )}
+
+              {/* Endereço */}
+              {viewingTeacher.address && (
+                <div>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Endereço</p>
+                  <div className="p-3 bg-gray-50 rounded-xl">
+                    <p className="text-sm font-bold text-gray-900">{viewingTeacher.address}</p>
+                    {viewingTeacher.neighborhood && <p className="text-xs text-gray-500">{viewingTeacher.neighborhood}</p>}
+                    {viewingTeacher.city && <p className="text-xs text-gray-500">{viewingTeacher.city} — {viewingTeacher.cep}</p>}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => { setViewingTeacher(null); openEdit(viewingTeacher); }}
+                  className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
+                  <Pencil size={16} /> Editar
+                </button>
+                <button onClick={() => setViewingTeacher(null)}
+                  className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all">
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Editar Professor */}
       {editingTeacher && (
@@ -392,7 +495,7 @@ export default function TeachersView() {
               <button className="text-xs font-bold text-primary group-hover:text-white transition-colors flex items-center gap-2">
                 <Video size={14} /> Aulas Remotas
               </button>
-              <button className="text-xs font-bold text-gray-500 group-hover:text-white/70 transition-colors uppercase tracking-widest">Perfíl Completo</button>
+              <button onClick={() => setViewingTeacher(teacher)} className="text-xs font-bold text-gray-500 group-hover:text-white/70 transition-colors uppercase tracking-widest">Perfíl Completo</button>
             </div>
           </div>
         ))}
