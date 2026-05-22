@@ -76,7 +76,7 @@ const NavItem = React.memo(({
 NavItem.displayName = 'NavItem';
 
 // --- Sidebar Component ---
-const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, unreadCount, unreadMessages, setUnreadMessages }: { activeView: View, setView: (v: View) => void, user: any, onLogout: () => void, onOpenChangePassword?: () => void, unreadCount: number, unreadMessages: number, setUnreadMessages: (n: number) => void }) => (
+const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, unreadCount, unreadMessages, setUnreadMessages, aulasPendentes }: { activeView: View, setView: (v: View) => void, user: any, onLogout: () => void, onOpenChangePassword?: () => void, unreadCount: number, unreadMessages: number, setUnreadMessages: (n: number) => void, aulasPendentes?: number }) => (
   <aside className="hidden md:flex flex-col w-[280px] h-screen fixed left-0 top-0 sidebar-dark p-6 z-50">
     <div className="mb-12">
       <h1 className="text-2xl font-bold text-white font-display">Gestão de Escolas</h1>
@@ -398,7 +398,7 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
 
   return (
     <div className="min-h-screen bg-background-app flex selection:bg-primary/30 selection:text-primary">
-      <Sidebar activeView={activeView} setView={setView} user={user} onLogout={onLogout} onOpenChangePassword={onOpenChangePassword} unreadCount={unreadCount} unreadMessages={unreadMessages} setUnreadMessages={setUnreadMessages} />
+      <Sidebar activeView={activeView} setView={setView} user={user} onLogout={onLogout} onOpenChangePassword={onOpenChangePassword} unreadCount={unreadCount} unreadMessages={unreadMessages} setUnreadMessages={setUnreadMessages} aulasPendentes={aulasPendentes} />
       
       <main className="flex-1 md:ml-[280px] min-h-screen relative pb-32 md:pb-12">
         <TopBar title={viewTitles[activeView]} user={user} setView={setView} onLogout={onLogout} onOpenChangePassword={onOpenChangePassword} />
