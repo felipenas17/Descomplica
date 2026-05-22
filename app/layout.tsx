@@ -15,9 +15,14 @@ const plusJakarta = Plus_Jakarta_Sans({
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Gestão de Escolas | Administração Educacional Moderna',
-  description: 'App completo para gestão de horários, professores e controle financeiro de instituições de ensino.',
-  keywords: 'Gestão de Escolas, Software Educacional, Agendamento Professores, Controle Financeiro Escolar, DRE Educação, App para Escolas, Organização Escolar',
+  title: 'Descomplica - Gestão Escolar',
+  description: 'Sistema de gestão escolar da Professora Descomplica.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Descomplica',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -26,6 +31,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#7C3AED" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Descomplica" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <script dangerouslySetInnerHTML={{ __html: `
+          if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+              navigator.serviceWorker.register('/sw.js');
+            });
+          }
+        `}} />
       </head>
       <body className="font-sans antialiased">
         {children}
