@@ -1,378 +1,304 @@
 'use client';
+import React, { useState, useEffect } from 'react';
+import { Users, GraduationCap, Wallet, AlertCircle, Clock, TrendingUp, TrendingDown, Target, CheckCircle, XCircle, Calendar, Zap, Award, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 
-import React, { useState, useMemo, useEffect } from 'react';
-import dynamic from 'next/dynamic';
-import { 
-  Users, 
-  GraduationCap, 
-  Wallet, 
-  AlertCircle,
-  Clock,
-  Plus,
-  Target,
-  BarChart3,
-  CheckCircle2,
-  MoreVertical,
-  Zap,
-  Loader2
-} from 'lucide-react';
-import { DashboardKPI } from './dashboard/DashboardKPI';
-const DashboardCharts = dynamic(() => import('./dashboard/DashboardCharts'), { 
-  ssr: false,
-  loading: () => (
-    <div className="lg:col-span-12 h-[500px] flex items-center justify-center bg-gray-50 rounded-[2.5rem] border border-dashed border-gray-200">
-      <div className="flex flex-col items-center gap-2">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Carregando Gráficos...</p>
-      </div>
-    </div>
-  )
-});
-import { DASHBOARD_DATA } from '@/lib/dashboard-mock';
-import SupabaseDebug from '../SupabaseDebug';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, format } from 'date-fns';
+const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const MONTHS_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-
-export default function DashboardView() {
-  const [period, setPeriod] = useState<'Hoje' | 'Esta Semana' | 'Este Mês'>('Hoje');
-  const [loading, setLoading] = useState(true);
-  const [realData, setRealData] = useState<any>(null);
-
-  const mockData = useMemo(() => {
-    if (period === 'Este Mês') return DASHBOARD_DATA['Esta Semana']; // Mock doesn't have Month
-    return DASHBOARD_DATA[period as 'Hoje' | 'Esta Semana'];
-  }, [period]);
-
-  useEffect(() => {
-    async function fetchRealDashboardData() {
-      if (!isSupabaseConfigured) {
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      try {
-        let startDate, endDate;
-        const now = new Date();
-
-        if (period === 'Hoje') {
-          startDate = startOfDay(now);
-          endDate = endOfDay(now);
-        } else if (period === 'Esta Semana') {
-          startDate = startOfWeek(now, { weekStartsOn: 1 });
-          endDate = endOfWeek(now, { weekStartsOn: 1 });
-        } else {
-          startDate = startOfMonth(now);
-          endDate = endOfMonth(now);
-        }
-
-        const startDateIso = startDate.toISOString();
-        const endDateIso = endDate.toISOString();
-
-        // 0. Previous Period Dates for Comparison
-        const duration = endDate.getTime() - startDate.getTime();
-        const prevStartDate = new Date(startDate.getTime() - duration - 1);
-        const prevEndDate = new Date(endDate.getTime() - duration - 1);
-        const prevStartDateIso = prevStartDate.toISOString();
-        const prevEndDateIso = prevEndDate.toISOString();
-
-        // 1. Alunos Ativos
-        const { count: studentsCount } = await supabase
-          .from('students')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'Ativo');
-        
-        const { count: prevStudentsCount } = await supabase
-          .from('students')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'Ativo')
-          .lt('created_at', startDateIso);
-
-        // 2. Receita Real
-        const { data: revenueData } = await supabase
-          .from('transactions')
-          .select('amount, date')
-          .eq('type', 'receita')
-          .gte('date', startDateIso.split('T')[0])
-          .lte('date', endDateIso.split('T')[0]);
-        
-        const { data: prevRevenueData } = await supabase
-          .from('transactions')
-          .select('amount')
-          .eq('type', 'receita')
-          .gte('date', prevStartDateIso.split('T')[0])
-          .lte('date', prevEndDateIso.split('T')[0]);
-        
-        const totalRevenue = revenueData?.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
-        const prevTotalRevenue = prevRevenueData?.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
-
-        // 3. Ocupação (Baseado em schedules)
-        const { count: schedulesCount } = await supabase
-          .from('schedules')
-          .select('*', { count: 'exact', head: true })
-          .gte('date', startDateIso.split('T')[0])
-          .lte('date', endDateIso.split('T')[0]);
-
-        // 4. Alertas
-        const { data: alertsData } = await supabase
-          .from('schedules')
-          .select('*')
-          .gte('date', startDateIso.split('T')[0])
-          .lte('date', endDateIso.split('T')[0])
-          .eq('is_test_week', true);
-
-        // 5. Próximas Aulas
-        const { data: upcomingData } = await supabase
-          .from('schedules')
-          .select('*')
-          .gte('date', format(now, 'yyyy-MM-dd'))
-          .order('date', { ascending: true })
-          .order('start_time', { ascending: true })
-          .limit(4);
-
-        // Group revenue by day for the chart
-        const days = period === 'Hoje' ? ['H'] : ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
-        const chartData = days.map(day => {
-          // Simplificação: distribuindo receita real nos dias
-          // Em um app real, agruparíamos por dia da semana no SQL
-          return {
-            day,
-            cur: day === 'SEG' ? totalRevenue : (totalRevenue / 7) * (Math.random() + 0.5),
-            prev: prevTotalRevenue / 7
-          };
-        });
-
-        const revenueDiff = prevTotalRevenue > 0 ? ((totalRevenue - prevTotalRevenue) / prevTotalRevenue) * 100 : 0;
-
-        setRealData({
-          kpis: {
-            alunos: { 
-              value: studentsCount?.toString() || '0', 
-              change: prevStudentsCount ? `${(((studentsCount || 0) - prevStudentsCount) / prevStudentsCount * 100).toFixed(0)}%` : '+0%', 
-              trend: (studentsCount || 0) >= (prevStudentsCount || 0) ? 'up' : 'down' 
-            },
-            receita: { 
-              value: `R$ ${(totalRevenue / 1000).toFixed(1)}k`, 
-              change: `${revenueDiff > 0 ? '+' : ''}${revenueDiff.toFixed(0)}%`, 
-              trend: revenueDiff >= 0 ? 'up' : 'down' 
-            },
-            ocupacao: { 
-              value: `${Math.min(95, (schedulesCount || 0) * 8)}%`, 
-              change: '+2%', 
-              trend: 'up' 
-            },
-            alertas: { 
-              value: (alertsData?.length || 0).toString(), 
-              change: (alertsData?.length || 0) > 0 ? 'Atenção' : 'Limpo', 
-              trend: (alertsData?.length || 0) > 0 ? 'up' : 'down' 
-            }
-          },
-          upcoming: upcomingData?.map(s => ({
-            id: s.id,
-            time: s.start_time,
-            subject: s.subject,
-            teacher: s.teacher_name,
-            room: 'Sala ' + (Math.floor(Math.random() * 5) + 1),
-            status: s.status || 'agendado',
-            urgency: s.is_test_week ? 'Importante' : 'Normal',
-            startIn: 'Em breve'
-          })) || [],
-          revenue: chartData,
-          occupancy: [
-            { name: 'Sala A', value: 85 },
-            { name: 'Sala B', value: 72 },
-            { name: 'Sala C', value: 64 },
-            { name: 'Sala D', value: 45 }
-          ],
-          insights: [
-            { id: 1, text: `Você teve ${schedulesCount || 0} aulas agendadas neste período.`, highlight: 'Insight Acadêmico' },
-            { id: 2, text: revenueDiff > 0 ? `Seu faturamento cresceu ${revenueDiff.toFixed(0)}% em relação ao período anterior.` : 'Faturamento estável.', highlight: 'Finanças' }
-          ],
-          alerts: alertsData?.slice(0, 3).map((a) => ({
-            id: a.id,
-            type: 'PEDAGÓGICO',
-            title: a.subject,
-            desc: `Semana de prova para ${a.student_name}.`,
-            priority: 'high'
-          })) || [],
-          operation: {
-            aulas: schedulesCount || 0,
-            presenca: '94%'
-          }
-        });
-      } catch (err) {
-        console.error('Error fetching dashboard data:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchRealDashboardData();
-  }, [period]);
-
-  const displayData = realData || mockData;
-
-  if (loading) {
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-12 h-12 text-primary animate-spin" />
-          <p className="font-bold text-gray-500">Sincronizando dados escolares...</p>
-        </div>
+      <div className="bg-gray-900 text-white px-4 py-3 rounded-xl shadow-2xl text-xs">
+        <p className="font-black mb-1">{label}</p>
+        {payload.map((p: any, i: number) => (
+          <p key={i} style={{ color: p.color }}>{p.name}: {typeof p.value === 'number' && p.value > 100 ? fmt(p.value) : p.value}</p>
+        ))}
       </div>
     );
   }
+  return null;
+};
+
+export default function DashboardView() {
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>({
+    totalAlunos: 0, alunosAtivos: 0, totalProfessores: 0,
+    receitaMes: 0, recebidoMes: 0, despesasMes: 0, lucroMes: 0,
+    ticketMedio: 0, taxaOcupacao: 0, inadimplentes: 0,
+    aulasMes: 0, aulasHoje: 0, aulasConcluidas: 0,
+    proximasAulas: [], alertas: [], fluxoAnual: [], aniversarios: [],
+  });
+
+  useEffect(() => { fetchDashboard(); }, []);
+
+  const fetchDashboard = async () => {
+    setLoading(true);
+    try {
+      const hoje = new Date().toISOString().split('T')[0];
+      const mesAtual = MONTHS_FULL[new Date().getMonth()];
+      const ano = new Date().getFullYear();
+
+      const [studentsRes, teachersRes, schedulesRes, paymentsRes, expensesRes] = await Promise.all([
+        supabase.from('students').select('id, name, monthly_value, birth_date'),
+        supabase.from('teachers').select('id, name'),
+        supabase.from('schedules').select('*').gte('date', ano + '-01-01'),
+        supabase.from('monthly_payments').select('*').eq('year', ano),
+        supabase.from('expenses').select('*').eq('year', ano),
+      ]);
+
+      const students = studentsRes.data || [];
+      const teachers = teachersRes.data || [];
+      const schedules = schedulesRes.data || [];
+      const payments = paymentsRes.data || [];
+      const expenses = expensesRes.data || [];
+
+      // KPIs básicos
+      const totalAlunos = students.length;
+      const totalProfessores = teachers.length;
+      const receitaMes = payments.filter(p => p.month === mesAtual).reduce((a, p) => a + (p.final_amount || p.amount || 0), 0);
+      const recebidoMes = payments.filter(p => p.month === mesAtual && p.status === 'paid').reduce((a, p) => a + (p.final_amount || p.amount || 0), 0);
+      const despesasMes = expenses.filter(e => e.month === mesAtual).reduce((a, e) => a + (e.amount || 0), 0);
+      const lucroMes = recebidoMes - despesasMes;
+      const ticketMedio = totalAlunos > 0 ? students.reduce((a, s) => a + (s.monthly_value || 0), 0) / totalAlunos : 0;
+      const inadimplentes = payments.filter(p => p.month === mesAtual && p.status === 'overdue').length;
+
+      // Aulas
+      const aulasMes = schedules.filter(s => s.date?.startsWith(ano + '-' + String(new Date().getMonth() + 1).padStart(2, '0'))).length;
+      const aulasHoje = schedules.filter(s => s.date === hoje).length;
+      const aulasConcluidas = schedules.filter(s => s.status === 'concluido').length;
+      const totalAulas = schedules.length;
+      const taxaOcupacao = totalAulas > 0 ? Math.round((aulasConcluidas / totalAulas) * 100) : 0;
+
+      // Próximas aulas de hoje
+      const proximasAulas = schedules
+        .filter(s => s.date === hoje)
+        .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''))
+        .slice(0, 5);
+
+      // Alertas
+      const alertas = [];
+      if (inadimplentes > 0) alertas.push({ type: 'danger', msg: `${inadimplentes} aluno(s) inadimplente(s) este mês` });
+      const aguardando = schedules.filter(s => s.status === 'aguardando_confirmacao').length;
+      if (aguardando > 0) alertas.push({ type: 'warning', msg: `${aguardando} aula(s) aguardando confirmação` });
+      if (lucroMes < 0) alertas.push({ type: 'danger', msg: `Prejuízo de ${fmt(Math.abs(lucroMes))} este mês` });
+      if (totalAlunos < 5) alertas.push({ type: 'info', msg: 'Dica: Foque em aulas em grupo para aumentar receita sem mais horas' });
+
+      // Aniversários próximos (7 dias)
+      const aniversarios = students.filter(s => {
+        if (!s.birth_date) return false;
+        const bday = new Date(s.birth_date);
+        const hoje2 = new Date();
+        const diff = new Date(hoje2.getFullYear(), bday.getMonth(), bday.getDate()).getTime() - hoje2.getTime();
+        return diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000;
+      });
+
+      // Fluxo anual
+      const fluxoAnual = MONTHS.map((m, i) => {
+        const mFull = MONTHS_FULL[i];
+        const entradas = payments.filter(p => p.month === mFull).reduce((a, p) => a + (p.final_amount || p.amount || 0), 0);
+        const saidas = expenses.filter(e => e.month === mFull).reduce((a, e) => a + (e.amount || 0), 0);
+        const recebido = payments.filter(p => p.month === mFull && p.status === 'paid').reduce((a, p) => a + (p.final_amount || p.amount || 0), 0);
+        return { mes: m, entradas, saidas, recebido, lucro: recebido - saidas };
+      });
+
+      setData({
+        totalAlunos, totalProfessores, receitaMes, recebidoMes,
+        despesasMes, lucroMes, ticketMedio, taxaOcupacao,
+        inadimplentes, aulasMes, aulasHoje, aulasConcluidas,
+        proximasAulas, alertas, fluxoAnual, aniversarios,
+        taxaRecebimento: receitaMes > 0 ? Math.round((recebidoMes / receitaMes) * 100) : 0,
+      });
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   return (
-    <div className="space-y-12 pb-20 max-w-[1600px] mx-auto px-4 md:px-8">
-      <SupabaseDebug />
-      
-      {/* STRATEGIC HEADER */}
-      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-10 bg-gray-900 p-10 md:p-16 rounded-[4rem] text-white shadow-3xl shadow-gray-200 overflow-hidden relative group">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary opacity-10 -mr-[100px] -mt-[200px] blur-[150px] group-hover:opacity-20 transition-opacity pointer-events-none" />
-        
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-primary/20 rounded-lg"><Target className="text-primary" size={18} /></div>
-            <span className="text-[10px] font-black tracking-[0.3em] text-primary uppercase">Performance Operacional</span>
+    <div className="space-y-6 pb-12">
+      {/* Alertas críticos */}
+      {data.alertas.length > 0 && (
+        <div className="space-y-2">
+          {data.alertas.map((a: any, i: number) => (
+            <div key={i} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold ${a.type === 'danger' ? 'bg-red-50 text-red-700 border border-red-200' : a.type === 'warning' ? 'bg-orange-50 text-orange-700 border border-orange-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+              <AlertCircle size={16} />
+              {a.msg}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* KPIs principais */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Receita */}
+        <div className="bg-gradient-to-br from-purple-600 to-purple-800 rounded-2xl p-5 text-white shadow-xl shadow-purple-200 md:col-span-2">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-purple-200">Receita do Mês</p>
+            <TrendingUp size={18} className="text-purple-300" />
           </div>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-[0.9] font-display">Controle <span className="text-primary italic font-light">&</span><br />Estratégia</h1>
-          <p className="text-gray-400 mt-8 font-bold text-sm max-w-md leading-relaxed">
-            Painel de controle centralizado para gestão administrativa e acadêmica. Monitore KPIs críticos em tempo real.
-          </p>
+          <p className="text-3xl font-black">{fmt(data.receitaMes)}</p>
+          <div className="mt-3 h-2 bg-purple-500 rounded-full">
+            <div className="h-full bg-white rounded-full transition-all" style={{ width: `${data.taxaRecebimento}%` }} />
+          </div>
+          <div className="flex justify-between mt-1">
+            <p className="text-xs text-purple-300">Recebido: {fmt(data.recebidoMes)}</p>
+            <p className="text-xs text-purple-300">{data.taxaRecebimento}%</p>
+          </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-6 relative z-10">
-          <div className="bg-white/10 backdrop-blur-xl p-2 rounded-[2.5rem] border border-white/10 flex shadow-2xl">
-            {(['Hoje', 'Esta Semana', 'Este Mês'] as const).map(p => (
-              <button 
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={`px-8 py-5 rounded-[2rem] text-[10px] font-black transition-all ${period === p ? 'bg-primary text-white shadow-xl shadow-primary/40' : 'text-gray-400 hover:text-white'}`}
-              >
-                {p.toUpperCase()}
-              </button>
-            ))}
+        {/* Lucro */}
+        <div className={`rounded-2xl p-5 border shadow-sm ${data.lucroMes >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{data.lucroMes >= 0 ? 'Lucro' : 'Prejuízo'}</p>
+            {data.lucroMes >= 0 ? <ArrowUpRight size={18} className="text-green-600" /> : <ArrowDownRight size={18} className="text-red-600" />}
           </div>
-          
-          <button onClick={() => window.dispatchEvent(new CustomEvent('global-plus-click'))} className="p-6 bg-white text-gray-900 rounded-[2.2rem] shadow-2xl shadow-gray-900/50 hover:scale-110 active:scale-95 transition-all ring-8 ring-white/5">
-            <Plus size={32} />
-          </button>
+          <p className={`text-2xl font-black ${data.lucroMes >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(Math.abs(data.lucroMes))}</p>
+          <p className="text-xs text-gray-400 mt-1">Despesas: {fmt(data.despesasMes)}</p>
+        </div>
+
+        {/* Ticket médio */}
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Ticket Médio</p>
+            <Target size={18} className="text-purple-400" />
+          </div>
+          <p className="text-2xl font-black text-gray-900">{fmt(data.ticketMedio)}</p>
+          <p className="text-xs text-gray-400 mt-1">por aluno/mês</p>
         </div>
       </div>
 
-      {/* KPI GRID */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-        <DashboardKPI label="Alunos Ativos" value={displayData.kpis.alunos.value} change={displayData.kpis.alunos.change} trend={displayData.kpis.alunos.trend} icon={Users} color="from-primary to-indigo-600" />
-        <DashboardKPI label="Ocupação Média" value={displayData.kpis.ocupacao.value} change={displayData.kpis.ocupacao.change} trend={displayData.kpis.ocupacao.trend} icon={BarChart3} color="from-emerald-500 to-teal-600" />
-        <DashboardKPI label="Receita Bruta" value={displayData.kpis.receita.value} change={displayData.kpis.receita.change} trend={displayData.kpis.receita.trend} icon={Wallet} color="from-secondary to-orange-600" />
-        <DashboardKPI label="Alertas Ativos" value={displayData.kpis.alertas.value} change={displayData.kpis.alertas.change} trend={displayData.kpis.alertas.trend} icon={AlertCircle} color="from-rose-500 to-orange-500" />
+      {/* KPIs secundários */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Total de Alunos', value: data.totalAlunos, sub: 'cadastrados', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'Professores', value: data.totalProfessores, sub: 'ativos', icon: GraduationCap, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: 'Aulas Hoje', value: data.aulasHoje, sub: 'agendadas', icon: Calendar, color: 'text-orange-600', bg: 'bg-orange-50' },
+          { label: 'Taxa de Ocupação', value: data.taxaOcupacao + '%', sub: 'aulas concluídas', icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
+        ].map(kpi => (
+          <div key={kpi.label} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+            <div className={`w-9 h-9 rounded-xl ${kpi.bg} flex items-center justify-center mb-3`}>
+              <kpi.icon size={18} className={kpi.color} />
+            </div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{kpi.label}</p>
+            <p className={`text-2xl font-black mt-1 ${kpi.color}`}>{kpi.value}</p>
+            <p className="text-[10px] text-gray-400 mt-1">{kpi.sub}</p>
+          </div>
+        ))}
       </div>
 
-            <DashboardCharts revenueData={displayData.revenue} occupancyData={displayData.occupancy} />
-
-      {/* OPERATIONAL BOTTOM GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* UPCOMING CLASSES */}
-        <div className="lg:col-span-8 space-y-8">
-          <div className="flex items-center justify-between mb-2 px-4">
-            <h3 className="text-xl font-black text-gray-900 tracking-tight font-display">Grade de Aulas (Hoje)</h3>
-            <button className="text-xs font-black text-primary hover:underline underline-offset-8">Ver Todas</button>
+      {/* Gráfico fluxo anual */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="font-black text-gray-900">Fluxo de Caixa Anual</h3>
+            <p className="text-xs text-gray-400">Receita vs Despesas — {new Date().getFullYear()}</p>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {(displayData.upcoming || []).map((item: any) => (
-              <div key={item.id} className="glass-card p-10 rounded-[3rem] border border-white hover:shadow-2xl hover:scale-[1.02] transition-all group relative overflow-hidden">
-                <div className={`absolute top-0 right-0 px-6 py-2 rounded-bl-3xl text-[10px] font-black tracking-widest ${item.status === 'em_aula' ? 'bg-rose-500 text-white' : 'bg-primary text-white'}`}>
-                  {item.urgency}
+          <Zap size={20} className="text-purple-500" />
+        </div>
+        <ResponsiveContainer width="100%" height={220}>
+          <AreaChart data={data.fluxoAnual}>
+            <defs>
+              <linearGradient id="gradEntradas" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#8A2BE2" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#8A2BE2" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="gradSaidas" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#EF4444" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#EF4444" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+            <XAxis dataKey="mes" tick={{ fontSize: 11, fontWeight: 700 }} />
+            <YAxis tickFormatter={v => v >= 1000 ? 'R$' + (v/1000).toFixed(0) + 'k' : 'R$' + v} tick={{ fontSize: 10 }} />
+            <Tooltip content={<CustomTooltip />} />
+            <Area type="monotone" dataKey="entradas" name="Receita" stroke="#8A2BE2" strokeWidth={2} fill="url(#gradEntradas)" />
+            <Area type="monotone" dataKey="saidas" name="Despesas" stroke="#EF4444" strokeWidth={2} fill="url(#gradSaidas)" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Aulas de hoje */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <h3 className="font-black text-gray-900 mb-4 flex items-center gap-2">
+            <Clock size={18} className="text-purple-500" /> Aulas de Hoje
+          </h3>
+          {data.proximasAulas.length === 0 ? (
+            <div className="text-center py-8">
+              <Calendar size={40} className="text-gray-200 mx-auto mb-3" />
+              <p className="text-gray-400 text-sm font-bold">Nenhuma aula hoje</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {data.proximasAulas.map((s: any) => (
+                <div key={s.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                  <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600 font-black text-xs shrink-0">
+                    {s.start_time?.slice(0, 5)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-gray-900 text-sm truncate">{s.subject || 'Aula'}</p>
+                    <p className="text-xs text-gray-400">{s.student_name} • {s.teacher_name}</p>
+                  </div>
+                  <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${s.status === 'concluido' ? 'bg-green-100 text-green-700' : s.status === 'aguardando_confirmacao' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
+                    {s.status === 'concluido' ? '✅' : s.status === 'aguardando_confirmacao' ? '⏳' : '📅'}
+                  </span>
                 </div>
-                <div className="flex items-center gap-4 mb-8">
-                   <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center border border-gray-100 group-hover:scale-110 transition-transform">
-                      <Clock className="text-primary" size={24} />
-                   </div>
-                   <div>
-                      <h4 className="text-xl font-black text-gray-900 font-display">{item.time}</h4>
-                      <p className="text-xs text-gray-400 font-bold">{item.room}</p>
-                   </div>
-                </div>
-                <div className="space-y-4">
-                   <p className="text-lg font-black text-gray-800 leading-tight">{item.subject}</p>
-                   <div className="flex items-center gap-2">
-                      <GraduationCap className="text-gray-400" size={16} />
-                      <p className="text-xs font-bold text-gray-500">{item.teacher}</p>
-                   </div>
-                </div>
-                <div className="mt-8 flex items-center justify-between pt-8 border-t border-gray-50">
-                   <span className="text-xs font-black text-primary">{item.timeLeft || item.startIn} remanescentes</span>
-                   <button className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-primary hover:text-white transition-all">
-                      <MoreVertical size={18} />
-                   </button>
-                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Alertas e aniversários */}
+        <div className="space-y-4">
+          {/* Inadimplentes */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <h3 className="font-black text-gray-900 mb-3 flex items-center gap-2">
+              <AlertCircle size={18} className="text-red-500" /> Situação Financeira
+            </h3>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="text-center p-3 bg-green-50 rounded-xl">
+                <p className="text-xl font-black text-green-600">{data.totalAlunos - data.inadimplentes}</p>
+                <p className="text-[10px] text-gray-400 font-bold">Em dia</p>
               </div>
-            ))}
+              <div className="text-center p-3 bg-red-50 rounded-xl">
+                <p className="text-xl font-black text-red-600">{data.inadimplentes}</p>
+                <p className="text-[10px] text-gray-400 font-bold">Inadimp.</p>
+              </div>
+              <div className="text-center p-3 bg-purple-50 rounded-xl">
+                <p className="text-xl font-black text-purple-600">{data.taxaRecebimento}%</p>
+                <p className="text-[10px] text-gray-400 font-bold">Recebido</p>
+              </div>
+            </div>
           </div>
 
-          {/* QUICK INSIGHTS BAR */}
-          <div className="bg-gray-900 rounded-[2.5rem] p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl relative overflow-hidden group">
-             <div className="absolute inset-0 bg-primary opacity-5 group-hover:opacity-10 transition-opacity" />
-             <div className="flex items-center gap-6 relative z-10">
-                <div className="p-4 bg-primary/20 rounded-2xl border border-primary/20 shadow-inner">
-                   <Zap className="text-primary" size={24} />
-                </div>
-                <div>
-                   <p className="text-sm font-bold text-gray-200">{displayData.insights?.[0]?.text}</p>
-                   <p className="text-[10px] font-black text-primary uppercase tracking-widest mt-0.5">{displayData.insights?.[0]?.highlight}</p>
-                </div>
-             </div>
-             <button className="px-8 py-4 bg-primary text-white rounded-2xl text-[10px] font-black shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all relative z-10">
-                GERAR MAIS INSIGHTS
-             </button>
-          </div>
-        </div>
-
-        {/* ALERTS & STATUS */}
-        <div className="lg:col-span-4 space-y-8">
-           <div className="glass-card p-10 rounded-[3rem] border border-white shadow-sm flex flex-col bg-gray-50/30">
-              <h3 className="text-xl font-black text-gray-900 tracking-tight font-display mb-10">Alertas do Sistema</h3>
-              <div className="space-y-6 flex-1">
-                 {(displayData.alerts || []).map((alert: any) => (
-                    <div key={alert.id} className="p-6 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-lg transition-all group">
-                       <div className="flex items-center gap-3 mb-4">
-                          <div className={`w-2 h-2 rounded-full ${alert.priority === 'high' ? 'bg-rose-500 animate-pulse' : 'bg-orange-400'}`} />
-                          <span className={`text-[10px] font-black uppercase ${alert.priority === 'high' ? 'text-rose-500' : 'text-orange-500'}`}>{alert.type}</span>
-                       </div>
-                       <p className="text-sm font-black text-gray-900 mb-2 truncate group-hover:text-primary transition-colors">{alert.title}</p>
-                       <p className="text-[10px] text-gray-400 font-bold leading-relaxed">{alert.desc}</p>
+          {/* Aniversários */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <h3 className="font-black text-gray-900 mb-3 flex items-center gap-2">
+              <Award size={18} className="text-yellow-500" /> Aniversários nos próximos 7 dias
+            </h3>
+            {data.aniversarios.length === 0 ? (
+              <p className="text-sm text-gray-400 font-bold text-center py-4">Nenhum aniversário próximo 🎉</p>
+            ) : (
+              <div className="space-y-2">
+                {data.aniversarios.map((s: any) => (
+                  <div key={s.id} className="flex items-center gap-3 p-3 bg-yellow-50 rounded-xl">
+                    <span className="text-2xl">🎂</span>
+                    <div>
+                      <p className="font-black text-gray-900 text-sm">{s.name}</p>
+                      <p className="text-xs text-gray-400">{new Date(s.birth_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</p>
                     </div>
-                 ))}
-                 {(!displayData.alerts || displayData.alerts.length === 0) && (
-                   <div className="flex flex-col items-center justify-center py-20 text-center">
-                      <div className="p-5 bg-emerald-50 text-emerald-500 rounded-full mb-4"><CheckCircle2 size={32} /></div>
-                      <p className="text-sm font-black text-gray-900">Nenhum Problema</p>
-                      <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase">Tudo operando normalmente</p>
-                   </div>
-                 )}
+                  </div>
+                ))}
               </div>
-              <button onClick={() => alert("Histórico em breve!")} className="mt-10 w-full py-5 bg-white border-2 border-gray-100 rounded-2xl text-[10px] font-black text-gray-400 hover:border-primary hover:text-primary transition-all">
-                 VER HISTÓRICO COMPLETO
-              </button>
-           </div>
-
-           <div className="bg-gradient-to-br from-primary to-indigo-700 p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 -mr-10 -mt-10 rounded-full blur-2xl group-hover:scale-125 transition-transform" />
-              <h4 className="text-xl font-black font-display mb-8">Saúde Operacional</h4>
-              <div className="grid grid-cols-2 gap-4 relative z-10">
-                 <div className="flex flex-col bg-white/10 p-5 rounded-2xl border border-white/5">
-                    <span className="text-[10px] font-black text-white/50 uppercase mb-1">Aulas Hoje</span>
-                    <span className="text-3xl font-black font-display">{displayData.operation?.aulas || 0}</span>
-                 </div>
-                 <div className="flex flex-col bg-white/10 p-5 rounded-2xl border border-white/5">
-                    <span className="text-[10px] font-black text-white/50 uppercase mb-1">Presença</span>
-                    <span className="text-3xl font-black font-display">{displayData.operation?.presenca || '0%'}</span>
-                 </div>
-              </div>
-           </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
