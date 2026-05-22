@@ -61,6 +61,8 @@ export default function SchoolCalendar({ user }: { user?: any }) {
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [editingLesson, setEditingLesson] = useState<any>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [teacherAvailability, setTeacherAvailability] = useState<any>(null);
+  const [teacherBusySlots, setTeacherBusySlots] = useState<any[]>([]);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [rescheduleData, setRescheduleData] = useState({ newDate: '', newTime: '', reason: '' });
 
@@ -74,6 +76,16 @@ export default function SchoolCalendar({ user }: { user?: any }) {
   };
 
   const isAdmin = user?.role === 'admin' || !user?.role;
+
+  const fetchTeacherAvailability = async (teacherId: string, date: string) => {
+    if (!teacherId || !date) { setTeacherAvailability(null); setTeacherBusySlots([]); return; }
+    const [teacherRes, schedulesRes] = await Promise.all([
+      supabase.from('teachers').select('availability, availability_schedule').eq('id', teacherId).single(),
+      supabase.from('schedules').select('start_time, end_time, student_name').eq('teacher_id', teacherId).eq('date', date),
+    ]);
+    setTeacherAvailability(teacherRes.data);
+    setTeacherBusySlots(schedulesRes.data || []);
+  };
 
   const saveEdit = async () => {
     if (!editingLesson) return;
@@ -500,7 +512,10 @@ export default function SchoolCalendar({ user }: { user?: any }) {
                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Professor</label>
                 <select
                   value={newLesson.teacher_id}
-                  onChange={e => setNewLesson(p => ({ ...p, teacher_id: e.target.value }))}
+                  onChange={e => {
+                    setNewLesson(p => ({ ...p, teacher_id: e.target.value }));
+                    fetchTeacherAvailability(e.target.value, newLesson.date);
+                  }}
                   className="w-full mt-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
                 >
                   <option value="">Selecionar professor...</option>
@@ -508,6 +523,46 @@ export default function SchoolCalendar({ user }: { user?: any }) {
                     <option key={t.id} value={t.id}>{t.name}</option>
                   ))}
                 </select>
+
+                {/* Painel de disponibilidade */}
+                {newLesson.teacher_id && (
+                  <div className="mt-2 p-3 bg-gray-50 rounded-xl space-y-2">
+                    {/* Horários ocupados */}
+                    {teacherBusySlots.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-black text-red-500 uppercase tracking-wider mb-1">🔴 Ocupado neste dia</p>
+                        <div className="flex flex-wrap gap-1">
+                          {teacherBusySlots.map((s, i) => (
+                            <span key={i} className="text-[10px] font-bold px-2 py-1 bg-red-100 text-red-700 rounded-lg">
+                              {s.start_time} - {s.end_time} ({s.student_name})
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* Disponibilidade cadastrada */}
+                    {teacherAvailability?.availability_schedule && (() => {
+                      try {
+                        const sched = JSON.parse(teacherAvailability.availability_schedule);
+                        const dayNames: Record<number, string> = { 1: 'Segunda', 2: 'Terça', 3: 'Quarta', 4: 'Quinta', 5: 'Sexta', 6: 'Sábado' };
+                        const dayName = dayNames[new Date(newLesson.date + 'T00:00:00').getDay()];
+                        const dayAvail = sched[dayName];
+                        if (dayAvail) return (
+                          <div>
+                            <p className="text-[10px] font-black text-green-600 uppercase tracking-wider mb-1">🟢 Disponível neste dia</p>
+                            <span className="text-[10px] font-bold px-2 py-1 bg-green-100 text-green-700 rounded-lg">
+                              {dayAvail.start} - {dayAvail.end}
+                            </span>
+                          </div>
+                        );
+                        return <p className="text-[10px] text-gray-400 font-bold">Sem disponibilidade cadastrada para este dia</p>;
+                      } catch { return null; }
+                    })()}
+                    {teacherBusySlots.length === 0 && !teacherAvailability?.availability_schedule && (
+                      <p className="text-[10px] text-gray-400 font-bold">✅ Nenhuma aula neste dia</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -530,7 +585,10 @@ export default function SchoolCalendar({ user }: { user?: any }) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Data *</label>
-                  <input type="date" value={newLesson.date} onChange={e => setNewLesson(p => ({ ...p, date: e.target.value }))}
+                  <input type="date" value={newLesson.date} onChange={e => {
+                    setNewLesson(p => ({ ...p, date: e.target.value }));
+                    fetchTeacherAvailability(newLesson.teacher_id, e.target.value);
+                  }}
                     className="w-full mt-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
                 </div>
                 <div>
