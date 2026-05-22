@@ -4,14 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { FileText, Plus, Download, Upload, CheckCircle, Clock, XCircle, Eye, X, User, Phone, MapPin, Calendar, DollarSign } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { generateContractHTML } from './contractHelper';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   pending:  { label: 'Pendente Assinatura', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
   signed:   { label: 'Assinado', color: 'bg-green-100 text-green-700', icon: CheckCircle },
   cancelled:{ label: 'Cancelado', color: 'bg-red-100 text-red-700', icon: XCircle },
 };
-
 
 export default function ContractsView() {
   const [contracts, setContracts] = useState<any[]>([]);
@@ -103,7 +101,7 @@ export default function ContractsView() {
       if (upErr) throw upErr;
       const { data } = supabase.storage.from('materials').getPublicUrl(path);
       await supabase.from('contracts').update({ status: 'signed', signed_file_url: data.publicUrl }).eq('id', showUploadModal.id);
-      toast.success('Contrato assinado salvo! ✅');
+      toast.success('Contrato assinado salvo!');
       setShowUploadModal(null);
       setUploadFile(null);
       fetchContracts();
@@ -118,7 +116,135 @@ export default function ContractsView() {
   };
 
   const printContract = (contract: any) => {
-    const html = generateContractHTML(contract);
+    const months: Record<string, string> = {
+      'janeiro': 'janeiro', 'fevereiro': 'fevereiro', 'março': 'março',
+      'abril': 'abril', 'maio': 'maio', 'junho': 'junho',
+      'julho': 'julho', 'agosto': 'agosto', 'setembro': 'setembro',
+      'outubro': 'outubro', 'novembro': 'novembro', 'dezembro': 'dezembro'
+    };
+
+    const html = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Contrato - ${contract.student_name}</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 12pt; margin: 2cm; color: #000; line-height: 1.5; }
+    h1 { text-align: center; font-size: 14pt; margin-bottom: 5px; }
+    h2 { font-size: 12pt; margin-top: 20px; margin-bottom: 5px; text-transform: uppercase; }
+    .header { text-align: right; margin-bottom: 20px; font-size: 10pt; }
+    .center { text-align: center; }
+    .bold { font-weight: bold; }
+    .signature { display: flex; justify-content: space-between; margin-top: 60px; }
+    .signature-line { text-align: center; width: 45%; }
+    .signature-line hr { border-top: 1px solid #000; margin-bottom: 5px; }
+    ul { margin: 5px 0; padding-left: 20px; }
+    li { margin-bottom: 5px; }
+    .auth-box { border: 1px solid #000; padding: 5px; display: inline-block; margin: 0 10px; }
+    @media print { body { margin: 1.5cm; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <p>Rua Vicente Viana, 293 – Novo Rio das Ostras – Rio das Ostras - RJ</p>
+    <p>CNPJ: 55.010.967/0001-46</p>
+  </div>
+
+  <h1>CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS - 2026</h1>
+
+  <h2>Responsável Contratante</h2>
+  <p><span class="bold">${contract.responsible_name?.toUpperCase()}</span></p>
+  <p>CPF nº ${contract.responsible_cpf || '___________________'}, Carteira de Identidade nº ${contract.responsible_rg || '___________________'}</p>
+  <p>Logradouro: ${contract.responsible_address || '___________________'}</p>
+
+  <h2>Contratada</h2>
+  <p><span class="bold">DESCOMPLICA EDUCACIONAL LTDA - CNPJ: 55.010.967/0001-46</span></p>
+  <p>Com sede no endereço: Rua Vicente Viana, 293 – Novo Rio das Ostras – Rio das Ostras / RJ.</p>
+
+  <p style="margin-top:15px;">As partes acima identificadas têm, entre si, justo e acertado o presente Contrato de Prestação de Serviços Educacionais para o período do ano letivo de 2026, em benefício do(a) aluno(a) <span class="bold">${contract.student_name?.toUpperCase()}</span>, que se regerá pelas cláusulas seguintes e pelas condições descritas no presente.</p>
+
+  <h2>Da Documentação</h2>
+  <p>Solicita-se que no ato da contratação sejam anexadas ao contrato cópias dos seguintes documentos:</p>
+  <ul>
+    <li>CPF do responsável;</li>
+    <li>RG do responsável;</li>
+    <li>Certidão de Nascimento ou RG do(a) aluno(a);</li>
+    <li>Comprovante de residência atualizado.</li>
+  </ul>
+
+  <h2>Do Preço e Forma de Pagamento</h2>
+  <p>O responsável contratante optou pela seguinte modalidade referente aos serviços oferecidos pela CONTRATADA.</p>
+  <p>Mensalidade referente a quantidade de atendimentos:</p>
+  <ul>
+    <li>${contract.sessions_per_week} atendimento(s) por semana com duração de ${contract.session_duration} minutos – R$ ${Number(contract.monthly_value).toFixed(2).replace('.', ',')}.</li>
+  </ul>
+  <p>O CONTRATANTE deverá usufruir dos serviços prestados da CONTRATADA por ${contract.total_months} meses, divididas em ${contract.total_months} parcelas.</p>
+  <ul>
+    <li>No ato da matrícula o responsável contratante deve efetuar o pagamento da taxa única de materiais no valor de R$ ${Number(contract.materials_fee).toFixed(2).replace('.', ',')}.</li>
+    <li>As mensalidades deverão ser pagas no mês vigente, somando um total de ${contract.total_months} parcelas iguais e consecutivas referente aos meses de ${contract.start_month} à dezembro, vencíveis, respectivamente, no dia ${contract.payment_day} (${contract.payment_day === 7 ? 'sete' : contract.payment_day}) de cada mês do ano letivo de 2026. O pagamento será efetuado via boleto bancário.</li>
+    <li>Aulas avulsas são ofertadas para situações esporádicas. Não reservamos horário fixo para atendimentos avulsos.</li>
+    <li>Aos responsáveis que optarem pelo pagamento anual terão desconto de 8% no valor total.</li>
+    <li>Será concedido um desconto de 5% na mensalidade do 2º(segundo) irmão.</li>
+  </ul>
+
+  <h2>Do Dia e Horário de Atendimento</h2>
+  <ul>
+    <li>Os atendimentos serão realizados ${contract.days_of_week ? 'nas ' + contract.days_of_week : '___________________'}, no horário ${contract.schedule_time || '___________________'}.</li>
+    <li>Cada atendimento terá ${contract.session_duration} minutos de duração.</li>
+    <li>Os atendimentos que coincidirem com feriados e recessos escolares não serão repostos e não haverá estorno de valores.</li>
+    <li>Não será permitida a redução da carga horária do aluno durante a vigência deste contrato.</li>
+  </ul>
+
+  <h2>São Obrigações do Contratante</h2>
+  <ul>
+    <li>Acompanhar o progresso dos estudos do(a) educando(a).</li>
+    <li>Efetuar os pagamentos dentro do prazo conforme disposto neste contrato.</li>
+    <li>Os atendimentos deverão ser desmarcados com no mínimo de <span class="bold">24 horas</span> de antecedência ou mediante a apresentação de <span class="bold">atestado e declaração médica</span>.</li>
+    <li>A reposição dos atendimentos, previamente justificados, serão remarcados de acordo com a disponibilidade de horário na agenda da CONTRATADA.</li>
+  </ul>
+
+  <h2>São Obrigações da Contratada</h2>
+  <ul>
+    <li>Ofertar serviço educacional de qualidade.</li>
+    <li>Atender o educando com pontualidade.</li>
+    <li>Orientar, monitorar e auxiliar o educando durante os atendimentos.</li>
+    <li>Atender o educando nos horários e dias estabelecidos em contrato.</li>
+  </ul>
+
+  <h2>Do Trabalho Pedagógico</h2>
+  <p>A CONTRATADA busca desenvolver um trabalho de qualidade, sério, personalizado e individualizado com todos os educandos matriculados.</p>
+
+  <h2>Do Direito ao Uso de Imagem</h2>
+  <p>
+    <span class="auth-box">${contract.image_authorized ? 'X' : '&nbsp;&nbsp;'}</span> AUTORIZO &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <span class="auth-box">${!contract.image_authorized ? 'X' : '&nbsp;&nbsp;'}</span> NÃO AUTORIZO
+  </p>
+  <p>A CONTRATADA usar a imagem do meu filho(a) <span class="bold">${contract.student_name?.toUpperCase()}</span> em redes sociais e demais mídias digitais.</p>
+
+  <h2>Da Inadimplência, Desistência e Rescisão</h2>
+  <ul>
+    <li>No caso de desistência, o CONTRATANTE se obriga a pagar multa equivalente a 3 (três) meses de atendimento.</li>
+    <li>Em caso de inadimplência por 90 dias ou mais, a CONTRATADA poderá utilizar meios administrativos e judiciais para cobrança.</li>
+    <li>Após 30 dias de inadimplência, as aulas serão suspensas até regularização dos débitos.</li>
+  </ul>
+
+  <p style="margin-top:30px;">Rio das Ostras, _____ de ${contract.start_month || '_______________'} de 2026.</p>
+
+  <div class="signature">
+    <div class="signature-line">
+      <hr/>
+      <p><span class="bold">RESPONSÁVEL CONTRATANTE</span></p>
+      <p>${contract.responsible_name?.toUpperCase()}</p>
+    </div>
+    <div class="signature-line">
+      <hr/>
+      <p><span class="bold">CONTRATADA</span></p>
+      <p>DESCOMPLICA EDUCACIONAL LTDA</p>
+    </div>
+  </div>
+</body>
+</html>`;
 
     const win = window.open('', '_blank');
     if (win) {
@@ -190,18 +316,18 @@ export default function ContractsView() {
                   </button>
                   {contract.signed_file_url && (
                     <a href={contract.signed_file_url} target="_blank" rel="noopener noreferrer"
-                      className="px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-xs font-bold transition-all flex items-center gap-1">
-                      📄 Ver Contrato
+                      className="px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-xs font-bold transition-all">
+                      Ver Assinado
                     </a>
                   )}
                   {contract.status === 'signed' && !contract.signed_file_url && (
                     <button onClick={() => setShowUploadModal(contract)}
                       className="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-bold transition-all">
-                      📎 Anexar Assinado
+                      Anexar PDF
                     </button>
                   )}
                   {contract.status === 'pending' && (
-                    <button onClick={() => setShowUploadModal(contract)}
+                    <button onClick={() => markAsSigned(contract.id)}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-xs font-bold transition-all">
                       <CheckCircle size={12} /> Marcar Assinado
                     </button>
@@ -319,39 +445,32 @@ export default function ContractsView() {
         </div>
       )}
 
-      {/* Modal Upload Contrato Assinado */}
       {showUploadModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-black text-gray-900">Anexar Contrato Assinado</h2>
-              <button onClick={() => { setShowUploadModal(null); setUploadFile(null); }} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400">✕</button>
+              <button onClick={() => setShowUploadModal(null)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400">X</button>
             </div>
             <div className="p-4 bg-purple-50 rounded-2xl mb-4">
               <p className="font-black text-gray-900">{showUploadModal.student_name}</p>
-              <p className="text-sm text-gray-500">Contrato #{showUploadModal.id?.slice(-8)}</p>
             </div>
-            <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Arquivo do Contrato Assinado</label>
-              <label className={`w-full border-2 border-dashed rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer transition-all ${uploadFile ? 'border-purple-300 bg-purple-50' : 'border-gray-200 hover:border-purple-200'}`}>
-                <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => setUploadFile(e.target.files?.[0] || null)} className="hidden" />
-                <span className="text-3xl">{uploadFile ? '📄' : '📎'}</span>
-                <div className="text-center">
-                  <p className="text-sm font-bold text-gray-700">{uploadFile ? uploadFile.name : 'Clique para selecionar'}</p>
-                  <p className="text-xs text-gray-400">{uploadFile ? (uploadFile.size / 1024).toFixed(0) + ' KB' : 'PDF, JPG ou PNG'}</p>
-                </div>
-              </label>
-            </div>
+            <label className="w-full border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center gap-2 cursor-pointer hover:border-purple-300 transition-all block">
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => setUploadFile(e.target.files ? e.target.files[0] : null)} className="hidden" />
+              <span className="text-3xl">{uploadFile ? '📄' : '📎'}</span>
+              <p className="text-sm font-bold text-gray-700">{uploadFile ? uploadFile.name : 'Clique para selecionar'}</p>
+              <p className="text-xs text-gray-400">PDF, JPG ou PNG</p>
+            </label>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => { setShowUploadModal(null); setUploadFile(null); }} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold">Cancelar</button>
+              <button onClick={() => setShowUploadModal(null)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold">Cancelar</button>
               <button onClick={uploadSignedContract} disabled={uploading || !uploadFile}
                 className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2">
-                {uploading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : '✅'}
-                {uploading ? 'Enviando...' : 'Salvar Contrato'}
+                {uploading ? 'Enviando...' : 'Salvar'}
               </button>
             </div>
           </div>
         </div>
       )}
+    </div>
   );
 }
