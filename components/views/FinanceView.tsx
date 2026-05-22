@@ -190,37 +190,128 @@ export default function FinanceView() {
     const ano = expense.year || new Date().getFullYear();
     const mesAnteriorIdx = mesIdx === 0 ? 11 : mesIdx - 1;
     const anoAnterior = mesIdx === 0 ? ano - 1 : ano;
-    const dataInicio = ano + '-' + String(mesAnteriorIdx + 1).padStart(2,'0') + '-10';
+    // Busca aulas do mês inteiro (dia 1 ao último dia)
+    const dataInicio = anoAnterior + '-' + String(mesAnteriorIdx + 1).padStart(2,'0') + '-10';
     const dataFim = ano + '-' + String(mesIdx + 1).padStart(2,'0') + '-10';
-    const { data: aulas } = await supabase.from('schedules').select('id').eq('teacher_id', expense.teacher_id).gte('date', dataInicio).lte('date', dataFim);
+    const { data: aulas } = await supabase.from('schedules').select('id, date, subject').eq('teacher_id', expense.teacher_id).gte('date', dataInicio).lte('date', dataFim).eq('status', 'concluido');
     const totalAulas = aulas?.length || 0;
     const numComprovante = Date.now().toString().slice(-8);
     const dataPgto = paymentDate ? new Date(paymentDate + 'T00:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
-    const comprovante = [
-      'PROFESSORA DESCOMPLICA - ESPACO PEDAGOGICO',
-      'CNPJ: 55.010.967/0001-46',
-      '---',
-      'COMPROVANTE DE PAGAMENTO',
-      'N: ' + numComprovante,
-      '---',
-      'Professor(a): ' + expense.teacher_name,
-      'Referencia: ' + (expense.month || '') + ' ' + ano,
-      'Periodo: 10/' + String(mesAnteriorIdx + 1).padStart(2,'0') + '/' + anoAnterior + ' a 10/' + String(mesIdx + 1).padStart(2,'0') + '/' + ano,
-      'Aulas realizadas: ' + totalAulas + ' aula(s)',
-      'Valor: ' + Number(expense.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-      'Data pagamento: ' + dataPgto,
-      '---',
-      'Pagamento confirmado!',
-    ].join('\n');
+    const periodoInicio = '10/' + String(mesAnteriorIdx + 1).padStart(2,'0') + '/' + anoAnterior;
+    const periodoFim = '10/' + String(mesIdx + 1).padStart(2,'0') + '/' + ano;
+
+    // Gera PDF
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    // Fundo
+    doc.setFillColor(245, 243, 255);
+    doc.rect(0, 0, 210, 297, 'F');
+
+    // Header roxo
+    doc.setFillColor(109, 40, 217);
+    doc.rect(0, 0, 210, 45, 'F');
+
+    // Logo texto
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Professora Descomplica', 105, 18, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Espaco Pedagogico', 105, 26, { align: 'center' });
+    doc.text('CNPJ: 55.010.967/0001-46', 105, 34, { align: 'center' });
+
+    // Titulo comprovante
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(20, 52, 170, 14, 4, 4, 'F');
+    doc.setTextColor(109, 40, 217);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('COMPROVANTE DE PAGAMENTO', 105, 62, { align: 'center' });
+
+    // Numero
+    doc.setTextColor(120, 120, 120);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('N: ' + numComprovante, 105, 72, { align: 'center' });
+
+    // Box dados
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(20, 78, 170, 90, 4, 4, 'F');
+
+    const rows = [
+      ['Professor(a)', expense.teacher_name],
+      ['Referencia', (expense.month || '') + ' ' + ano],
+      ['Periodo', periodoInicio + ' a ' + periodoFim],
+      ['Aulas realizadas', totalAulas + ' aula(s)'],
+      ['Valor', Number(expense.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })],
+      ['Data do pagamento', dataPgto],
+    ];
+
+    let y = 90;
+    rows.forEach(([label, value], i) => {
+      if (i % 2 === 0) {
+        doc.setFillColor(249, 246, 255);
+        doc.rect(22, y - 5, 166, 12, 'F');
+      }
+      doc.setTextColor(120, 120, 120);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(label + ':', 28, y);
+      doc.setTextColor(30, 30, 30);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text(String(value), 28, y + 5);
+      y += 14;
+    });
+
+    // Status pago
+    doc.setFillColor(220, 252, 231);
+    doc.roundedRect(20, 175, 170, 20, 4, 4, 'F');
+    doc.setTextColor(22, 163, 74);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text('✓ PAGAMENTO CONFIRMADO', 105, 188, { align: 'center' });
+
+    // Footer
+    doc.setTextColor(150, 150, 150);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Professora Descomplica - Espaco Pedagogico', 105, 280, { align: 'center' });
+    doc.text('CNPJ: 55.010.967/0001-46', 105, 286, { align: 'center' });
+
+    // Salva PDF no storage
+    const pdfBlob = doc.output('blob');
+    const fileName = 'comprovantes/comp-' + numComprovante + '.pdf';
+    const { error: uploadError } = await supabase.storage.from('materials').upload(fileName, pdfBlob, { contentType: 'application/pdf', upsert: true });
+
+    let pdfUrl = '';
+    if (!uploadError) {
+      const { data: urlData } = supabase.storage.from('materials').getPublicUrl(fileName);
+      pdfUrl = urlData.publicUrl;
+    }
+
+    // Envia no chat
+    const msgText = '📄 *Comprovante de Pagamento*
+' +
+      'Professor(a): ' + expense.teacher_name + '
+' +
+      'Valor: ' + Number(expense.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) + '
+' +
+      'Aulas: ' + totalAulas + ' aula(s) | Periodo: ' + periodoInicio + ' a ' + periodoFim + '
+' +
+      (pdfUrl ? '📥 Download: ' + pdfUrl : '');
+
     const { data: userData } = await supabase.auth.getUser();
     await supabase.from('messages').insert({
       sender_id: userData.user?.id,
       receiver_id: expense.teacher_id,
-      text: comprovante,
+      text: msgText,
       read: false,
       created_at: new Date().toISOString(),
     });
-    toast.success('Comprovante enviado no chat!');
+    toast.success('Comprovante PDF enviado no chat! 💬');
   };
 
   const markExpenseAsPaid = async () => {
