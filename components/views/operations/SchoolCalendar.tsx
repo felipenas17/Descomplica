@@ -356,7 +356,7 @@ export default function SchoolCalendar({ user }: { user?: any }) {
                         return (
                           <div key={lesson.id}
                             style={{ top: `${top}px`, height: `${height}px` }}
-                            className={`absolute left-1 right-1 ${color.bg} border-l-4 ${color.border} rounded-xl p-1.5 z-10 overflow-hidden cursor-pointer hover:shadow-md transition-all`}>
+                            onClick={() => { setSelectedLesson(lesson); setEditingLesson({...lesson}); }} className={`absolute left-1 right-1 ${color.bg} border-l-4 ${color.border} rounded-xl p-1.5 z-10 overflow-hidden cursor-pointer hover:shadow-md transition-all`}>
                             <p className={`text-[9px] font-black uppercase ${color.text}`}>{lesson.subject}</p>
                             {lesson.room && <p className="text-[9px] text-gray-500 truncate">🏫 {lesson.room}</p>}
                             {lesson.teacher_name && <p className="text-[9px] text-gray-500 truncate">👤 {lesson.teacher_name}</p>}
