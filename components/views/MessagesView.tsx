@@ -236,7 +236,14 @@ export default function MessagesView({ user }: { user?: any }) {
               ) : messages.map(m => (
                 <div key={m.id} className={`flex ${m.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-xs px-4 py-2.5 rounded-2xl text-sm shadow-sm ${m.sender_id === user?.id ? 'bg-purple-600 text-white rounded-br-sm' : 'bg-white border border-gray-100 text-gray-800 rounded-bl-sm'}`}>
-                    {m.text}
+                    {m.text.split(/(https?:\/\/[^\s]+)/g).map((part: string, i: number) =>
+                      part.match(/^https?:\/\//) ? (
+                        <a key={i} href={part} target="_blank" rel="noopener noreferrer"
+                          className="underline text-blue-200 hover:text-white break-all">
+                          📥 Clique aqui para baixar o PDF
+                        </a>
+                      ) : part
+                    )}
                     <p className={`text-xs mt-1 flex items-center justify-end gap-1 ${m.sender_id === user?.id ? 'text-purple-200' : 'text-gray-400'}`}>
                       {formatTime(m.created_at)}
                       {m.sender_id === user?.id && (
