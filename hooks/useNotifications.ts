@@ -45,7 +45,7 @@ export function useNotifications(userId?: string) {
   }, [userId]);
 
   const deleteNotification = useCallback(async (id: string) => {
-    await supabase.from('notifications').delete().eq('id', id);
+    await supabase.from('notifications').update({ archived: true }).eq('id', id);
     setNotifications(prev => prev.filter(n => n.id !== id));
   }, []);
 
