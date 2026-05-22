@@ -79,7 +79,14 @@ export default function MessagesView({ user }: { user?: any }) {
           }
           fetchConversations();
         }
-      }).subscribe();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, (payload) => {
+        const msg = payload.new as Message;
+        if (msg.sender_id === user.id || msg.receiver_id === user.id) {
+          setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, read: msg.read } : m));
+        }
+      })
+      .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [user?.id, selected]);
 
