@@ -38,9 +38,8 @@ export default function Login({ onLogin }: LoginProps) {
 
       console.log('[Login] Tentativa de login:', cleanEmail);
 
-      // Verificação Local para Modo Demo
-      if ((cleanEmail === 'demo@escola.com' || cleanEmail === 'demo') && (cleanPassword === 'demo123' || cleanPassword === 'demo')) {
-        console.log('[Login] Login demo detectado. Ignorando Supabase Auth.');
+      // Demo removido por segurança
+      if (false) {
         onLogin({
           role: role,
           name: role === 'admin' ? 'Coordenador Demo' : 'Prof. Demo'
@@ -263,7 +262,7 @@ export default function Login({ onLogin }: LoginProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="demo@escola.com"
+                placeholder="seu@email.com"
                 className="w-full bg-white/50 border-2 border-primary/5 rounded-2xl py-4 pl-12 pr-4 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all text-sm outline-none font-medium"
               />
             </div>
@@ -280,7 +279,7 @@ export default function Login({ onLogin }: LoginProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                placeholder="demo123"
+                placeholder="sua senha"
                 className="w-full bg-white/50 border-2 border-primary/5 rounded-2xl py-4 pl-12 pr-12 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all text-sm outline-none font-medium"
               />
               <button
@@ -310,18 +309,7 @@ export default function Login({ onLogin }: LoginProps) {
           </button>
 
           {!isRegistering && (
-            <button
-              type="button"
-              onClick={() => {
-                onLogin({
-                  role: role,
-                  name: role === 'admin' ? 'Coordenador Demo' : 'Prof. Demo'
-                });
-              }}
-              className="w-full py-4 bg-white border-2 border-primary/20 text-primary rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-primary/5 transition-all"
-            >
-              Entrar sem senha (Demo)
-            </button>
+            
           )}
         </form>
 
