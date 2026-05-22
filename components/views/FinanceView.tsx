@@ -188,17 +188,19 @@ export default function FinanceView() {
     if (!expense.teacher_id) return;
     const mesIdx = MONTHS_FULL.indexOf(expense.month || MONTHS_FULL[new Date().getMonth()]);
     const ano = expense.year || new Date().getFullYear();
-    const mesAnteriorIdx = mesIdx === 0 ? 11 : mesIdx - 1;
-    const anoAnterior = mesIdx === 0 ? ano - 1 : ano;
-    // Busca aulas do mês inteiro (dia 1 ao último dia)
-    const dataInicio = anoAnterior + '-' + String(mesAnteriorIdx + 1).padStart(2,'0') + '-10';
-    const dataFim = ano + '-' + String(mesIdx + 1).padStart(2,'0') + '-10';
+    const mesSegIdx = (mesIdx + 1) % 12;
+    const anoSeg = mesSegIdx === 0 ? ano + 1 : ano;
+    // Periodo: dia 10 do mes de referencia ate dia 10 do mes seguinte
+    const dataInicio = ano + '-' + String(mesIdx + 1).padStart(2,'0') + '-10';
+    const dataFim = anoSeg + '-' + String(mesSegIdx + 1).padStart(2,'0') + '-10';
+    const mesAnteriorIdx = mesIdx; // para o texto do periodo
+    const anoAnterior = ano;
     const { data: aulas } = await supabase.from('schedules').select('id, date, subject').eq('teacher_id', expense.teacher_id).gte('date', dataInicio).lte('date', dataFim).eq('status', 'concluido');
     const totalAulas = aulas?.length || 0;
     const numComprovante = Date.now().toString().slice(-8);
     const dataPgto = paymentDate ? new Date(paymentDate + 'T00:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
-    const periodoInicio = '10/' + String(mesAnteriorIdx + 1).padStart(2,'0') + '/' + anoAnterior;
-    const periodoFim = '10/' + String(mesIdx + 1).padStart(2,'0') + '/' + ano;
+    const periodoInicio = '10/' + String(mesIdx + 1).padStart(2,'0') + '/' + ano;
+    const periodoFim = '10/' + String(mesSegIdx + 1).padStart(2,'0') + '/' + anoSeg;
 
     // Gera PDF
     const { jsPDF } = await import('jspdf');
@@ -302,7 +304,7 @@ export default function FinanceView() {
       '---',
       'Professor(a): ' + expense.teacher_name,
       'Referencia: ' + (expense.month || '') + ' ' + ano,
-      'Periodo: ' + periodoInicio + ' a ' + periodoFim,
+      'Periodo: 10/' + String(mesIdx + 1).padStart(2,'0') + '/' + ano + ' a 10/' + String(mesSegIdx + 1).padStart(2,'0') + '/' + anoSeg,
       'Aulas realizadas: ' + totalAulas + ' aula(s)',
       'Valor: ' + Number(expense.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
       'Data pagamento: ' + dataPgto,
