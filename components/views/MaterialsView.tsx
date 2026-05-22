@@ -49,7 +49,7 @@ interface MaterialsViewProps {
 export default function MaterialsView({ user }: MaterialsViewProps) {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState('');
   const [previewTitle, setPreviewTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -586,7 +586,6 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
                       <div className="flex items-center gap-1">
                         <button 
                           onClick={() => handleDownload(material.file_url, material.title)}
-                          onAuxClick={() => { setPreviewUrl(material.file_url); setPreviewTitle(material.title); }}
                           className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-colors"
                         >
                           <Download size={12} /> Baixar
@@ -771,36 +770,30 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
         )}
       </AnimatePresence>
 
-      {/* Modal Preview */}
-      {previewUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
-            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+      {previewUrl !== '' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={() => setPreviewUrl('')}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b flex items-center justify-between">
               <h2 className="font-black text-gray-900 truncate">{previewTitle}</h2>
-              <div className="flex gap-2 shrink-0">
-                <a href={previewUrl} download={previewTitle}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold transition-all">
+              <div className="flex gap-2">
+                <a href={previewUrl} download={previewTitle} className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-xl text-sm font-bold">
                   <Download size={16} /> Baixar
                 </a>
-                <button onClick={() => setPreviewUrl(null)}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-sm font-bold transition-all">
+                <button onClick={() => setPreviewUrl('')} className="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl text-sm font-bold">
                   Fechar
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-hidden">
-              {previewUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) ? (
-                <div className="flex items-center justify-center h-full p-4 bg-gray-50">
-                  <img src={previewUrl} alt={previewTitle} className="max-w-full max-h-[70vh] object-contain rounded-xl" />
-                </div>
-              ) : previewUrl.match(/\.pdf$/i) ? (
-                <iframe src={previewUrl} className="w-full h-[70vh]" title={previewTitle} />
+            <div className="flex-1 overflow-hidden bg-gray-50 flex items-center justify-center p-4">
+              {previewUrl.match(/[.](jpg|jpeg|png|gif|webp|svg)$/i) ? (
+                <img src={previewUrl} alt={previewTitle} className="max-w-full max-h-[70vh] object-contain rounded-xl" />
+              ) : previewUrl.match(/[.]pdf$/i) ? (
+                <iframe src={previewUrl} className="w-full h-[70vh] rounded-xl" title={previewTitle} />
               ) : (
-                <div className="flex flex-col items-center justify-center h-64 gap-4">
-                  <span className="text-6xl">📄</span>
-                  <p className="text-gray-500 font-bold">Pré-visualização não disponível para este tipo de arquivo.</p>
-                  <a href={previewUrl} download={previewTitle}
-                    className="px-6 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-all">
+                <div className="text-center">
+                  <p className="text-6xl mb-4">📄</p>
+                  <p className="text-gray-500 font-bold mb-4">Pre-visualizacao nao disponivel</p>
+                  <a href={previewUrl} download={previewTitle} className="px-6 py-3 bg-purple-600 text-white rounded-xl font-bold">
                     Baixar arquivo
                   </a>
                 </div>
@@ -809,6 +802,6 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
           </div>
         </div>
       )}
+    </div>
   );
-}
 }
