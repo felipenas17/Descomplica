@@ -184,6 +184,45 @@ export default function FinanceView() {
     finally { setSaving(false); }
   };
 
+  const sendComprovanteToChat = async (expense: any) => {
+    if (!expense.teacher_id) return;
+    const mesIdx = MONTHS_FULL.indexOf(expense.month || MONTHS_FULL[new Date().getMonth()]);
+    const ano = expense.year || new Date().getFullYear();
+    const mesAnteriorIdx = mesIdx === 0 ? 11 : mesIdx - 1;
+    const anoAnterior = mesIdx === 0 ? ano - 1 : ano;
+    const dataInicio = ano + '-' + String(mesAnteriorIdx + 1).padStart(2,'0') + '-10';
+    const dataFim = ano + '-' + String(mesIdx + 1).padStart(2,'0') + '-10';
+    const { data: aulas } = await supabase.from('schedules').select('id').eq('teacher_id', expense.teacher_id).gte('date', dataInicio).lte('date', dataFim);
+    const totalAulas = aulas?.length || 0;
+    const numComprovante = Date.now().toString().slice(-8);
+    const dataPgto = paymentDate ? new Date(paymentDate + 'T00:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+    const comprovante = [
+      'PROFESSORA DESCOMPLICA - ESPACO PEDAGOGICO',
+      'CNPJ: 55.010.967/0001-46',
+      '---',
+      'COMPROVANTE DE PAGAMENTO',
+      'N: ' + numComprovante,
+      '---',
+      'Professor(a): ' + expense.teacher_name,
+      'Referencia: ' + (expense.month || '') + ' ' + ano,
+      'Periodo: 10/' + String(mesAnteriorIdx + 1).padStart(2,'0') + '/' + anoAnterior + ' a 10/' + String(mesIdx + 1).padStart(2,'0') + '/' + ano,
+      'Aulas realizadas: ' + totalAulas + ' aula(s)',
+      'Valor: ' + Number(expense.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+      'Data pagamento: ' + dataPgto,
+      '---',
+      'Pagamento confirmado!',
+    ].join('\n');
+    const { data: userData } = await supabase.auth.getUser();
+    await supabase.from('messages').insert({
+      sender_id: userData.user?.id,
+      receiver_id: expense.teacher_id,
+      text: comprovante,
+      read: false,
+      created_at: new Date().toISOString(),
+    });
+    toast.success('Comprovante enviado no chat!');
+  };
+
   const markExpenseAsPaid = async () => {
     if (!showPayExpenseModal) return;
     setSaving(true);
