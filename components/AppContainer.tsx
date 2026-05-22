@@ -352,6 +352,16 @@ const BottomNav = ({ activeView, setView, user }: { activeView: View, setView: (
 
 // --- Main Layout ---
 export function AppContainer({ children, activeView, setView, user, onLogout, onOpenChangePassword }: { children: React.ReactNode, activeView: View, setView: (v: View) => void, user: any, onLogout: () => void, onOpenChangePassword?: () => void }) {
+  const [aulasPendentes, setAulasPendentes] = React.useState(0);
+  React.useEffect(() => {
+    const fetchPendentes = async () => {
+      const { count } = await supabase.from('schedules').select('id', { count: 'exact', head: true }).eq('status', 'aguardando_confirmacao');
+      setAulasPendentes(count || 0);
+    };
+    fetchPendentes();
+    const interval = setInterval(fetchPendentes, 30000);
+    return () => clearInterval(interval);
+  }, []);
   const { unreadCount } = useNotifications(user?.id);
   const [unreadMessages, setUnreadMessages] = React.useState(0);
 
