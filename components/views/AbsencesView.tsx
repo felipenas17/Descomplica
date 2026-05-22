@@ -27,6 +27,18 @@ export default function AbsencesView() {
     setLoading(false);
   };
 
+  const confirmLesson = async (id: string) => {
+    await supabase.from('schedules').update({ status: 'concluido', admin_confirmed: true }).eq('id', id);
+    fetchData();
+    toast.success('Aula confirmada! ✅');
+  };
+
+  const rejectLesson = async (id: string) => {
+    await supabase.from('schedules').update({ status: 'cancelado', admin_confirmed: false }).eq('id', id);
+    fetchData();
+    toast.error('Aula recusada!');
+  };
+
   const markNotified = async (id: string, current: boolean) => {
     await supabase.from('schedules').update({ attendance_status: current ? null : 'justificada' }).eq('id', id);
     fetchData();
@@ -155,6 +167,18 @@ export default function AbsencesView() {
                     </div>
                   </div>
                   {/* Ação para marcar justificada */}
+                  {s.status === 'aguardando_confirmacao' && (
+                    <div className="flex gap-2 shrink-0">
+                      <button onClick={() => confirmLesson(s.id)}
+                        className="px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-xs font-bold transition-all">
+                        ✅ Confirmar
+                      </button>
+                      <button onClick={() => rejectLesson(s.id)}
+                        className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-bold transition-all">
+                        ❌ Recusar
+                      </button>
+                    </div>
+                  )}
                   {(s.attendance_status === 'falta' || s.attendance_status === 'Ausente') && (
                     <button onClick={() => markNotified(s.id, false)}
                       className="px-3 py-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg text-xs font-bold transition-all shrink-0">
