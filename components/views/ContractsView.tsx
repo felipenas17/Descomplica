@@ -13,44 +13,49 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
 
 
 function generateContractHTML(contract: any): string {
-  return [
-    '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">',
-    '<title>Contrato - ' + (contract.student_name || '') + '</title>',
-    '<style>body{font-family:Arial,sans-serif;font-size:12pt;margin:2cm;color:#000;line-height:1.5}',
-    'h1{text-align:center;font-size:14pt}h2{font-size:12pt;margin-top:20px;text-transform:uppercase}',
-    '.bold{font-weight:bold}.signature{display:flex;justify-content:space-between;margin-top:60px}',
-    '.signature-line{text-align:center;width:45%}.signature-line hr{border-top:1px solid #000}',
-    'ul{margin:5px 0;padding-left:20px}li{margin-bottom:5px}',
-    '.auth-box{border:1px solid #000;padding:5px;display:inline-block;margin:0 10px}',
-    '@media print{body{margin:1.5cm}}</style></head><body>',
-    '<h1>CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS</h1>',
-    '<p><strong>CONTRATANTE:</strong> ' + (contract.responsible_name || '') + '</p>',
-    '<p>CPF: ' + (contract.responsible_cpf || '___') + ' RG: ' + (contract.responsible_rg || '___') + '</p>',
-    '<p>Endereço: ' + (contract.responsible_address || '___') + '</p>',
-    '<p><strong>CONTRATADA:</strong> DESCOMPLICA EDUCACIONAL LTDA - CNPJ: 55.010.967/0001-46</p>',
-    '<h2>Do Objeto do Contrato</h2>',
-    '<p>Prestação de serviços educacionais ao(à) aluno(a): <strong>' + (contract.student_name || '') + '</strong></p>',
-    '<h2>Do Valor e Forma de Pagamento</h2>',
-    '<ul>',
-    '<li>' + (contract.sessions_per_week || '') + ' atendimento(s)/semana - R$ ' + Number(contract.monthly_value || 0).toFixed(2).replace(".", ",") + '/mês</li>',
-    '<li>Total: ' + (contract.total_months || '') + ' parcelas - vencimento dia ' + (contract.payment_day || '') + '</li>',
-    '<li>Taxa de materiais: R$ ' + Number(contract.materials_fee || 0).toFixed(2).replace(".", ",") + '</li>',
-    '</ul>',
-    '<h2>Dos Atendimentos</h2>',
-    '<p>Dias: ' + (contract.days_of_week || '___') + ' - Horário: ' + (contract.schedule_time || '___') + '</p>',
-    '<h2>Do Direito ao Uso de Imagem</h2>',
-    '<p>' + (contract.image_authorized ? '[X] AUTORIZO' : '[X] NÃO AUTORIZO') + ' o uso de imagem de ' + (contract.student_name || '') + ' em redes sociais.</p>',
-    '<h2>Das Obrigações</h2>',
-    '<ul>',
-    '<li>Acompanhar o progresso do educando e efetuar pagamentos em dia.</li>',
-    '<li>Desmarcar com 24h de antecedência ou apresentar atestado médico.</li>',
-    '</ul>',
-    '<p style="margin-top:30px;">Rio das Ostras, _____ de ' + (contract.start_month || '___') + ' de 2026.</p>',
-    '<div class="signature">',
-    '<div class="signature-line"><hr/><p><strong>CONTRATANTE</strong></p><p>' + (contract.responsible_name || '') + '</p></div>',
-    '<div class="signature-line"><hr/><p><strong>CONTRATADA</strong></p><p>DESCOMPLICA EDUCACIONAL LTDA</p></div>',
-    '</div></body></html>'
-  ].join('');
+  const d = ['div', 'p', 'h1', 'h2', 'ul', 'li', 'strong', 'hr', 'head', 'body', 'html', 'style', 'title', 'meta', 'span'];
+  const o = (tag: string, content: string, attr?: string) => attr ? '<' + tag + ' ' + attr + '>' + content + '</' + tag + '>' : '<' + tag + '>' + content + '</' + tag + '>';
+  const sc = '<' + d[0] + ' class="signature">';
+  const sl = '<' + d[0] + ' class="signature-line">';
+  const hr = '<hr/>';
+  return (
+    '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Contrato</title>' +
+    '<style>body{font-family:Arial,sans-serif;font-size:12pt;margin:2cm}' +
+    'h1{text-align:center}h2{text-transform:uppercase;margin-top:20px}' +
+    '.bold{font-weight:bold}.signature{display:flex;justify-content:space-between;margin-top:60px}' +
+    '.signature-line{text-align:center;width:45%}' +
+    'ul{padding-left:20px}li{margin-bottom:5px}' +
+    '@media print{body{margin:1.5cm}}' +
+    '</style></head><body>' +
+    o('h1', 'CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS') +
+    o('p', o('strong', 'CONTRATANTE:') + ' ' + (contract.responsible_name || '')) +
+    o('p', 'CPF: ' + (contract.responsible_cpf || '___') + ' RG: ' + (contract.responsible_rg || '___')) +
+    o('p', 'Endereço: ' + (contract.responsible_address || '___')) +
+    o('p', o('strong', 'CONTRATADA:') + ' DESCOMPLICA EDUCACIONAL LTDA - CNPJ: 55.010.967/0001-46') +
+    o('h2', 'Do Objeto') +
+    o('p', 'Serviços educacionais ao(à): ' + o('strong', contract.student_name || '')) +
+    o('h2', 'Do Valor') +
+    '<ul>' +
+    o('li', (contract.sessions_per_week || '') + ' atendimento(s)/semana - R$ ' + Number(contract.monthly_value || 0).toFixed(2).replace('.', ',') + '/mês') +
+    o('li', 'Total: ' + (contract.total_months || '') + ' parcelas - vencimento dia ' + (contract.payment_day || '')) +
+    o('li', 'Taxa materiais: R$ ' + Number(contract.materials_fee || 0).toFixed(2).replace('.', ',')) +
+    '</ul>' +
+    o('h2', 'Dos Atendimentos') +
+    o('p', 'Dias: ' + (contract.days_of_week || '___') + ' - Horário: ' + (contract.schedule_time || '___')) +
+    o('h2', 'Uso de Imagem') +
+    o('p', (contract.image_authorized ? '[X] AUTORIZO' : '[X] NÃO AUTORIZO') + ' uso de imagem de ' + (contract.student_name || '')) +
+    o('h2', 'Das Obrigações') +
+    '<ul>' +
+    o('li', 'Acompanhar o progresso e efetuar pagamentos em dia.') +
+    o('li', 'Desmarcar com 24h de antecedência ou apresentar atestado.') +
+    '</ul>' +
+    o('p', 'Rio das Ostras, _____ de ' + (contract.start_month || '___') + ' de 2026.', 'style="margin-top:30px"') +
+    sc +
+    sl + hr + o('p', o('strong', 'CONTRATANTE')) + o('p', contract.responsible_name || '') + '</' + d[0] + '>' +
+    sl + hr + o('p', o('strong', 'CONTRATADA')) + o('p', 'DESCOMPLICA EDUCACIONAL LTDA') + '</' + d[0] + '>' +
+    '</' + d[0] + '>' +
+    '</body></html>'
+  );
 }
 
 export default function ContractsView() {
