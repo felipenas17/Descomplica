@@ -424,22 +424,81 @@ export default function FinanceView() {
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-3">
-          <select value={filterMonth} onChange={e => setFilterMonth(e.target.value)}
-            className="bg-white border border-gray-200 rounded-xl py-2.5 px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-purple-300 shadow-sm">
-            {MONTHS_FULL.map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
-          <input type="number" value={filterYear} onChange={e => setFilterYear(Number(e.target.value))}
-            className="bg-white border border-gray-200 rounded-xl py-2.5 px-4 text-sm font-bold w-24 focus:outline-none focus:ring-2 focus:ring-purple-300 shadow-sm" />
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+        {/* Botões de modo */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex bg-gray-100 p-1 rounded-xl gap-1">
+            {[
+              { key: 'week', label: '📅 Semana' },
+              { key: 'month', label: '📆 Mensal' },
+              { key: 'period', label: '🗓️ Período' },
+              { key: 'year', label: '📊 Anual' },
+            ].map(opt => (
+              <button key={opt.key} onClick={() => setPeriodMode(opt.key as any)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${periodMode === opt.key ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Semanal */}
+          {periodMode === 'week' && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <input type="date" value={filterWeek} onChange={e => setFilterWeek(e.target.value)}
+                className="bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              <span className="text-xs text-purple-600 font-bold">
+                {(() => { const { start, end } = getWeekRange(); return new Date(start + 'T00:00:00').toLocaleDateString('pt-BR') + ' – ' + new Date(end + 'T00:00:00').toLocaleDateString('pt-BR'); })()}
+              </span>
+            </div>
+          )}
+
+          {/* Mensal */}
+          {periodMode === 'month' && (
+            <div className="flex items-center gap-2">
+              <select value={filterMonth} onChange={e => setFilterMonth(e.target.value)}
+                className="bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-purple-300">
+                {MONTHS_FULL.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+              <input type="number" value={filterYear} onChange={e => setFilterYear(Number(e.target.value))}
+                className="bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm font-bold w-24 focus:outline-none focus:ring-2 focus:ring-purple-300" />
+            </div>
+          )}
+
+          {/* Período */}
+          {periodMode === 'period' && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <select value={periodFrom} onChange={e => setPeriodFrom(e.target.value)}
+                className="bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-purple-300">
+                {MONTHS_FULL.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+              <span className="text-gray-400 font-bold text-sm">até</span>
+              <select value={periodTo} onChange={e => setPeriodTo(e.target.value)}
+                className="bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-purple-300">
+                {MONTHS_FULL.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+              <input type="number" value={filterYear} onChange={e => setFilterYear(Number(e.target.value))}
+                className="bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm font-bold w-20 focus:outline-none focus:ring-2 focus:ring-purple-300" />
+            </div>
+          )}
+
+          {/* Anual */}
+          {periodMode === 'year' && (
+            <div className="flex items-center gap-2">
+              <input type="number" value={filterYear} onChange={e => setFilterYear(Number(e.target.value))}
+                className="bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm font-bold w-24 focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              <span className="text-sm font-black text-purple-600">Ano completo {filterYear}</span>
+            </div>
+          )}
         </div>
-        <div className="flex gap-2">
+
+        {/* Botões de ação */}
+        <div className="flex gap-2 flex-wrap">
           <button onClick={() => setShowGenerateModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-purple-200">
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold transition-all">
             <Plus size={16} /> Gerar Mensalidades
           </button>
           <button onClick={() => { setActiveTab('saidas'); setShowExpenseModal(true); }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold transition-all">
+            className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold transition-all">
             <Plus size={16} /> Nova Despesa
           </button>
         </div>
