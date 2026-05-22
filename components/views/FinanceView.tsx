@@ -228,6 +228,8 @@ export default function FinanceView() {
             year: expenseForm.year,
             due_date: dueDate,
             is_recurring: true,
+            teacher_id: expenseForm.teacher_id || null,
+            teacher_name: expenseForm.teacher_name || null,
             status: 'pending',
             created_at: new Date().toISOString(),
           });
@@ -244,6 +246,8 @@ export default function FinanceView() {
           year: expenseForm.year,
           due_date: expenseForm.due_date,
           is_recurring: expenseForm.is_recurring,
+          teacher_id: expenseForm.teacher_id || null,
+          teacher_name: expenseForm.teacher_name || null,
           status: 'pending',
           created_at: new Date().toISOString(),
         });
