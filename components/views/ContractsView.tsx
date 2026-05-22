@@ -11,6 +11,48 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
   cancelled:{ label: 'Cancelado', color: 'bg-red-100 text-red-700', icon: XCircle },
 };
 
+
+function generateContractHTML(contract: any): string {
+  return [
+    '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">',
+    '<title>Contrato - ' + (contract.student_name || '') + '</title>',
+    '<style>body{font-family:Arial,sans-serif;font-size:12pt;margin:2cm;color:#000;line-height:1.5}',
+    'h1{text-align:center;font-size:14pt}h2{font-size:12pt;margin-top:20px;text-transform:uppercase}',
+    '.bold{font-weight:bold}.signature{display:flex;justify-content:space-between;margin-top:60px}',
+    '.signature-line{text-align:center;width:45%}.signature-line hr{border-top:1px solid #000}',
+    'ul{margin:5px 0;padding-left:20px}li{margin-bottom:5px}',
+    '.auth-box{border:1px solid #000;padding:5px;display:inline-block;margin:0 10px}',
+    '@media print{body{margin:1.5cm}}</style></head><body>',
+    '<h1>CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS</h1>',
+    '<p><strong>CONTRATANTE:</strong> ' + (contract.responsible_name || '') + '</p>',
+    '<p>CPF: ' + (contract.responsible_cpf || '___') + ' RG: ' + (contract.responsible_rg || '___') + '</p>',
+    '<p>Endereço: ' + (contract.responsible_address || '___') + '</p>',
+    '<p><strong>CONTRATADA:</strong> DESCOMPLICA EDUCACIONAL LTDA - CNPJ: 55.010.967/0001-46</p>',
+    '<h2>Do Objeto do Contrato</h2>',
+    '<p>Prestação de serviços educacionais ao(à) aluno(a): <strong>' + (contract.student_name || '') + '</strong></p>',
+    '<h2>Do Valor e Forma de Pagamento</h2>',
+    '<ul>',
+    '<li>' + (contract.sessions_per_week || '') + ' atendimento(s)/semana - R$ ' + Number(contract.monthly_value || 0).toFixed(2).replace(".", ",") + '/mês</li>',
+    '<li>Total: ' + (contract.total_months || '') + ' parcelas - vencimento dia ' + (contract.payment_day || '') + '</li>',
+    '<li>Taxa de materiais: R$ ' + Number(contract.materials_fee || 0).toFixed(2).replace(".", ",") + '</li>',
+    '</ul>',
+    '<h2>Dos Atendimentos</h2>',
+    '<p>Dias: ' + (contract.days_of_week || '___') + ' - Horário: ' + (contract.schedule_time || '___') + '</p>',
+    '<h2>Do Direito ao Uso de Imagem</h2>',
+    '<p>' + (contract.image_authorized ? '[X] AUTORIZO' : '[X] NÃO AUTORIZO') + ' o uso de imagem de ' + (contract.student_name || '') + ' em redes sociais.</p>',
+    '<h2>Das Obrigações</h2>',
+    '<ul>',
+    '<li>Acompanhar o progresso do educando e efetuar pagamentos em dia.</li>',
+    '<li>Desmarcar com 24h de antecedência ou apresentar atestado médico.</li>',
+    '</ul>',
+    '<p style="margin-top:30px;">Rio das Ostras, _____ de ' + (contract.start_month || '___') + ' de 2026.</p>',
+    '<div class="signature">',
+    '<div class="signature-line"><hr/><p><strong>CONTRATANTE</strong></p><p>' + (contract.responsible_name || '') + '</p></div>',
+    '<div class="signature-line"><hr/><p><strong>CONTRATADA</strong></p><p>DESCOMPLICA EDUCACIONAL LTDA</p></div>',
+    '</div></body></html>'
+  ].join('');
+}
+
 export default function ContractsView() {
   const [contracts, setContracts] = useState<any[]>([]);
   const [showUploadModal, setShowUploadModal] = useState<any>(null);
@@ -115,7 +157,7 @@ export default function ContractsView() {
     toast.success('Contrato marcado como assinado! ✅');
   };
 
-const printContract = (contract: any) => {
+  const printContract = (contract: any) => {
     const months: Record<string, string> = {
       'janeiro': 'janeiro', 'fevereiro': 'fevereiro', 'março': 'março',
       'abril': 'abril', 'maio': 'maio', 'junho': 'junho',
@@ -123,128 +165,7 @@ const printContract = (contract: any) => {
       'outubro': 'outubro', 'novembro': 'novembro', 'dezembro': 'dezembro'
     };
 
-    const html = `
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Contrato - ${contract.student_name}</title>
-  <style>
-    body { font-family: Arial, sans-serif; font-size: 12pt; margin: 2cm; color: #000; line-height: 1.5; }
-    h1 { text-align: center; font-size: 14pt; margin-bottom: 5px; }
-    h2 { font-size: 12pt; margin-top: 20px; margin-bottom: 5px; text-transform: uppercase; }
-    .header { text-align: right; margin-bottom: 20px; font-size: 10pt; }
-    .center { text-align: center; }
-    .bold { font-weight: bold; }
-    .signature { display: flex; justify-content: space-between; margin-top: 60px; }
-    .signature-line { text-align: center; width: 45%; }
-    .signature-line hr { border-top: 1px solid #000; margin-bottom: 5px; }
-    ul { margin: 5px 0; padding-left: 20px; }
-    li { margin-bottom: 5px; }
-    .auth-box { border: 1px solid #000; padding: 5px; display: inline-block; margin: 0 10px; }
-    @media print { body { margin: 1.5cm; } }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <p>Rua Vicente Viana, 293 – Novo Rio das Ostras – Rio das Ostras - RJ</p>
-    <p>CNPJ: 55.010.967/0001-46</p>
-  </div>
-
-  <h1>CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS - 2026</h1>
-
-  <h2>Responsável Contratante</h2>
-  <p><span class="bold">${contract.responsible_name?.toUpperCase()}</span></p>
-  <p>CPF nº ${contract.responsible_cpf || '___________________'}, Carteira de Identidade nº ${contract.responsible_rg || '___________________'}</p>
-  <p>Logradouro: ${contract.responsible_address || '___________________'}</p>
-
-  <h2>Contratada</h2>
-  <p><span class="bold">DESCOMPLICA EDUCACIONAL LTDA - CNPJ: 55.010.967/0001-46</span></p>
-  <p>Com sede no endereço: Rua Vicente Viana, 293 – Novo Rio das Ostras – Rio das Ostras / RJ.</p>
-
-  <p style="margin-top:15px;">As partes acima identificadas têm, entre si, justo e acertado o presente Contrato de Prestação de Serviços Educacionais para o período do ano letivo de 2026, em benefício do(a) aluno(a) <span class="bold">${contract.student_name?.toUpperCase()}</span>, que se regerá pelas cláusulas seguintes e pelas condições descritas no presente.</p>
-
-  <h2>Da Documentação</h2>
-  <p>Solicita-se que no ato da contratação sejam anexadas ao contrato cópias dos seguintes documentos:</p>
-  <ul>
-    <li>CPF do responsável;</li>
-    <li>RG do responsável;</li>
-    <li>Certidão de Nascimento ou RG do(a) aluno(a);</li>
-    <li>Comprovante de residência atualizado.</li>
-  </ul>
-
-  <h2>Do Preço e Forma de Pagamento</h2>
-  <p>O responsável contratante optou pela seguinte modalidade referente aos serviços oferecidos pela CONTRATADA.</p>
-  <p>Mensalidade referente a quantidade de atendimentos:</p>
-  <ul>
-    <li>${contract.sessions_per_week} atendimento(s) por semana com duração de ${contract.session_duration} minutos – R$ ${Number(contract.monthly_value).toFixed(2).replace('.', ',')}.</li>
-  </ul>
-  <p>O CONTRATANTE deverá usufruir dos serviços prestados da CONTRATADA por ${contract.total_months} meses, divididas em ${contract.total_months} parcelas.</p>
-  <ul>
-    <li>No ato da matrícula o responsável contratante deve efetuar o pagamento da taxa única de materiais no valor de R$ ${Number(contract.materials_fee).toFixed(2).replace('.', ',')}.</li>
-    <li>As mensalidades deverão ser pagas no mês vigente, somando um total de ${contract.total_months} parcelas iguais e consecutivas referente aos meses de ${contract.start_month} à dezembro, vencíveis, respectivamente, no dia ${contract.payment_day} (${contract.payment_day === 7 ? 'sete' : contract.payment_day}) de cada mês do ano letivo de 2026. O pagamento será efetuado via boleto bancário.</li>
-    <li>Aulas avulsas são ofertadas para situações esporádicas. Não reservamos horário fixo para atendimentos avulsos.</li>
-    <li>Aos responsáveis que optarem pelo pagamento anual terão desconto de 8% no valor total.</li>
-    <li>Será concedido um desconto de 5% na mensalidade do 2º(segundo) irmão.</li>
-  </ul>
-
-  <h2>Do Dia e Horário de Atendimento</h2>
-  <ul>
-    <li>Os atendimentos serão realizados ${contract.days_of_week ? 'nas ' + contract.days_of_week : '___________________'}, no horário ${contract.schedule_time || '___________________'}.</li>
-    <li>Cada atendimento terá ${contract.session_duration} minutos de duração.</li>
-    <li>Os atendimentos que coincidirem com feriados e recessos escolares não serão repostos e não haverá estorno de valores.</li>
-    <li>Não será permitida a redução da carga horária do aluno durante a vigência deste contrato.</li>
-  </ul>
-
-  <h2>São Obrigações do Contratante</h2>
-  <ul>
-    <li>Acompanhar o progresso dos estudos do(a) educando(a).</li>
-    <li>Efetuar os pagamentos dentro do prazo conforme disposto neste contrato.</li>
-    <li>Os atendimentos deverão ser desmarcados com no mínimo de <span class="bold">24 horas</span> de antecedência ou mediante a apresentação de <span class="bold">atestado e declaração médica</span>.</li>
-    <li>A reposição dos atendimentos, previamente justificados, serão remarcados de acordo com a disponibilidade de horário na agenda da CONTRATADA.</li>
-  </ul>
-
-  <h2>São Obrigações da Contratada</h2>
-  <ul>
-    <li>Ofertar serviço educacional de qualidade.</li>
-    <li>Atender o educando com pontualidade.</li>
-    <li>Orientar, monitorar e auxiliar o educando durante os atendimentos.</li>
-    <li>Atender o educando nos horários e dias estabelecidos em contrato.</li>
-  </ul>
-
-  <h2>Do Trabalho Pedagógico</h2>
-  <p>A CONTRATADA busca desenvolver um trabalho de qualidade, sério, personalizado e individualizado com todos os educandos matriculados.</p>
-
-  <h2>Do Direito ao Uso de Imagem</h2>
-  <p>
-    <span class="auth-box">${contract.image_authorized ? 'X' : '&nbsp;&nbsp;'}</span> AUTORIZO &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-    <span class="auth-box">${!contract.image_authorized ? 'X' : '&nbsp;&nbsp;'}</span> NÃO AUTORIZO
-  </p>
-  <p>A CONTRATADA usar a imagem do meu filho(a) <span class="bold">${contract.student_name?.toUpperCase()}</span> em redes sociais e demais mídias digitais.</p>
-
-  <h2>Da Inadimplência, Desistência e Rescisão</h2>
-  <ul>
-    <li>No caso de desistência, o CONTRATANTE se obriga a pagar multa equivalente a 3 (três) meses de atendimento.</li>
-    <li>Em caso de inadimplência por 90 dias ou mais, a CONTRATADA poderá utilizar meios administrativos e judiciais para cobrança.</li>
-    <li>Após 30 dias de inadimplência, as aulas serão suspensas até regularização dos débitos.</li>
-  </ul>
-
-  <p style="margin-top:30px;">Rio das Ostras, _____ de ${contract.start_month || '_______________'} de 2026.</p>
-
-  <div class="signature">
-    <div class="signature-line">
-      <hr/>
-      <p><span class="bold">RESPONSÁVEL CONTRATANTE</span></p>
-      <p>${contract.responsible_name?.toUpperCase()}</p>
-    </div>
-    <div class="signature-line">
-      <hr/>
-      <p><span class="bold">CONTRATADA</span></p>
-      <p>DESCOMPLICA EDUCACIONAL LTDA</p>
-    </div>
-  </div>
-</body>
-</html>`;
+    const html = generateContractHTML(contract);
 
     const win = window.open('', '_blank');
     if (win) {
