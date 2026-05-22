@@ -46,7 +46,8 @@ export default function FinanceView() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'entradas' | 'saidas'>('dashboard');
   const [filterMonth, setFilterMonth] = useState(MONTHS_FULL[new Date().getMonth()]);
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
-  const [periodMode, setPeriodMode] = useState<'month' | 'period' | 'year'>('month');
+  const [periodMode, setPeriodMode] = useState<'month' | 'period' | 'year' | 'week'>('month');
+  const [filterWeek, setFilterWeek] = useState(new Date().toISOString().split('T')[0]);
   const [periodFrom, setPeriodFrom] = useState(MONTHS_FULL[0]);
   const [periodTo, setPeriodTo] = useState(MONTHS_FULL[new Date().getMonth()]);
   const [showPayModal, setShowPayModal] = useState<any>(null);
@@ -85,7 +86,19 @@ export default function FinanceView() {
     setLoading(false);
   };
 
+  const getWeekRange = () => {
+    const d = new Date(filterWeek + 'T00:00:00');
+    const day = d.getDay();
+    const start = new Date(d); start.setDate(d.getDate() - day);
+    const end = new Date(d); end.setDate(d.getDate() + (6 - day));
+    return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+  };
+
   const monthPayments = payments.filter(p => {
+    if (periodMode === 'week') {
+      const { start, end } = getWeekRange();
+      return p.due_date >= start && p.due_date <= end;
+    }
     if (periodMode === 'month') return p.month === filterMonth && p.year === filterYear;
     if (periodMode === 'year') return p.year === filterYear;
     const fromIdx = MONTHS_FULL.indexOf(periodFrom);
@@ -94,6 +107,10 @@ export default function FinanceView() {
     return p.year === filterYear && mIdx >= fromIdx && mIdx <= toIdx;
   });
   const monthExpenses = expenses.filter(e => {
+    if (periodMode === 'week') {
+      const { start, end } = getWeekRange();
+      return e.due_date >= start && e.due_date <= end;
+    }
     if (periodMode === 'month') return e.month === filterMonth && e.year === filterYear;
     if (periodMode === 'year') return e.year === filterYear;
     const fromIdx = MONTHS_FULL.indexOf(periodFrom);
