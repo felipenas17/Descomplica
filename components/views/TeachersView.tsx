@@ -1,15 +1,7 @@
 'use client';
 
 import React from 'react';
-import { 
-  Plus, 
-  Trash2, 
-  Mail, 
-  Award,
-  Video,
-  UserCheck,
-  ShieldCheck,
-} from 'lucide-react';
+import { Plus, Trash2, Mail, Award, Video, UserCheck, ShieldCheck, Pencil, X, Clock, ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { Avatar } from '@/components/ui/Avatar';
