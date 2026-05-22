@@ -33,8 +33,7 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
   const [feedbackLesson, setFeedbackLesson] = useState<any>(null);
   const [savingFeedback, setSavingFeedback] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackForm>({
-    rating: 5, performance: 'Bom', attendance: 'Presente',
-    notes: '', homework_given: false, homework_description: ''
+    attendance: 'Presente', discipline: '', content: '', resources: '', notes: ''
   });
 
   const monthDays = useMemo(() => {
@@ -85,7 +84,7 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
 
   const openFeedback = (lesson: any) => {
     setFeedbackLesson(lesson);
-    setFeedback({ rating: 5, performance: 'Bom', attendance: 'Presente', notes: '', homework_given: false, homework_description: '' });
+    setFeedback({ attendance: 'Presente', discipline: '', content: '', resources: '', notes: '' });
   };
 
   const saveFeedback = async () => {
@@ -165,7 +164,7 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
           supabase.from('notifications').insert({
             user_id: admin.id,
             title: 'Feedback de aula recebido! 📝',
-            message: `${user?.name || 'Professor'} finalizou a aula de ${feedbackLesson.subject} com ${feedbackLesson.student_name}. Desempenho: ${feedback.performance}. Nota: ${feedback.rating}/5.`,
+            message: `${user?.name || 'Professor'} finalizou a aula de ${feedbackLesson.subject} com ${feedbackLesson.student_name}. Presença: ${feedback.attendance}.`,
             type: 'info',
             read: false,
             created_at: new Date().toISOString(),
@@ -346,41 +345,11 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
             </div>
 
             <div className="p-6 space-y-5">
-              {/* Avaliação */}
-              <div>
-                <label className="text-xs font-black text-gray-500 uppercase tracking-wider block mb-2">Avaliação da Aula</label>
-                <div className="flex gap-2">
-                  {[1,2,3,4,5].map(star => (
-                    <button key={star} onClick={() => setFeedback(f => ({ ...f, rating: star }))}
-                      className="transition-transform hover:scale-110">
-                      <Star size={28} className={star <= feedback.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'} />
-                    </button>
-                  ))}
-                  <span className="ml-2 text-sm font-bold text-gray-600 self-center">{feedback.rating}/5</span>
-                </div>
-              </div>
-
-              {/* Desempenho */}
-              <div>
-                <label className="text-xs font-black text-gray-500 uppercase tracking-wider block mb-2">Desempenho do Aluno</label>
-                <div className="flex gap-2 flex-wrap">
-                  {['Excelente', 'Bom', 'Regular', 'Ruim'].map(p => (
-                    <button key={p} onClick={() => {
-                      const ratingMap: Record<string, number> = { Excelente: 5, Bom: 4, Regular: 3, Ruim: 2 };
-                      setFeedback(f => ({ ...f, performance: p, rating: ratingMap[p] }));
-                    }}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${feedback.performance === p ? 'bg-purple-600 text-white border-purple-600' : 'border-gray-200 text-gray-600 hover:border-purple-300'}`}>
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Presença */}
               <div>
                 <label className="text-xs font-black text-gray-500 uppercase tracking-wider block mb-2">Presença</label>
-                <div className="flex gap-2">
-                  {['Presente', 'Ausente', 'Atrasado'].map(a => (
+                <div className="flex gap-2 flex-wrap">
+                  {['Presente', 'Ausente', 'Justificada'].map(a => (
                     <button key={a} onClick={() => setFeedback(f => ({ ...f, attendance: a }))}
                       className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${feedback.attendance === a ? 'bg-purple-600 text-white border-purple-600' : 'border-gray-200 text-gray-600 hover:border-purple-300'}`}>
                       {a}
@@ -389,28 +358,43 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
                 </div>
               </div>
 
-              {/* Dever de casa */}
+              {/* Disciplina */}
               <div>
-                <label className="text-xs font-black text-gray-500 uppercase tracking-wider block mb-2">Dever de Casa</label>
-                <div className="flex gap-2 mb-2">
-                  {[{ label: 'Sim', val: true }, { label: 'Não', val: false }].map(opt => (
-                    <button key={opt.label} onClick={() => setFeedback(f => ({ ...f, homework_given: opt.val }))}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${feedback.homework_given === opt.val ? 'bg-purple-600 text-white border-purple-600' : 'border-gray-200 text-gray-600 hover:border-purple-300'}`}>
-                      {opt.label}
+                <label className="text-xs font-black text-gray-500 uppercase tracking-wider block mb-2">Disciplina</label>
+                <input type="text" placeholder="Ex: Matemática, Português..." value={feedback.discipline}
+                  onChange={e => setFeedback(f => ({ ...f, discipline: e.target.value }))}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              </div>
+
+              {/* Conteúdo Abordado */}
+              <div>
+                <label className="text-xs font-black text-gray-500 uppercase tracking-wider block mb-2">Conteúdo Abordado</label>
+                <textarea rows={2} placeholder="O que foi trabalhado na aula?" value={feedback.content}
+                  onChange={e => setFeedback(f => ({ ...f, content: e.target.value }))}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              </div>
+
+              {/* Recursos Utilizados */}
+              <div>
+                <label className="text-xs font-black text-gray-500 uppercase tracking-wider block mb-2">Recursos Utilizados</label>
+                <div className="flex flex-wrap gap-2">
+                  {['Apostila','Caderno','Vídeo','Exercícios','Livro','Quadro','Material Digital'].map(r => (
+                    <button key={r} onClick={() => {
+                      const current = feedback.resources ? feedback.resources.split(', ').filter(Boolean) : [];
+                      const updated = current.includes(r) ? current.filter(x => x !== r) : [...current, r];
+                      setFeedback(f => ({ ...f, resources: updated.join(', ') }));
+                    }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${feedback.resources?.includes(r) ? 'bg-purple-600 text-white border-purple-600' : 'border-gray-200 text-gray-600 hover:border-purple-300'}`}>
+                      {r}
                     </button>
                   ))}
                 </div>
-                {feedback.homework_given && (
-                  <input type="text" placeholder="Descreva o dever..." value={feedback.homework_description}
-                    onChange={e => setFeedback(f => ({ ...f, homework_description: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
-                )}
               </div>
 
               {/* Observações */}
               <div>
                 <label className="text-xs font-black text-gray-500 uppercase tracking-wider block mb-2">Observações</label>
-                <textarea rows={3} placeholder="O que foi abordado na aula? Pontos de atenção..." value={feedback.notes}
+                <textarea rows={3} placeholder="Pontos de atenção, próximos passos..." value={feedback.notes}
                   onChange={e => setFeedback(f => ({ ...f, notes: e.target.value }))}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300" />
               </div>
