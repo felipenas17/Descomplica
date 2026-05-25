@@ -33,7 +33,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useNotifications } from '@/hooks/useNotifications';
 
 // --- Shared Types ---
-export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials' | 'messages' | 'notifications' | 'absences' | 'contracts' | 'teacher_feedbacks' | 'teacher_evaluations';
+export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials' | 'messages' | 'notifications' | 'absences' | 'contracts' | 'teacher_feedbacks' | 'teacher_evaluations' | 'teacher_contracts';
 
 interface SearchResult {
   id: string;
@@ -95,6 +95,7 @@ const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, un
           <NavItem icon={MessageSquareQuote} label="Feedbacks" active={activeView === 'feedbacks'} onClick={() => setView('feedbacks')} />
           <NavItem icon={UserX} label="Controle de Aulas" active={activeView === 'absences'} onClick={() => setView('absences')} badge={aulasPendentes > 0 ? aulasPendentes : undefined} />
           <NavItem icon={FileText} label="Contratos" active={activeView === 'contracts'} onClick={() => setView('contracts')} />
+          <NavItem icon={FileText} label="Contratos Professores" active={activeView === 'teacher_contracts'} onClick={() => setView('teacher_contracts')} />
           <NavItem icon={Star} label="Avaliar Professores" active={activeView === 'teacher_evaluations'} onClick={() => setView('teacher_evaluations')} />
           <NavItem icon={ShieldCheck} label="Usuários" active={activeView === 'users'} onClick={() => setView('users')} />
         </>
@@ -392,10 +393,12 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
     absences: 'Controle de Aulas',
     contracts: 'Contratos',
     teacher_feedbacks: 'Meus Feedbacks',
-    teacher_evaluations: 'Avaliação de Professores',
+    teacher_evaluations: 'Avaliacao de Professores',
+    teacher_contracts: 'Contratos de Professores',
     contracts: 'Contratos',
     teacher_feedbacks: 'Meus Feedbacks',
-    teacher_evaluations: 'Avaliação de Professores'
+    teacher_evaluations: 'Avaliacao de Professores',
+    teacher_contracts: 'Contratos de Professores'
   };
 
   return (
