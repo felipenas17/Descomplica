@@ -88,7 +88,8 @@ export default function TeacherContractsView() {
       const { error: upErr } = await supabase.storage.from('materials').upload(path, uploadFile, { upsert: true });
       if (upErr) throw upErr;
       const { data } = supabase.storage.from('materials').getPublicUrl(path);
-      await supabase.from('teacher_contracts').update({ status: 'signed', signed_file_url: data.publicUrl }).eq('id', showUploadModal.id);
+      const { error: updateErr } = await supabase.from('teacher_contracts').update({ status: 'signed', signed_file_url: data.publicUrl }).eq('id', showUploadModal.id);
+      if (updateErr) throw updateErr;
       toast.success('Contrato assinado salvo!');
       setShowUploadModal(null);
       setUploadFile(null);
