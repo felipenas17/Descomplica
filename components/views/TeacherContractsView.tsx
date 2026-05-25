@@ -45,6 +45,13 @@ export default function TeacherContractsView() {
     setLoading(false);
   };
 
+  const deleteContract = async (id: string) => {
+    if (!confirm('Excluir este contrato?')) return;
+    await supabase.from('teacher_contracts').delete().eq('id', id);
+    fetchData();
+    toast.success('Contrato excluído!');
+  };
+
   const generateContract = async () => {
     if (!form.teacher_id) { toast.error('Selecione um professor!'); return; }
     setSaving(true);
@@ -164,6 +171,10 @@ export default function TeacherContractsView() {
                     </div>
                   </div>
                   <div className="flex gap-2 shrink-0 flex-wrap">
+                    <button onClick={() => deleteContract(contract.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-bold transition-all">
+                      🗑
+                    </button>
                     <button onClick={() => printContract(contract)}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold transition-all">
                       <Eye size={12} /> Visualizar
