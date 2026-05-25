@@ -28,6 +28,7 @@ import {
 import { NotificationDropdown } from './NotificationDropdown';
 import { Avatar } from './ui/Avatar';
 import { supabase } from '@/lib/supabase';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useNotifications } from '@/hooks/useNotifications';
 
@@ -353,6 +354,7 @@ const BottomNav = ({ activeView, setView, user }: { activeView: View, setView: (
 // --- Main Layout ---
 export function AppContainer({ children, activeView, setView, user, onLogout, onOpenChangePassword }: { children: React.ReactNode, activeView: View, setView: (v: View) => void, user: any, onLogout: () => void, onOpenChangePassword?: () => void }) {
   const [aulasPendentes, setAulasPendentes] = React.useState(0);
+  const { supported, subscribed, subscribe } = usePushNotifications(user?.id);
   React.useEffect(() => {
     const fetchPendentes = async () => {
       const { count } = await supabase.from('schedules').select('id', { count: 'exact', head: true }).eq('status', 'aguardando_confirmacao');
