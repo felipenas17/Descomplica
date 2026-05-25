@@ -512,7 +512,7 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
             );
           })()}
 
-          {viewMode === 'grid' && loading ? (
+          {viewMode === 'grid' && loading && !error ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {[1, 2, 3, 4].map(i => (
                 <div key={i} className="h-48 bg-white rounded-[2rem] animate-pulse border border-gray-100" />
