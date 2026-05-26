@@ -325,6 +325,7 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
   });
 
   const subjects = ['Todas', ...Array.from(new Set((materials || []).map(m => m.subject).filter(Boolean)))];
+  const gridMaterials = viewMode === 'grid' ? filteredMaterials : [];
 
   if (!isMounted) return null;
 
@@ -532,7 +533,7 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {(filteredMaterials || []).map((material) => (
+              {(gridMaterials || []).map((material) => (
                 <motion.div 
                   key={material.id}
                   initial={{ opacity: 0, scale: 0.95 }}
