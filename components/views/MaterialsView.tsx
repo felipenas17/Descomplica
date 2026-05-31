@@ -1,804 +1,465 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  FileText, 
-  Upload, 
-  Search, 
-  Filter, 
-  Download, 
-  Trash2, 
-  BookOpen, 
-  Calendar,
-  X,
-  CheckCircle2,
-  AlertCircle,
-  FileBox,
-  Folder,
-  FolderOpen,
-  ChevronRight,
-  Grid
-} from 'lucide-react';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { motion, AnimatePresence } from 'motion/react';
+import { useState, useEffect, useRef } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 
 interface Material {
   id: string;
   title: string;
+  type: string;
   subject: string;
-  description: string;
-  file_url: string;
-  uploaded_by: string;
-  uploader_name: string;
-  created_at: string;
-  type: 'Revisão' | 'Exercícios' | 'Teoria';
-  level: string;
   grade: string;
-  file_size?: number;
+  file_url: string;
+  created_at: string;
+  approval_status: ApprovalStatus;
+  rejection_reason?: string;
+  uploaded_by_role?: string;
+  uploaded_by_id?: string;
+  reviewed_at?: string;
+  resubmitted_at?: string;
 }
 
 interface MaterialsViewProps {
-  user: {
-    role: 'admin' | 'professor';
-    name: string;
-    id?: string;
-    email?: string;
-  };
+  userRole: 'admin' | 'teacher';
+  userId: string;
 }
 
-export default function MaterialsView({ user }: MaterialsViewProps) {
-  const [materials, setMaterials] = useState<Material[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [previewUrl, setPreviewUrl] = useState('');
-  const [previewTitle, setPreviewTitle] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterSubject, setFilterSubject] = useState('Todas');
-  const [filterType, setFilterType] = useState('Todos');
-  const [expandedGrade, setExpandedGrade] = useState<string | null>(null);
-  const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'folders' | 'grid'>('folders');
-  const [uploadStatus, setUploadStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+const TYPES = ['Lista de Exercícios', 'Apostila', 'Resumo', 'Template', 'Jogos', 'Revisão', 'Teoria'];
+const GRADES = ['1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano', 'Ensino Médio'];
+const SUBJECTS = ['Matemática', 'Português', 'Ciências', 'História', 'Geografia', 'Inglês', 'Física', 'Química', 'Biologia', 'Artes'];
 
-  // Form State
-  const [newTitle, setNewTitle] = useState('');
-  const [newSubject, setNewSubject] = useState('');
-  const [newType, setNewType] = useState<'Revisão' | 'Exercícios' | 'Teoria'>('Exercícios');
-  const [newLevel, setNewLevel] = useState('');
-  const [newGrade, setNewGrade] = useState('1º Ano - Fundamental');
-  const [newDescription, setNewDescription] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+const STATUS_CONFIG: Record<ApprovalStatus, { label: string; color: string; bg: string; icon: string }> = {
+  pending:  { label: 'Aguardando',  color: '#d97706', bg: '#fef3c7', icon: '⏳' },
+  approved: { label: 'Aprovado',    color: '#059669', bg: '#d1fae5', icon: '✅' },
+  rejected: { label: 'Reprovado',   color: '#dc2626', bg: '#fee2e2', icon: '❌' },
+};
 
-  const fetchMaterials = useCallback(async () => {
-    if (!isSupabaseConfigured) {
-      setError('Supabase não configurado. Verifique as variáveis de ambiente.');
-      setLoading(false);
-      return;
-    }
+export default function MaterialsView({ userRole, userId }: MaterialsViewProps) {
+  const [materials, setMaterials]             = useState<Material[]>([]);
+  const [loading, setLoading]                 = useState(true);
+  const [activeTab, setActiveTab]             = useState<'biblioteca' | 'meus_envios' | 'pendentes'>('biblioteca');
+  const [viewMode, setViewMode]               = useState<'pastas' | 'grade'>('pastas');
+  const [selectedGrade, setSelectedGrade]     = useState<string | null>(null);
+  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm]           = useState('');
+  const [showUpload, setShowUpload]           = useState(false);
+  const [uploadForm, setUploadForm]           = useState({ title: '', type: '', subject: '', grade: '' });
+  const [uploadFile, setUploadFile]           = useState<File | null>(null);
+  const [uploading, setUploading]             = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [reviewModal, setReviewModal]         = useState<{ material: Material | null; action: 'approve' | 'reject' | null }>({ material: null, action: null });
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [reviewLoading, setReviewLoading]     = useState(false);
+  const [resubmitModal, setResubmitModal]     = useState<Material | null>(null);
+  const [resubmitFile, setResubmitFile]       = useState<File | null>(null);
+  const resubmitFileRef = useRef<HTMLInputElement>(null);
+  const [resubmitLoading, setResubmitLoading] = useState(false);
+  const [previewUrl, setPreviewUrl]           = useState<string | null>(null);
 
+  const fetchMaterials = async () => {
     setLoading(true);
-    setError(null);
-    
-    try {
-      console.log('[MaterialsView] Iniciando busca de materiais...');
-      const { data, error: supabaseError } = await supabase
-        .from('materials')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (supabaseError) {
-        console.error('[MaterialsView] Erro na query do Supabase:', JSON.stringify(supabaseError, null, 2));
-        throw new Error(supabaseError.message || 'Erro ao carregar materiais do banco de dados.');
-      }
-      
-      if (!data) {
-        console.warn('[MaterialsView] Resposta do banco veio vazia (null)');
-        setMaterials([]);
-      } else {
-        console.log(`[MaterialsView] ${data.length} materiais carregados com sucesso.`);
-        setMaterials(data as Material[]);
-      }
-    } catch (err: any) {
-      const errorMessage = err.message || 'Ocorreu um erro inesperado ao buscar materiais.';
-      console.error('[MaterialsView] Erro fatal no fetch:', err);
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    setIsMounted(true);
-    const controller = new AbortController();
-    
-    fetchMaterials();
-
-    return () => {
-      controller.abort();
-    };
-  }, [fetchMaterials]);
-
-  const validateBucket = async () => {
-    try {
-      const { data, error } = await supabase.storage.getBucket('materials');
-      if (error) {
-        console.warn('[MaterialsView] Balde "materials" não encontrado ou inacessível:', error.message);
-        return false;
-      }
-      return !!data;
-    } catch {
-      return false;
-    }
+    const { data, error } = await supabase
+      .from('materials')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (!error && data) setMaterials(data as Material[]);
+    setLoading(false);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  useEffect(() => { fetchMaterials(); }, []);
 
-    const validTypes = [
-      'application/pdf', 
-      'application/msword', 
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'image/jpeg',
-      'image/jpg',
-      'image/png',
-      'image/webp'
-    ];
-    
-    // Limite de 10MB
-    if (file.size > 10 * 1024 * 1024) {
-      setUploadStatus({ type: 'error', message: 'Arquivo muito grande. O limite é 10MB.' });
+  const biblioteca = materials.filter(m =>
+    m.approval_status === 'approved' &&
+    (!searchTerm || m.title.toLowerCase().includes(searchTerm.toLowerCase())) &&
+    (!selectedGrade   || m.grade   === selectedGrade) &&
+    (!selectedSubject || m.subject === selectedSubject)
+  );
+
+  const meusEnvios = materials.filter(m => m.uploaded_by_id === userId);
+  const pendentes  = materials.filter(m => m.approval_status === 'pending');
+
+  const handleUpload = async () => {
+    if (!uploadFile || !uploadForm.title || !uploadForm.type || !uploadForm.subject || !uploadForm.grade) {
+      alert('Preencha todos os campos e selecione um arquivo.');
       return;
     }
-
-    if (!validTypes.includes(file.type)) {
-      setUploadStatus({ type: 'error', message: 'Formato inválido. Use PDF, Word ou Imagens.' });
-      return;
+    setUploading(true);
+    const path = 'materials/' + Date.now() + '_' + uploadFile.name;
+    const { error: storageError } = await supabase.storage.from('materials').upload(path, uploadFile);
+    if (storageError) { alert('Erro ao enviar arquivo.'); setUploading(false); return; }
+    const { data: urlData } = supabase.storage.from('materials').getPublicUrl(path);
+    const status: ApprovalStatus = userRole === 'teacher' ? 'pending' : 'approved';
+    const { error: dbError } = await supabase.from('materials').insert({
+      title: uploadForm.title, type: uploadForm.type, subject: uploadForm.subject,
+      grade: uploadForm.grade, file_url: urlData.publicUrl,
+      approval_status: status, uploaded_by_role: userRole, uploaded_by_id: userId,
+    });
+    if (dbError) { alert('Erro ao salvar material.'); }
+    else {
+      alert(userRole === 'teacher' ? '✅ Enviado! Aguardando aprovação.' : '✅ Material publicado!');
+      setShowUpload(false);
+      setUploadForm({ title: '', type: '', subject: '', grade: '' });
+      setUploadFile(null);
+      fetchMaterials();
     }
-
-    setSelectedFile(file);
-    setUploadStatus(null);
+    setUploading(false);
   };
 
-  const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedFile || !isSupabaseConfigured) {
-      setUploadStatus({ type: 'error', message: 'Certifique-se de que o arquivo foi selecionado e o banco está configurado.' });
+  const handleReview = async () => {
+    if (!reviewModal.material) return;
+    if (reviewModal.action === 'reject' && !rejectionReason.trim()) {
+      alert('Informe o motivo da reprovação.');
       return;
     }
-
-    setIsUploading(true);
-    setUploadStatus(null);
-
-    try {
-      console.log('[MaterialsView] Iniciando upload:', selectedFile.name);
-      
-      // Validar bucket antes de tentar o upload
-      let publicUrl = '';
-      
-      if (true) {
-        const fileExt = selectedFile.name.split('.').pop();
-        const fileName = `${crypto.randomUUID()}.${fileExt}`;
-        const filePath = `materials/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('materials')
-          .upload(filePath, selectedFile, {
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabase.storage
-          .from('materials')
-          .getPublicUrl(filePath);
-          
-        publicUrl = urlData.publicUrl;
-      } else {
-        console.warn('[MaterialsView] Bucket não configurado. Usando URL temporária para fins de demonstração.');
-        publicUrl = '#'; // Fallback se o storage não estiver provisionado
-      }
-
-      // 2. Save metadata to DB
-      const materialData = {
-        title: newTitle.trim(),
-        subject: newSubject.trim(),
-        type: newType,
-        level: newLevel.trim(),
-        grade: newGrade,
-        description: newDescription.trim(),
-        file_url: publicUrl,
-        uploader_name: user?.name || 'Sistema',
-        uploaded_by: user?.id || null,
-        file_size: selectedFile.size
-      };
-
-      const { error: dbError } = await supabase.from('materials').insert([materialData]);
-
-      if (dbError) throw dbError;
-
-      console.log('[MaterialsView] Material cadastrado com sucesso.');
-      setUploadStatus({ type: 'success', message: 'Material enviado com sucesso!' });
-      setShowUploadModal(false);
-      resetForm();
-      await fetchMaterials();
-      
-      setTimeout(() => setUploadStatus(null), 5000);
-
-    } catch (err: any) {
-      console.error('[MaterialsView] Erro durante o processo de upload:', err);
-      setUploadStatus({ 
-        type: 'error', 
-        message: `Falha no envio: ${err.message || 'Erro desconhecido'}` 
+    setReviewLoading(true);
+    const { error } = await supabase.from('materials').update({
+      approval_status:  reviewModal.action === 'approve' ? 'approved' : 'rejected',
+      reviewed_by_id:   userId,
+      reviewed_at:      new Date().toISOString(),
+      rejection_reason: reviewModal.action === 'reject' ? rejectionReason : null,
+    }).eq('id', reviewModal.material.id);
+    if (error) { alert('Erro ao revisar.'); }
+    else {
+      await supabase.from('notifications').insert({
+        user_id: reviewModal.material.uploaded_by_id,
+        title:   reviewModal.action === 'approve'
+          ? '✅ Material "' + reviewModal.material.title + '" aprovado!'
+          : '❌ Material "' + reviewModal.material.title + '" reprovado',
+        message: reviewModal.action === 'approve'
+          ? 'Seu material foi aprovado e já está na biblioteca.'
+          : 'Motivo: ' + rejectionReason,
+        type: reviewModal.action === 'approve' ? 'success' : 'warning',
       });
-    } finally {
-      setIsUploading(false);
+      setReviewModal({ material: null, action: null });
+      setRejectionReason('');
+      fetchMaterials();
     }
+    setReviewLoading(false);
   };
 
-  const resetForm = () => {
-    setNewTitle('');
-    setNewSubject('');
-    setNewType('Exercícios');
-    setNewLevel('');
-    setNewDescription('');
-    setSelectedFile(null);
+  const handleResubmit = async () => {
+    if (!resubmitModal || !resubmitFile) { alert('Selecione o arquivo corrigido.'); return; }
+    setResubmitLoading(true);
+    const path = 'materials/' + Date.now() + '_' + resubmitFile.name;
+    const { error: storageError } = await supabase.storage.from('materials').upload(path, resubmitFile);
+    if (storageError) { alert('Erro ao enviar arquivo.'); setResubmitLoading(false); return; }
+    const { data: urlData } = supabase.storage.from('materials').getPublicUrl(path);
+    const { error } = await supabase.from('materials').update({
+      file_url: urlData.publicUrl, approval_status: 'pending',
+      rejection_reason: null, resubmitted_at: new Date().toISOString(),
+    }).eq('id', resubmitModal.id);
+    if (error) { alert('Erro ao reenviar.'); }
+    else {
+      await supabase.from('notifications').insert({
+        title:   '📤 Material reenviado: "' + resubmitModal.title + '"',
+        message: 'Professor corrigiu o material e aguarda sua aprovação.',
+        type:    'info',
+      });
+      alert('✅ Reenviado! Aguardando aprovação.');
+      setResubmitModal(null);
+      setResubmitFile(null);
+      fetchMaterials();
+    }
+    setResubmitLoading(false);
   };
 
-  const handleDelete = async (id: string, uploadedBy: string) => {
-    const isOwner = user.id && uploadedBy === user.id;
-    const isAdmin = user.role === 'admin';
-    
-    if (!isAdmin && !isOwner) {
-      setUploadStatus({ type: 'error', message: 'Você só pode excluir seus próprios materiais.' });
-      return;
-    }
+  const gradeGroups    = Array.from(new Set(biblioteca.map(m => m.grade))).sort();
+  const subjectsForGrade = selectedGrade
+    ? Array.from(new Set(biblioteca.filter(m => m.grade === selectedGrade).map(m => m.subject))).sort()
+    : [];
+  const materialsForView = selectedGrade && selectedSubject
+    ? biblioteca.filter(m => m.grade === selectedGrade && m.subject === selectedSubject)
+    : biblioteca;
 
-    if (!confirm('Tem certeza que deseja excluir este material?')) return;
-
-    try {
-      console.log(`[MaterialsView] Excluindo material ${id}...`);
-      const { error: deleteError } = await supabase.from('materials').delete().eq('id', id);
-      
-      if (deleteError) {
-        console.error('[MaterialsView] Erro ao excluir do banco:', deleteError);
-        throw new Error(deleteError.message || 'Erro ao remover material.');
-      }
-      
-      console.log('[MaterialsView] Material excluído com sucesso.');
-      setUploadStatus({ type: 'success', message: 'Material removido.' });
-      await fetchMaterials();
-    } catch (err: any) {
-      console.error('[MaterialsView] Erro fatal na exclusão:', err);
-      setUploadStatus({ type: 'error', message: 'Erro ao excluir: ' + (err.message || 'Erro desconhecido') });
-    }
-  };
-
-  const handleDownload = async (fileUrl: string, title: string) => {
-    if (!fileUrl || fileUrl === '#') {
-      setUploadStatus({ type: 'error', message: 'URL do arquivo inválida.' });
-      return;
-    }
-    
-    try {
-      const response = await fetch(fileUrl);
-      if (!response.ok) throw new Error('Falha ao baixar arquivo do servidor.');
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      
-      // Get extension from URL
-      const extension = fileUrl.split('.').pop()?.split('?')[0] || '';
-      const fullFileName = extension && !title.toLowerCase().endsWith(`.${extension.toLowerCase()}`) 
-        ? `${title}.${extension}` 
-        : title;
-      
-      a.href = url;
-      a.download = fullFileName;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (err: any) {
-      console.error('Erro no download:', err);
-      // Fallback to simple open if blob fails
-      const a = document.createElement('a');
-      a.href = fileUrl;
-      a.target = '_blank';
-      a.download = title;
-      a.click();
-    }
-  };
-
-  const filteredMaterials = (materials || []).filter(m => {
-    const matchesSearch = (m.title?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
-                         (m.subject?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                         (m.uploader_name?.toLowerCase() || '').includes(searchTerm.toLowerCase());
-    const matchesSubject = filterSubject === 'Todas' || m.subject === filterSubject;
-    const matchesType = filterType === 'Todos' || m.type === filterType;
-    return matchesSearch && matchesSubject && matchesType;
-  });
-
-  const subjects = ['Todas', ...Array.from(new Set((materials || []).map(m => m.subject).filter(Boolean)))];
-  const gridMaterials = viewMode === 'grid' ? filteredMaterials : [];
-
-  if (!isMounted) return null;
+  const isImage = (url: string) => /\.(jpg|jpeg|png|webp)$/i.test(url);
+  const isPDF   = (url: string) => /\.pdf$/i.test(url);
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'system-ui, sans-serif' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tight">Material de Apoio</h1>
-          <p className="text-gray-500 font-bold mt-1">Biblioteca compartilhada de recursos pedagógicos</p>
+          <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: '#1e1b4b' }}>📚 Material de Apoio</h1>
+          <p style={{ margin: '4px 0 0', color: '#6b7280', fontSize: '14px' }}>
+            {userRole === 'teacher' ? 'Envie materiais para aprovação do admin' : 'Gerencie e aprove materiais da equipe'}
+          </p>
         </div>
-        <button 
-          onClick={() => setShowUploadModal(true)}
-          className="flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white rounded-2xl font-black shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
-        >
-          <Upload size={20} /> Enviar Material
+        <button onClick={() => setShowUpload(true)} style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: '14px' }}>
+          + Enviar Material
         </button>
       </div>
 
-      {/* Notifications */}
-      <AnimatePresence>
-        {uploadStatus && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className={`p-4 rounded-2xl flex items-center gap-3 font-bold text-sm ${
-              uploadStatus.type === 'success' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-red-50 text-red-600 border border-red-100'
-            }`}
-          >
-            {uploadStatus.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-            {uploadStatus.message}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', background: '#f3f4f6', borderRadius: '10px', padding: '4px', width: 'fit-content' }}>
+        {[
+          { key: 'biblioteca',  label: '📖 Biblioteca', show: true },
+          { key: 'meus_envios', label: '📤 Meus Envios' + (meusEnvios.length > 0 ? ' (' + meusEnvios.length + ')' : ''), show: true },
+          { key: 'pendentes',   label: '⏳ Pendentes',  show: userRole === 'admin' },
+        ].filter(t => t.show).map(tab => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key as any)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '13px', background: activeTab === tab.key ? '#fff' : 'transparent', color: activeTab === tab.key ? '#7c3aed' : '#6b7280', boxShadow: activeTab === tab.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
+            {tab.label}
+            {tab.key === 'pendentes' && pendentes.length > 0 && (
+              <span style={{ marginLeft: '6px', background: '#ef4444', color: '#fff', borderRadius: '9999px', padding: '1px 7px', fontSize: '11px' }}>{pendentes.length}</span>
+            )}
+          </button>
+        ))}
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        {/* Filters Sidebar */}
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-6">
-            <div className="flex items-center gap-2 text-gray-900 font-black text-sm uppercase tracking-widest">
-              <Filter size={16} /> Filtros
-            </div>
-            
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Matéria</label>
-                <select 
-                  value={filterSubject}
-                  onChange={(e) => setFilterSubject(e.target.value)}
-                  className="w-full bg-gray-50 border-none rounded-xl py-3 px-4 font-bold text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
-                >
-                  {subjects.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Tipo</label>
-                <select 
-                  value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
-                  className="w-full bg-gray-50 border-none rounded-xl py-3 px-4 font-bold text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
-                >
-                  <option value="Todos">Todos</option>
-                  <option value="Revisão">Revisão</option>
-                  <option value="Exercícios">Exercícios</option>
-                  <option value="Teoria">Teoria</option>
-                </select>
-              </div>
-            </div>
+      {activeTab === 'biblioteca' && (
+        <div>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <input placeholder="🔍 Buscar material..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ flex: 1, minWidth: '200px', padding: '9px 14px', borderRadius: '9px', border: '1px solid #e5e7eb', fontSize: '14px', outline: 'none' }} />
+            <button onClick={() => setViewMode(v => v === 'pastas' ? 'grade' : 'pastas')} style={{ padding: '9px 16px', borderRadius: '9px', border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: '#374151' }}>
+              {viewMode === 'pastas' ? '⊞ Grade' : '📁 Pastas'}
+            </button>
           </div>
-
-          <div className="bg-gray-900 text-white p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full -translate-y-16 translate-x-16 blur-2xl"></div>
-            <FileBox className="text-primary mb-6" size={32} />
-            <h3 className="text-xl font-black mb-2 tracking-tight">Biblioteca Digital</h3>
-            <p className="text-white/60 text-sm font-bold leading-relaxed">
-              Base centralizada para compartilhamento de conhecimento entre todos os professores.
-            </p>
-          </div>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '60px', color: '#9ca3af' }}>Carregando...</div>
+          ) : viewMode === 'pastas' ? (
+            <div>
+              {!selectedGrade ? (
+                <div>
+                  <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '12px' }}>Selecione uma série:</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '12px' }}>
+                    {gradeGroups.length === 0
+                      ? <p style={{ color: '#9ca3af' }}>Nenhum material aprovado ainda.</p>
+                      : gradeGroups.map(grade => (
+                          <div key={grade} onClick={() => setSelectedGrade(grade)} style={{ background: '#fff', border: '1.5px solid #e5e7eb', borderRadius: '12px', padding: '20px 16px', cursor: 'pointer', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                            <div style={{ fontSize: '32px', marginBottom: '8px' }}>📁</div>
+                            <div style={{ fontWeight: 600, fontSize: '14px', color: '#1e1b4b' }}>{grade}</div>
+                            <div style={{ color: '#9ca3af', fontSize: '12px', marginTop: '4px' }}>{biblioteca.filter(m => m.grade === grade).length} material(is)</div>
+                          </div>
+                        ))
+                    }
+                  </div>
+                </div>
+              ) : !selectedSubject ? (
+                <div>
+                  <button onClick={() => setSelectedGrade(null)} style={{ color: '#7c3aed', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, marginBottom: '12px', fontSize: '14px' }}>← Voltar</button>
+                  <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '12px' }}>Matérias em <strong>{selectedGrade}</strong>:</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '12px' }}>
+                    {subjectsForGrade.map(subject => (
+                      <div key={subject} onClick={() => setSelectedSubject(subject)} style={{ background: '#fff', border: '1.5px solid #e5e7eb', borderRadius: '12px', padding: '20px 16px', cursor: 'pointer', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                        <div style={{ fontSize: '32px', marginBottom: '8px' }}>📂</div>
+                        <div style={{ fontWeight: 600, fontSize: '14px', color: '#1e1b4b' }}>{subject}</div>
+                        <div style={{ color: '#9ca3af', fontSize: '12px', marginTop: '4px' }}>{biblioteca.filter(m => m.grade === selectedGrade && m.subject === subject).length} material(is)</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                    <button onClick={() => setSelectedSubject(null)} style={{ color: '#7c3aed', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '14px' }}>← {selectedGrade}</button>
+                    <span style={{ color: '#9ca3af' }}>/</span>
+                    <span style={{ color: '#374151', fontSize: '14px', fontWeight: 500 }}>{selectedSubject}</span>
+                  </div>
+                  <MaterialGrid materials={materialsForView} userRole={userRole} onPreview={setPreviewUrl} onDelete={userRole === 'admin' ? async (id) => { if (!confirm('Excluir?')) return; await supabase.from('materials').delete().eq('id', id); fetchMaterials(); } : undefined} />
+                </div>
+              )}
+            </div>
+          ) : (
+            <MaterialGrid materials={biblioteca} userRole={userRole} onPreview={setPreviewUrl} onDelete={userRole === 'admin' ? async (id) => { if (!confirm('Excluir?')) return; await supabase.from('materials').delete().eq('id', id); fetchMaterials(); } : undefined} />
+          )}
         </div>
+      )}
 
-        {/* Main Content */}
-        <div className="lg:col-span-3 space-y-6">
-          <div className="relative group">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" size={20} />
-            <input 
-              type="text" 
-              placeholder="Buscar materiais por título ou matéria..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-white border-none rounded-3xl py-6 pl-16 pr-8 text-lg font-bold shadow-sm focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-            />
-          </div>
-
-          {/* Toggle modo */}
-          <div className="flex items-center gap-2 mb-6">
-            <button onClick={() => setViewMode('folders')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${viewMode === 'folders' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-              <Folder size={14} /> Pastas
-            </button>
-            <button onClick={() => setViewMode('grid')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${viewMode === 'grid' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-              <Grid size={14} /> Grade
-            </button>
-          </div>
-
-          {viewMode === 'folders' && !loading && (() => {
-            const byGrade: Record<string, Record<string, Material[]>> = {};
-            filteredMaterials.forEach(m => {
-              const grade = m.grade || m.level || 'Sem Série';
-              const subject = m.subject || 'Sem Matéria';
-              if (!byGrade[grade]) byGrade[grade] = {};
-              if (!byGrade[grade][subject]) byGrade[grade][subject] = [];
-              byGrade[grade][subject].push(m);
-            });
-            if (Object.keys(byGrade).length === 0) return (
-              <div className="py-20 text-center">
-                <Folder size={48} className="text-gray-200 mx-auto mb-4" />
-                <p className="text-gray-400 font-bold">Nenhum material encontrado.</p>
-              </div>
-            );
-            return (
-              <div className="space-y-3">
-                {Object.entries(byGrade).sort(([a],[b]) => a.localeCompare(b)).map(([grade, subjects]) => (
-                  <div key={grade} className="border border-gray-100 rounded-2xl overflow-hidden">
-                    <button onClick={() => setExpandedGrade(expandedGrade === grade ? null : grade)}
-                      className="w-full flex items-center gap-3 p-4 bg-gray-50 hover:bg-purple-50 transition-all text-left">
-                      {expandedGrade === grade ? <FolderOpen size={20} className="text-primary shrink-0" /> : <Folder size={20} className="text-gray-400 shrink-0" />}
-                      <span className="font-black text-gray-800 flex-1">{grade}</span>
-                      <span className="text-xs text-gray-400 font-bold mr-2">{Object.values(subjects).flat().length} material(is)</span>
-                      <ChevronRight size={16} className={`text-gray-400 transition-transform ${expandedGrade === grade ? 'rotate-90' : ''}`} />
-                    </button>
-                    {expandedGrade === grade && (
-                      <div className="p-3 space-y-2 bg-white">
-                        {Object.entries(subjects).sort(([a],[b]) => a.localeCompare(b)).map(([subject, mats]) => {
-                          const key = grade + '__' + subject;
-                          return (
-                            <div key={subject} className="border border-gray-100 rounded-xl overflow-hidden">
-                              <button onClick={() => setExpandedSubject(expandedSubject === key ? null : key)}
-                                className="w-full flex items-center gap-3 p-3 bg-gray-50 hover:bg-purple-50 transition-all text-left">
-                                {expandedSubject === key ? <FolderOpen size={16} className="text-purple-400 shrink-0" /> : <Folder size={16} className="text-gray-300 shrink-0" />}
-                                <span className="font-bold text-gray-700 flex-1 text-sm">{subject}</span>
-                                <span className="text-[10px] text-gray-400 font-bold mr-2">{mats.length} arquivo(s)</span>
-                                <ChevronRight size={14} className={`text-gray-400 transition-transform ${expandedSubject === key ? 'rotate-90' : ''}`} />
-                              </button>
-                              {expandedSubject === key && (
-                                <div className="divide-y divide-gray-50">
-                                  {mats.map(material => (
-                                    <div key={material.id} className="flex items-center gap-3 p-4 hover:bg-gray-50 transition-all">
-                                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                                        <FileText size={18} className="text-primary" />
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <p className="font-bold text-gray-900 text-sm truncate">{material.title}</p>
-                                        <div className="flex items-center gap-2 mt-0.5">
-                                          <span className="text-[10px] text-gray-400 font-bold">{material.type}</span>
-                                          <span className="text-gray-200">•</span>
-                                          <span className="text-[10px] text-gray-400">{new Date(material.created_at).toLocaleDateString('pt-BR')}</span>
-                                        </div>
-                                      </div>
-                                      <div className="flex items-center gap-1 shrink-0">
-                                        <button onClick={() => handleDownload(material.file_url, material.title)}
-                                          className="flex items-center gap-1.5 bg-gray-900 text-white px-3 py-1.5 rounded-lg text-[10px] font-black hover:bg-primary transition-colors">
-                                          <Download size={11} /> Baixar
-                                        </button>
-                                        {user.role === 'admin' && (
-                                          <button onClick={() => handleDelete(material.id, material.uploaded_by)}
-                                            className="p-1.5 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
-                                            <Trash2 size={13} />
-                                          </button>
-                                        )}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+      {activeTab === 'meus_envios' && (
+        <div>
+          {meusEnvios.length === 0 ? <EmptyState message="Você ainda não enviou nenhum material." /> : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {meusEnvios.map(m => {
+                const cfg = STATUS_CONFIG[m.approval_status];
+                return (
+                  <div key={m.id} style={{ background: '#fff', border: '1.5px solid #e5e7eb', borderRadius: '14px', padding: '18px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '18px' }}>{getTypeIcon(m.type)}</span>
+                          <span style={{ fontWeight: 600, color: '#1e1b4b', fontSize: '15px' }}>{m.title}</span>
+                          <span style={{ background: cfg.bg, color: cfg.color, borderRadius: '20px', padding: '2px 10px', fontSize: '12px', fontWeight: 600 }}>{cfg.icon} {cfg.label}</span>
+                        </div>
+                        <div style={{ marginTop: '6px', color: '#6b7280', fontSize: '13px' }}>{m.grade} · {m.subject} · {m.type}</div>
+                        <div style={{ marginTop: '4px', color: '#9ca3af', fontSize: '12px' }}>Enviado em {new Date(m.created_at).toLocaleDateString('pt-BR')}{m.resubmitted_at && ' · Reenviado em ' + new Date(m.resubmitted_at).toLocaleDateString('pt-BR')}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={() => setPreviewUrl(m.file_url)} style={btnOutline}>👁 Ver</button>
+                        {m.approval_status === 'rejected' && <button onClick={() => setResubmitModal(m)} style={{ ...btnPrimary, background: '#dc2626' }}>🔁 Corrigir e Reenviar</button>}
+                      </div>
+                    </div>
+                    {m.approval_status === 'rejected' && m.rejection_reason && (
+                      <div style={{ marginTop: '14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '14px 16px' }}>
+                        <div style={{ fontWeight: 600, color: '#dc2626', fontSize: '13px', marginBottom: '4px' }}>❌ Motivo da reprovação:</div>
+                        <div style={{ color: '#7f1d1d', fontSize: '14px', lineHeight: 1.5 }}>{m.rejection_reason}</div>
+                      </div>
+                    )}
+                    {m.approval_status === 'pending' && (
+                      <div style={{ marginTop: '14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '12px 16px' }}>
+                        <div style={{ color: '#92400e', fontSize: '13px' }}>⏳ Aguardando avaliação do administrador. Você receberá uma notificação.</div>
                       </div>
                     )}
                   </div>
-                ))}
-              </div>
-            );
-          })()}
-
-          {viewMode === 'grid' && loading && !error ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="h-48 bg-white rounded-[2rem] animate-pulse border border-gray-100" />
-              ))}
-            </div>
-          ) : error ? (
-            <div className="bg-red-50 border border-red-100 p-12 rounded-[2.5rem] text-center">
-              <AlertCircle className="mx-auto text-red-400 mb-4" size={48} />
-              <h3 className="text-xl font-black text-red-900 mb-2">Erro ao carregar materiais</h3>
-              <p className="text-red-600 font-bold mb-6">{error}</p>
-              <button 
-                onClick={() => fetchMaterials()}
-                className="px-6 py-3 bg-red-600 text-white rounded-xl font-black hover:bg-red-700 transition-all uppercase tracking-widest text-xs"
-              >
-                Tentar Novamente
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {(gridMaterials || []).map((material) => (
-                <motion.div 
-                  key={material.id}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-gray-100 transition-all group flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-start justify-between mb-4">
-                      <div className={`p-4 rounded-2xl ${
-                        material.type === 'Revisão' ? 'bg-orange-50 text-orange-600' :
-                        material.type === 'Exercícios' ? 'bg-blue-50 text-blue-600' :
-                        'bg-purple-50 text-purple-600'
-                      }`}>
-                        <FileText size={24} />
-                      </div>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                        {material.level}
-                      </span>
-                    </div>
-
-                    <h3 className="text-xl font-black text-gray-900 mb-1 group-hover:text-primary transition-colors line-clamp-1">
-                      {material.title}
-                    </h3>
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-[10px] font-black uppercase tracking-wider">
-                        {material.subject}
-                      </span>
-                      <span className="px-3 py-1 bg-primary/10 text-primary rounded-lg text-[10px] font-black uppercase tracking-wider">
-                        {material.type}
-                      </span>
-                    </div>
-
-                    <p className="text-gray-400 text-xs font-bold line-clamp-2 mb-6 h-8">
-                      {material.description || 'Sem descrição cadastrada.'}
-                    </p>
-                  </div>
-
-                  <div className="space-y-4 pt-4 border-t border-gray-50">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-black text-gray-500">
-                          {material.uploader_name?.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-black text-gray-900">{material.uploader_name}</p>
-                          <p className="text-[9px] font-bold text-gray-400 flex items-center gap-1">
-                            <Calendar size={10} /> {new Date(material.created_at).toLocaleDateString('pt-BR')}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <button 
-                          onClick={() => handleDownload(material.file_url, material.title)}
-                          className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-colors"
-                        >
-                          <Download size={12} /> Baixar
-                        </button>
-                        {(user.role === 'admin' || material.uploaded_by === (user.id || user.email)) && (
-                          <button 
-                            onClick={() => handleDelete(material.id, material.uploaded_by)}
-                            className="p-2 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-              {filteredMaterials.length === 0 && (
-                <div className="col-span-full py-20 text-center">
-                    <p className="text-gray-400 font-bold text-lg">Nenhum material encontrado com esses filtros.</p>
-                </div>
-              )}
+                );
+              })}
             </div>
           )}
         </div>
-      </div>
+      )}
 
-      {/* Upload Modal */}
-      <AnimatePresence>
-        {showUploadModal && (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="max-w-2xl w-full bg-white rounded-[2.5rem] p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto"
-            >
-              <div className="flex justify-between items-center mb-8">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
-                    <Upload size={24} />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-black text-gray-900 tracking-tight">Enviar Novo Material</h2>
-                    <p className="text-xs text-gray-400 font-bold">PDF, Word (Máx 10MB)</p>
+      {activeTab === 'pendentes' && userRole === 'admin' && (
+        <div>
+          {pendentes.length === 0 ? <EmptyState message="Nenhum material aguardando aprovação. 🎉" /> : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <p style={{ color: '#6b7280', fontSize: '14px', margin: '0 0 4px' }}>{pendentes.length} material(is) aguardando sua avaliação</p>
+              {pendentes.map(m => (
+                <div key={m.id} style={{ background: '#fff', border: '1.5px solid #fde68a', borderRadius: '14px', padding: '18px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '18px' }}>{getTypeIcon(m.type)}</span>
+                        <span style={{ fontWeight: 600, color: '#1e1b4b', fontSize: '15px' }}>{m.title}</span>
+                        <span style={{ background: '#fef3c7', color: '#d97706', borderRadius: '20px', padding: '2px 10px', fontSize: '12px', fontWeight: 600 }}>⏳ Aguardando</span>
+                        {m.resubmitted_at && <span style={{ background: '#ede9fe', color: '#7c3aed', borderRadius: '20px', padding: '2px 10px', fontSize: '12px', fontWeight: 600 }}>🔁 Reenviado</span>}
+                      </div>
+                      <div style={{ marginTop: '6px', color: '#6b7280', fontSize: '13px' }}>{m.grade} · {m.subject} · {m.type}</div>
+                      <div style={{ marginTop: '4px', color: '#9ca3af', fontSize: '12px' }}>Enviado em {new Date(m.created_at).toLocaleDateString('pt-BR')}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <button onClick={() => setPreviewUrl(m.file_url)} style={btnOutline}>👁 Visualizar</button>
+                      <button onClick={() => setReviewModal({ material: m, action: 'approve' })} style={{ ...btnPrimary, background: '#059669' }}>✅ Aprovar</button>
+                      <button onClick={() => setReviewModal({ material: m, action: 'reject' })} style={{ ...btnPrimary, background: '#dc2626' }}>❌ Reprovar</button>
+                    </div>
                   </div>
                 </div>
-                <button onClick={() => setShowUploadModal(false)} className="p-3 hover:bg-gray-100 rounded-full transition-colors text-gray-400">
-                  <X size={24} />
-                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {showUpload && (
+        <Modal title="📤 Enviar Material" onClose={() => setShowUpload(false)}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div>
+              <label style={labelStyle}>Título *</label>
+              <input placeholder="Ex: Lista de Exercícios — Frações" value={uploadForm.title} onChange={e => setUploadForm(f => ({ ...f, title: e.target.value }))} style={inputStyle} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={labelStyle}>Série *</label>
+                <select value={uploadForm.grade} onChange={e => setUploadForm(f => ({ ...f, grade: e.target.value }))} style={inputStyle}>
+                  <option value="">Selecione...</option>
+                  {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
               </div>
-
-              <form onSubmit={handleUpload} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Título do Material</label>
-                    <input 
-                      required
-                      value={newTitle}
-                      onChange={(e) => setNewTitle(e.target.value)}
-                      className="w-full bg-gray-50 border-none rounded-2xl py-4 px-6 font-bold focus:ring-2 focus:ring-primary outline-none transition-all placeholder:text-gray-300"
-                      placeholder="Ex: Lista de Equações Resolvidas"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Matéria</label>
-                    <input 
-                      required
-                      value={newSubject}
-                      onChange={(e) => setNewSubject(e.target.value)}
-                      className="w-full bg-gray-50 border-none rounded-2xl py-4 px-6 font-bold focus:ring-2 focus:ring-primary outline-none transition-all placeholder:text-gray-300"
-                      placeholder="Ex: Matemática"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Tipo de Conteúdo</label>
-                    <select 
-                      value={newType}
-                      onChange={(e) => setNewType(e.target.value as any)}
-                      className="w-full bg-gray-50 border-none rounded-2xl py-4 px-6 font-bold focus:ring-2 focus:ring-primary outline-none transition-all appearance-none"
-                    >
-                      <option value="Lista de Exercícios">Lista de Exercícios</option>
-                      <option value="Apostila">Apostila</option>
-                      <option value="Resumo">Resumo</option>
-                      <option value="Template">Template</option>
-                      <option value="Jogos">Jogos</option>
-                      <option value="Revisão">Revisão</option>
-                      <option value="Teoria">Teoria</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Ano / Série</label>
-                    <select
-                      value={newGrade}
-                      onChange={(e) => setNewGrade(e.target.value)}
-                      className="w-full bg-gray-50 border-none rounded-2xl py-4 px-6 font-bold focus:ring-2 focus:ring-primary outline-none transition-all appearance-none"
-                    >
-                      <optgroup label="Ensino Fundamental">
-                        {['1º Ano','2º Ano','3º Ano','4º Ano','5º Ano','6º Ano','7º Ano','8º Ano','9º Ano'].map(g => (
-                          <option key={g} value={g + ' - Fundamental'}>{g} - Fundamental</option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Ensino Médio">
-                        {['1º Ano','2º Ano','3º Ano'].map(g => (
-                          <option key={g} value={g + ' - Médio'}>{g} - Médio</option>
-                        ))}
-                      </optgroup>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Descrição (Opcional)</label>
-                  <textarea 
-                    value={newDescription}
-                    onChange={(e) => setNewDescription(e.target.value)}
-                    rows={3}
-                    className="w-full bg-gray-50 border-none rounded-2xl py-4 px-6 font-bold focus:ring-2 focus:ring-primary outline-none transition-all placeholder:text-gray-300 resize-none"
-                    placeholder="Descreva brevemente o conteúdo..."
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Arquivo (PDF ou Word)</label>
-                  <label className={`w-full border-2 border-dashed rounded-[2rem] p-8 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all ${
-                    selectedFile ? 'border-primary/40 bg-primary/5' : 'border-gray-100 hover:border-primary/20 hover:bg-gray-50'
-                  }`}>
-                    <input 
-                      type="file" 
-                      className="hidden" 
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
-                      onChange={handleFileChange}
-                    />
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                      selectedFile ? 'bg-primary text-white' : 'bg-gray-100 text-gray-400'
-                    }`}>
-                      {selectedFile ? <CheckCircle2 size={24} /> : <FileText size={24} />}
-                    </div>
-                    <div className="text-center">
-                      <p className="font-black text-gray-900">
-                        {selectedFile ? selectedFile.name : 'Clique para selecionar seu arquivo'}
-                      </p>
-                      <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest">
-                        {selectedFile ? `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB` : 'PDF ou Word de até 10MB'}
-                      </p>
-                    </div>
-                  </label>
-                </div>
-
-                <div className="flex flex-col md:flex-row gap-4 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowUploadModal(false)}
-                    className="flex-1 py-5 bg-gray-100 text-gray-500 rounded-2xl font-black hover:bg-gray-200 transition-all uppercase tracking-widest text-xs"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isUploading || !selectedFile}
-                    className="flex-[2] py-5 bg-primary text-white rounded-2xl font-black shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-xs disabled:opacity-50 disabled:grayscale"
-                  >
-                    {isUploading ? (
-                      <>
-                        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}><Upload size={18} /></motion.div>
-                        Enviando Material...
-                      </>
-                    ) : (
-                      <>
-                        <BookOpen size={18} />
-                        Confirmar Envio do Material
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {previewUrl !== '' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={() => setPreviewUrl('')}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="p-4 border-b flex items-center justify-between">
-              <h2 className="font-black text-gray-900 truncate">{previewTitle}</h2>
-              <div className="flex gap-2">
-                <a href={previewUrl} download={previewTitle} className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-xl text-sm font-bold">
-                  <Download size={16} /> Baixar
-                </a>
-                <button onClick={() => setPreviewUrl('')} className="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl text-sm font-bold">
-                  Fechar
-                </button>
+              <div>
+                <label style={labelStyle}>Matéria *</label>
+                <select value={uploadForm.subject} onChange={e => setUploadForm(f => ({ ...f, subject: e.target.value }))} style={inputStyle}>
+                  <option value="">Selecione...</option>
+                  {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
               </div>
             </div>
-            <div className="flex-1 overflow-hidden bg-gray-50 flex items-center justify-center p-4">
-              {previewUrl.match(/[.](jpg|jpeg|png|gif|webp|svg)$/i) ? (
-                <img src={previewUrl} alt={previewTitle} className="max-w-full max-h-[70vh] object-contain rounded-xl" />
-              ) : previewUrl.match(/[.]pdf$/i) ? (
-                <iframe src={previewUrl} className="w-full h-[70vh] rounded-xl" title={previewTitle} />
-              ) : (
-                <div className="text-center">
-                  <p className="text-6xl mb-4">📄</p>
-                  <p className="text-gray-500 font-bold mb-4">Pre-visualizacao nao disponivel</p>
-                  <a href={previewUrl} download={previewTitle} className="px-6 py-3 bg-purple-600 text-white rounded-xl font-bold">
-                    Baixar arquivo
-                  </a>
-                </div>
-              )}
+            <div>
+              <label style={labelStyle}>Tipo *</label>
+              <select value={uploadForm.type} onChange={e => setUploadForm(f => ({ ...f, type: e.target.value }))} style={inputStyle}>
+                <option value="">Selecione...</option>
+                {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Arquivo * (PDF, Word, Imagem — máx 10MB)</label>
+              <input type="file" ref={fileRef} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp" onChange={e => setUploadFile(e.target.files?.[0] || null)} style={{ display: 'none' }} />
+              <div onClick={() => fileRef.current?.click()} style={{ border: '2px dashed #d1d5db', borderRadius: '10px', padding: '20px', textAlign: 'center', cursor: 'pointer', color: '#6b7280', fontSize: '14px' }}>
+                {uploadFile ? '📎 ' + uploadFile.name : '📁 Clique para selecionar o arquivo'}
+              </div>
+            </div>
+            {userRole === 'teacher' && (
+              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '12px 14px', fontSize: '13px', color: '#92400e' }}>
+                ⚠️ Seu material será enviado para aprovação do administrador antes de aparecer na biblioteca.
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowUpload(false)} style={btnOutline}>Cancelar</button>
+              <button onClick={handleUpload} disabled={uploading} style={btnPrimary}>{uploading ? 'Enviando...' : userRole === 'teacher' ? '📤 Enviar para Aprovação' : '✅ Publicar'}</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {reviewModal.material && (
+        <Modal title={reviewModal.action === 'approve' ? '✅ Aprovar Material' : '❌ Reprovar Material'} onClose={() => { setReviewModal({ material: null, action: null }); setRejectionReason(''); }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px' }}>
+              <div style={{ fontWeight: 600, color: '#1e1b4b', fontSize: '15px' }}>{reviewModal.material.title}</div>
+              <div style={{ color: '#6b7280', fontSize: '13px', marginTop: '4px' }}>{reviewModal.material.grade} · {reviewModal.material.subject} · {reviewModal.material.type}</div>
+            </div>
+            {reviewModal.action === 'approve' ? (
+              <div style={{ background: '#d1fae5', border: '1px solid #6ee7b7', borderRadius: '10px', padding: '14px 16px', color: '#065f46', fontSize: '14px' }}>
+                ✅ Ao aprovar, o material ficará visível na biblioteca imediatamente.
+              </div>
+            ) : (
+              <div>
+                <label style={labelStyle}>Motivo da reprovação * <span style={{ color: '#9ca3af', fontWeight: 400 }}>(será enviado ao professor)</span></label>
+                <textarea placeholder="Descreva o que precisa ser corrigido..." value={rejectionReason} onChange={e => setRejectionReason(e.target.value)} rows={4} style={{ ...inputStyle, resize: 'vertical' }} />
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button onClick={() => { setReviewModal({ material: null, action: null }); setRejectionReason(''); }} style={btnOutline}>Cancelar</button>
+              <button onClick={handleReview} disabled={reviewLoading} style={{ ...btnPrimary, background: reviewModal.action === 'approve' ? '#059669' : '#dc2626' }}>
+                {reviewLoading ? 'Salvando...' : reviewModal.action === 'approve' ? '✅ Confirmar Aprovação' : '❌ Confirmar Reprovação'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {resubmitModal && (
+        <Modal title="🔁 Corrigir e Reenviar Material" onClose={() => { setResubmitModal(null); setResubmitFile(null); }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '14px 16px' }}>
+              <div style={{ fontWeight: 600, color: '#dc2626', fontSize: '13px', marginBottom: '6px' }}>❌ Motivo da reprovação:</div>
+              <div style={{ color: '#7f1d1d', fontSize: '14px', lineHeight: 1.5 }}>{resubmitModal.rejection_reason}</div>
+            </div>
+            <div>
+              <label style={labelStyle}>Arquivo Corrigido *</label>
+              <input type="file" ref={resubmitFileRef} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp" onChange={e => setResubmitFile(e.target.files?.[0] || null)} style={{ display: 'none' }} />
+              <div onClick={() => resubmitFileRef.current?.click()} style={{ border: '2px dashed #d1d5db', borderRadius: '10px', padding: '20px', textAlign: 'center', cursor: 'pointer', color: '#6b7280', fontSize: '14px' }}>
+                {resubmitFile ? '📎 ' + resubmitFile.name : '📁 Clique para selecionar o arquivo corrigido'}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button onClick={() => { setResubmitModal(null); setResubmitFile(null); }} style={btnOutline}>Cancelar</button>
+              <button onClick={handleResubmit} disabled={resubmitLoading} style={btnPrimary}>{resubmitLoading ? 'Enviando...' : '🔁 Reenviar para Aprovação'}</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {previewUrl && (
+        <div onClick={() => setPreviewUrl(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '16px', overflow: 'hidden', maxWidth: '900px', width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #e5e7eb' }}>
+              <span style={{ fontWeight: 600, color: '#1e1b4b' }}>Visualizar Material</span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <a href={previewUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnOutline, textDecoration: 'none', display: 'inline-block' }}>↗ Abrir</a>
+                <button onClick={() => setPreviewUrl(null)} style={btnOutline}>✕ Fechar</button>
+              </div>
+            </div>
+            <div style={{ flex: 1, overflow: 'auto' }}>
+              {isImage(previewUrl) ? <img src={previewUrl} alt="Preview" style={{ width: '100%', objectFit: 'contain' }} />
+                : isPDF(previewUrl) ? <iframe src={previewUrl} style={{ width: '100%', height: '70vh', border: 'none' }} title="PDF" />
+                : <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
+                    <div style={{ fontSize: '48px', marginBottom: '12px' }}>📄</div>
+                    <p>Prévia não disponível.</p>
+                    <a href={previewUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#7c3aed', fontWeight: 600 }}>Clique aqui para baixar</a>
+                  </div>
+              }
             </div>
           </div>
         </div>
@@ -806,3 +467,63 @@ export default function MaterialsView({ user }: MaterialsViewProps) {
     </div>
   );
 }
+
+function MaterialGrid({ materials, userRole, onPreview, onDelete }: { materials: Material[]; userRole: 'admin' | 'teacher'; onPreview: (url: string) => void; onDelete?: (id: string) => void; }) {
+  if (materials.length === 0) return <EmptyState message="Nenhum material encontrado." />;
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '14px' }}>
+      {materials.map(m => (
+        <div key={m.id} style={{ background: '#fff', border: '1.5px solid #e5e7eb', borderRadius: '14px', padding: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+            <span style={{ fontSize: '28px' }}>{getTypeIcon(m.type)}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, fontSize: '14px', color: '#1e1b4b', lineHeight: 1.3 }}>{m.title}</div>
+              <div style={{ color: '#9ca3af', fontSize: '12px', marginTop: '4px' }}>{m.type}</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <span style={{ background: '#4f46e518', color: '#4f46e5', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: 600 }}>{m.grade}</span>
+            <span style={{ background: '#0891b218', color: '#0891b2', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: 600 }}>{m.subject}</span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
+            <button onClick={() => onPreview(m.file_url)} style={{ ...btnOutline, flex: 1, fontSize: '12px', padding: '7px 8px' }}>👁 Ver</button>
+            {userRole === 'admin' && onDelete && <button onClick={() => onDelete(m.id)} style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer', fontSize: '12px', fontWeight: 500 }}>🗑</button>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#1e1b4b' }}>{title}</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '18px' }}>✕</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '60px 20px', color: '#9ca3af' }}>
+      <div style={{ fontSize: '48px', marginBottom: '12px' }}>📭</div>
+      <p style={{ fontSize: '15px', margin: 0 }}>{message}</p>
+    </div>
+  );
+}
+
+function getTypeIcon(type: string): string {
+  const icons: Record<string, string> = { 'Lista de Exercícios': '📝', 'Apostila': '📖', 'Resumo': '📋', 'Template': '📐', 'Jogos': '🎮', 'Revisão': '🔍', 'Teoria': '💡' };
+  return icons[type] || '📄';
+}
+
+const btnPrimary: React.CSSProperties = { background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', color: '#fff', border: 'none', borderRadius: '9px', padding: '9px 16px', fontWeight: 600, cursor: 'pointer', fontSize: '13px' };
+const btnOutline: React.CSSProperties = { background: '#fff', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '9px', padding: '9px 14px', fontWeight: 500, cursor: 'pointer', fontSize: '13px' };
+const inputStyle: React.CSSProperties = { width: '100%', padding: '9px 12px', borderRadius: '9px', border: '1px solid #e5e7eb', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#f9fafb' };
+const labelStyle: React.CSSProperties = { display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600, color: '#374151' };
