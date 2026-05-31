@@ -97,28 +97,24 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
         schedule_id: feedbackLesson.id,
         teacher_id: user?.id,
         teacher_name: user?.name || feedbackLesson.teacher_name,
-        student_name: feedbackLesson.student_name,
+        student_name: feedbackLesson.student_name || 'Aluno',
         student_id: feedbackLesson.student_id || null,
-        subject: feedbackLesson.subject,
+        subject: feedbackLesson.subject || 'Aula',
         attendance: feedback.attendance,
         discipline: feedback.discipline,
         content: feedback.content,
         resources: feedback.resources,
         observations: feedback.notes,
-        class_date: feedbackLesson.date,
+        class_date: feedbackLesson.date || new Date().toISOString().split('T')[0],
         created_at: new Date().toISOString(),
       });
-      if (fbError) {
-        console.error('Erro feedback:', JSON.stringify(fbError));
-        alert('Erro ao salvar feedback: ' + fbError.message + ' | ' + fbError.details + ' | code: ' + fbError.code);
-        throw fbError;
-      }
+      if (fbError) throw fbError;
 
       // Registra falta se ausente
       if (feedback.attendance === 'Ausente') {
         await supabase.from('absences').insert({
           student_id: feedbackLesson.student_id || null,
-          student_name: feedbackLesson.student_name,
+          student_name: feedbackLesson.student_name || 'Aluno',
           feedback_id: fbError ? null : null,
           schedule_id: feedbackLesson.id,
           absence_date: feedbackLesson.date,
