@@ -33,7 +33,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useNotifications } from '@/hooks/useNotifications';
 
 // --- Shared Types ---
-export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials' | 'messages' | 'notifications' | 'absences' | 'contracts' | 'teacher_feedbacks' | 'teacher_evaluations' | 'teacher_contracts';
+export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials' | 'messages' | 'notifications' | 'absences' | 'contracts' | 'teacher_feedbacks' | 'teacher_evaluations' | 'teacher_contracts' | 'assistant';
 
 interface SearchResult {
   id: string;
@@ -103,6 +103,7 @@ const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, un
       <NavItem icon={MessageSquare} label="Mensagens" active={activeView === 'messages'} onClick={() => { setView('messages'); setUnreadMessages(0); }} badge={unreadMessages} />
       <NavItem icon={Bell} label="Notificações" active={activeView === 'notifications'} onClick={() => setView('notifications')} badge={unreadCount} />
       <NavItem icon={CalendarCheck} label="Agenda & Compromissos" active={activeView === 'agenda'} onClick={() => setView('agenda')} />
+      {user?.role === 'admin' && <NavItem icon={MessageSquare} label="🤖 Assistente IA" active={activeView === 'assistant'} onClick={() => setView('assistant')} />}
       <NavItem icon={FileText} label="Material de Apoio" active={activeView === 'materials'} onClick={() => setView('materials')} />
       {user?.role === 'professor' && (
         <NavItem icon={MessageSquareQuote} label="Meus Feedbacks" active={activeView === 'teacher_feedbacks'} onClick={() => setView('teacher_feedbacks')} />
@@ -389,6 +390,7 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
     users: 'Usuários & Acessos',
     materials: 'Material de Apoio',
     messages: 'Mensagens',
+    assistant: '🤖 Assistente IA',
     notifications: 'Notificações',
     absences: 'Controle de Aulas',
     contracts: 'Contratos',

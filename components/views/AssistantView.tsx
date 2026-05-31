@@ -1,0 +1,294 @@
+'use client';
+
+import { useState, useRef, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+interface Message {
+  role: 'user' | 'assistant';
+  text: string;
+  acao?: string;
+  dados?: any;
+  pendente?: boolean;
+}
+
+interface AssistantViewProps {
+  user: { id?: string; name: string; role: string };
+}
+
+export default function AssistantView({ user }: AssistantViewProps) {
+  const [messages, setMessages]       = useState<Message[]>([
+    { role: 'assistant', text: '👋 Olá, ' + user.name + '! Sou seu assistente. Posso agendar aulas, compromissos, lançar despesas e muito mais. Como posso ajudar?' }
+  ]);
+  const [input, setInput]             = useState('');
+  const [loading, setLoading]         = useState(false);
+  const [recording, setRecording]     = useState(false);
+  const bottomRef                     = useRef<HTMLDivElement>(null);
+  const mediaRef                      = useRef<MediaRecorder | null>(null);
+  const chunksRef                     = useRef<Blob[]>([]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || loading) return;
+    setInput('');
+    setLoading(true);
+
+    const userMsg: Message = { role: 'user', text };
+    setMessages(prev => [...prev, userMsg]);
+
+    try {
+      const res = await fetch('/api/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
+      const data = await res.json();
+
+      const assistantMsg: Message = {
+        role: 'assistant',
+        text: data.resposta,
+        acao: data.acao,
+        dados: data.dados,
+        pendente: data.confirmacao_necessaria,
+      };
+      setMessages(prev => [...prev, assistantMsg]);
+    } catch (e) {
+      setMessages(prev => [...prev, { role: 'assistant', text: '❌ Erro ao processar. Tente novamente.' }]);
+    }
+    setLoading(false);
+  };
+
+  const confirmarAcao = async (msg: Message) => {
+    if (!msg.acao || !msg.dados) return;
+    setLoading(true);
+
+    try {
+      let resultado = '';
+
+      if (msg.acao === 'AGENDAR_COMPROMISSO') {
+        const { error } = await supabase.from('admin_agenda').insert({
+          title:       msg.dados.titulo,
+          type:        msg.dados.tipo || 'Outro',
+          date:        msg.dados.data,
+          time:        msg.dados.hora,
+          description: msg.dados.descricao || '',
+          user_id:     user.id,
+        });
+        resultado = error ? '❌ Erro ao agendar: ' + error.message : '✅ Compromisso agendado com sucesso!';
+      }
+
+      else if (msg.acao === 'LANCAR_DESPESA') {
+        const { error } = await supabase.from('expenses').insert({
+          description: msg.dados.descricao,
+          amount:      msg.dados.valor,
+          category:    msg.dados.categoria || 'Outros',
+          date:        msg.dados.data || new Date().toISOString().split('T')[0],
+        });
+        resultado = error ? '❌ Erro ao lançar despesa: ' + error.message : '✅ Despesa lançada no financeiro!';
+      }
+
+      else if (msg.acao === 'AGENDAR_AULA') {
+        const { error } = await supabase.from('schedules').insert({
+          student_id:  msg.dados.aluno_id,
+          teacher_id:  msg.dados.professor_id,
+          subject:     msg.dados.materia,
+          day_of_week: msg.dados.dia_semana,
+          start_time:  msg.dados.hora_inicio,
+          end_time:    msg.dados.hora_fim,
+        });
+        resultado = error ? '❌ Erro ao agendar aula: ' + error.message : '✅ Aula agendada com sucesso!';
+      }
+
+      else if (msg.acao === 'ALTERAR_AULA') {
+        const { error } = await supabase.from('schedules').update({
+          start_time:  msg.dados.hora_inicio,
+          end_time:    msg.dados.hora_fim,
+          day_of_week: msg.dados.dia_semana,
+        }).eq('id', msg.dados.aula_id);
+        resultado = error ? '❌ Erro ao alterar aula: ' + error.message : '✅ Aula alterada com sucesso!';
+      }
+
+      else if (msg.acao === 'CANCELAR_AULA') {
+        const { error } = await supabase.from('schedules').update({
+          status: 'cancelled'
+        }).eq('id', msg.dados.aula_id);
+        resultado = error ? '❌ Erro ao cancelar aula: ' + error.message : '✅ Aula cancelada com sucesso!';
+      }
+
+      // Marca como executado e adiciona resultado
+      setMessages(prev => prev.map(m =>
+        m === msg ? { ...m, pendente: false } : m
+      ));
+      setMessages(prev => [...prev, { role: 'assistant', text: resultado }]);
+
+    } catch (e: any) {
+      setMessages(prev => [...prev, { role: 'assistant', text: '❌ Erro: ' + e.message }]);
+    }
+    setLoading(false);
+  };
+
+  const cancelarAcao = (msg: Message) => {
+    setMessages(prev => prev.map(m =>
+      m === msg ? { ...m, pendente: false } : m
+    ));
+    setMessages(prev => [...prev, { role: 'assistant', text: '↩️ Ação cancelada. Posso ajudar com mais alguma coisa?' }]);
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+      recorder.ondataavailable = e => chunksRef.current.push(e.data);
+      recorder.onstop = async () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        stream.getTracks().forEach(t => t.stop());
+        await transcribeAudio(blob);
+      };
+      recorder.start();
+      mediaRef.current = recorder;
+      setRecording(true);
+    } catch {
+      alert('Permita o acesso ao microfone para usar o áudio.');
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRef.current?.stop();
+    setRecording(false);
+  };
+
+  const transcribeAudio = async (blob: Blob) => {
+    setLoading(true);
+    setMessages(prev => [...prev, { role: 'user', text: '🎤 Áudio enviado — transcrevendo...' }]);
+    try {
+      const formData = new FormData();
+      formData.append('audio', blob, 'audio.webm');
+      const res = await fetch('/api/assistant/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+      const { text } = await res.json();
+      if (text) {
+        setMessages(prev => prev.map((m, i) =>
+          i === prev.length - 1 ? { ...m, text: '🎤 ' + text } : m
+        ));
+        await sendMessage(text);
+      }
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', text: '❌ Erro ao transcrever áudio.' }]);
+    }
+    setLoading(false);
+  };
+
+  const sugestoes = [
+    'Agendar reunião com pais amanhã às 10h',
+    'Lançar despesa de R$50 com material',
+    'Quais aulas tem hoje?',
+  ];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 80px)', maxWidth: '800px', margin: '0 auto', padding: '0 16px' }}>
+
+      {/* Header */}
+      <div style={{ padding: '20px 0 12px', borderBottom: '1px solid #e5e7eb' }}>
+        <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#1e1b4b' }}>🤖 Assistente Descomplica</h1>
+        <p style={{ margin: '4px 0 0', color: '#6b7280', fontSize: '13px' }}>Digite ou fale para gerenciar o sistema</p>
+      </div>
+
+      {/* Mensagens */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+        {messages.map((msg, i) => (
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+            <div style={{
+              maxWidth: '80%', padding: '12px 16px', borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+              background: msg.role === 'user' ? 'linear-gradient(135deg, #7c3aed, #4f46e5)' : '#f3f4f6',
+              color: msg.role === 'user' ? '#fff' : '#1e1b4b',
+              fontSize: '14px', lineHeight: 1.5,
+            }}>
+              {msg.text}
+            </div>
+
+            {/* Botões de confirmação */}
+            {msg.role === 'assistant' && msg.pendente && (
+              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                <button
+                  onClick={() => confirmarAcao(msg)}
+                  style={{ background: '#059669', color: '#fff', border: 'none', borderRadius: '9px', padding: '8px 16px', fontWeight: 600, cursor: 'pointer', fontSize: '13px' }}
+                >
+                  ✅ Confirmar
+                </button>
+                <button
+                  onClick={() => cancelarAcao(msg)}
+                  style={{ background: '#fff', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '9px', padding: '8px 16px', fontWeight: 500, cursor: 'pointer', fontSize: '13px' }}
+                >
+                  ✕ Cancelar
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {loading && (
+          <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+            <div style={{ background: '#f3f4f6', borderRadius: '18px 18px 18px 4px', padding: '12px 16px' }}>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {[0,1,2].map(i => (
+                  <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#9ca3af', animation: 'bounce 1s infinite', animationDelay: i * 0.2 + 's' }} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Sugestões */}
+      {messages.length === 1 && (
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', paddingBottom: '12px' }}>
+          {sugestoes.map(s => (
+            <button key={s} onClick={() => sendMessage(s)} style={{ background: '#ede9fe', color: '#7c3aed', border: 'none', borderRadius: '20px', padding: '6px 14px', fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}>
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Input */}
+      <div style={{ paddingBottom: '16px', borderTop: '1px solid #e5e7eb', paddingTop: '12px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <input
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && sendMessage(input)}
+            placeholder="Digite um comando..."
+            disabled={loading}
+            style={{ flex: 1, padding: '12px 16px', borderRadius: '12px', border: '1.5px solid #e5e7eb', fontSize: '14px', outline: 'none', background: loading ? '#f9fafb' : '#fff' }}
+          />
+          <button
+            onClick={recording ? stopRecording : startRecording}
+            style={{ width: '44px', height: '44px', borderRadius: '12px', border: 'none', background: recording ? '#ef4444' : '#f3f4f6', color: recording ? '#fff' : '#6b7280', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            {recording ? '⏹' : '🎤'}
+          </button>
+          <button
+            onClick={() => sendMessage(input)}
+            disabled={!input.trim() || loading}
+            style={{ width: '44px', height: '44px', borderRadius: '12px', border: 'none', background: input.trim() ? 'linear-gradient(135deg, #7c3aed, #4f46e5)' : '#f3f4f6', color: input.trim() ? '#fff' : '#9ca3af', cursor: input.trim() ? 'pointer' : 'default', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            ➤
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

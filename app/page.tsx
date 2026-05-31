@@ -24,6 +24,7 @@ import TeacherEvaluationsView from '@/components/views/TeacherEvaluationsView';
 import TeacherContractsView from '@/components/views/TeacherContractsView';
 import AdminAgendaView from '@/components/views/AdminAgendaView';
 import MessagesView from '@/components/views/MessagesView';
+import AssistantView from '@/components/views/AssistantView';
 import PasswordChangeModal from '@/components/modals/PasswordChangeModal';
 import ChangePasswordModal from '@/components/modals/ChangePasswordModal';
 import UserProfileModal from '@/components/modals/UserProfileModal';
@@ -234,6 +235,7 @@ export default function Home() {
             case 'teachers': return <TeachersView />;
             case 'students': return <StudentsView />;
             case 'agenda': return user?.role === 'professor' ? <TeacherScheduleView user={user} /> : <AdminAgendaView user={user} />;
+            case 'assistant': return user?.role === 'admin' ? <AssistantView user={user} /> : null;
             case 'feedbacks': return <FeedbacksView />;
             case 'users': return <UsersView />;
             case 'materials': return <MaterialsView userRole={user?.role} userId={user?.id || ''} />;
