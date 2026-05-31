@@ -29,7 +29,7 @@ interface FeedbackForm {
 export default function TeacherScheduleView({ user }: { user?: any }) {
   const [lessons, setLessons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState<'hoje' | 'semana' | 'mes'>('hoje');
+  const [period, setPeriod] = useState<'hoje' | 'semana' | 'mes'>('semana');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [feedbackLesson, setFeedbackLesson] = useState<any>(null);
   const [savingFeedback, setSavingFeedback] = useState(false);
