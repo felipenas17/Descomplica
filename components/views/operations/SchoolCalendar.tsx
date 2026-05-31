@@ -215,7 +215,14 @@ export default function SchoolCalendar({ user }: { user?: any }) {
     return lessons.filter(l => l.date === dateStr);
   };
 
-  const getLessonColor = (lesson: Lesson, idx: number) => COLORS[idx % COLORS.length];
+  const getLessonColor = (lesson: Lesson, idx: number) => {
+    if (lesson.status === 'concluido') return { bg: 'bg-green-100', border: 'border-green-500', text: 'text-green-700' };
+    if (lesson.status === 'aguardando_confirmacao') return { bg: 'bg-yellow-100', border: 'border-yellow-500', text: 'text-yellow-700' };
+    if (lesson.status === 'cancelado') return { bg: 'bg-red-100', border: 'border-red-500', text: 'text-red-700' };
+    if (lesson.status === 'reposicao_marcada') return { bg: 'bg-blue-100', border: 'border-blue-500', text: 'text-blue-700' };
+    if (lesson.status === 'em_andamento') return { bg: 'bg-orange-100', border: 'border-orange-500', text: 'text-orange-700' };
+    return COLORS[idx % COLORS.length];
+  };
 
   const getLessonTop = (timeStart: string) => {
     const [h, m] = timeStart.split(':').map(Number);
@@ -371,6 +378,9 @@ export default function SchoolCalendar({ user }: { user?: any }) {
                             style={{ top: `${top}px`, height: `${height}px` }}
                             onClick={() => { setSelectedLesson(lesson); setEditingLesson({...lesson}); }} className={`absolute left-1 right-1 ${color.bg} border-l-4 ${color.border} rounded-xl p-1.5 z-10 overflow-hidden cursor-pointer hover:shadow-md transition-all`}>
                             <p className={`text-[9px] font-black uppercase ${color.text}`}>{lesson.subject}</p>
+                            <p className="text-[8px] text-gray-500 truncate">{lesson.start_time} - {lesson.end_time}</p>
+                            <p className="text-[8px] text-gray-500 truncate">👤 {lesson.student_name}</p>
+                            <p className="text-[8px] text-gray-500 truncate">🎓 {lesson.teacher_name}</p>
                             {lesson.room && <p className="text-[9px] text-gray-500 truncate">🏫 {lesson.room}</p>}
                             {lesson.teacher_name && <p className="text-[9px] text-gray-500 truncate">👤 {lesson.teacher_name}</p>}
                             {lesson.student_name && <p className="text-[9px] text-gray-500 truncate">🎓 {lesson.student_name}</p>}
@@ -410,6 +420,9 @@ export default function SchoolCalendar({ user }: { user?: any }) {
                       <div key={lesson.id} style={{ top: `${top}px`, height: `${height}px` }}
                         className={`absolute left-2 right-2 ${color.bg} border-l-4 ${color.border} rounded-xl p-3 z-10 overflow-hidden`}>
                         <p className={`text-xs font-black uppercase ${color.text}`}>{lesson.subject}</p>
+                        <p className="text-[10px] text-gray-500">{lesson.start_time} - {lesson.end_time}</p>
+                        <p className="text-[10px] text-gray-500 truncate">👤 {lesson.student_name}</p>
+                        <p className="text-[10px] text-gray-500 truncate">🎓 {lesson.teacher_name}</p>
                         <div className="flex flex-wrap gap-3 mt-1">
                           {lesson.time_start && <span className="flex items-center gap-1 text-xs text-gray-500"><Clock size={10} />{lesson.time_start} - {lesson.time_end}</span>}
                           {lesson.room && <span className="flex items-center gap-1 text-xs text-gray-500"><MapPin size={10} />{lesson.room}</span>}
