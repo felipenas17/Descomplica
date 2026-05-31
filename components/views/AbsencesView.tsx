@@ -242,7 +242,7 @@ export default function AbsencesView() {
                         <button onClick={() => markNotified(s.id, true)} className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-bold transition-all">
                           Marcar Falta
                         </button>
-                        <button onClick={() => markReposicao(s.id)} className="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-bold transition-all">
+                        {s.status !== 'reposicao_marcada' && <button onClick={() => markReposicao(s.id)} className="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-bold transition-all">
                           Reposicao
                         </button>
                       </>

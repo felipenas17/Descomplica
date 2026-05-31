@@ -9,8 +9,9 @@ const DAY_NAMES = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 const MONTH_NAMES = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  confirmado:    { label: 'CONFIRMADO',    color: 'bg-green-100 text-green-600' },
-  agendado:      { label: 'AGENDADO',      color: 'bg-blue-100 text-blue-600' },
+  confirmado:        { label: 'CONFIRMADO',       color: 'bg-green-100 text-green-600' },
+  agendado:          { label: 'AGENDADO',         color: 'bg-blue-100 text-blue-600' },
+  reposicao_marcada: { label: 'REPOSICAO MARCADA', color: 'bg-purple-100 text-purple-600' },
   cancelado:     { label: 'CANCELADO',     color: 'bg-red-100 text-red-600' },
   concluido:     { label: 'CONCLUÍDO',     color: 'bg-gray-100 text-gray-500' },
   aguardando_confirmacao: { label: 'AGUARD. CONFIRMAÇÃO', color: 'bg-orange-100 text-orange-600' },
@@ -182,7 +183,7 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
 
   const today = new Date().toISOString().split('T')[0];
   const aulasHoje = lessons.filter(l => l.date === today).length;
-  const aulasConfirmadas = lessons.filter(l => l.status === 'confirmado' || l.status === 'em_andamento').length;
+  const aulasConfirmadas = lessons.filter(l => l.status === 'confirmado' || l.status === 'em_andamento' || l.status === 'reposicao_marcada').length;
   const aulasConcluidas = lessons.filter(l => l.status === 'concluido').length;
 
   return (
@@ -245,7 +246,7 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
               </div>
             ) : lessons.map(lesson => {
               const status = STATUS_CONFIG[lesson.status || 'agendado'] || STATUS_CONFIG.agendado;
-              const podeIniciar = lesson.status === 'confirmado' || lesson.status === 'agendado';
+              const podeIniciar = lesson.status === 'confirmado' || lesson.status === 'agendado' || lesson.status === 'reposicao_marcada';
               const emAndamento = lesson.status === 'em_andamento';
               const concluida = lesson.status === 'concluido';
               return (
