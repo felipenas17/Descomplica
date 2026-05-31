@@ -59,6 +59,7 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
   const [reviewLoading, setReviewLoading]     = useState(false);
   const [resubmitModal, setResubmitModal]     = useState<Material | null>(null);
   const [resubmitFile, setResubmitFile]       = useState<File | null>(null);
+  const [resubmitForm, setResubmitForm]       = useState({ title: '', grade: '', subject: '', type: '' });
   const resubmitFileRef = useRef<HTMLInputElement>(null);
   const [resubmitLoading, setResubmitLoading] = useState(false);
   const [previewUrl, setPreviewUrl]           = useState<string | null>(null);
@@ -159,14 +160,24 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
     const { error } = await supabase.from('materials').update({
       file_url: urlData.publicUrl, approval_status: 'pending',
       rejection_reason: null, resubmitted_at: new Date().toISOString(),
+      title: resubmitForm.title || resubmitModal.title,
+      grade: resubmitForm.grade || resubmitModal.grade,
+      subject: resubmitForm.subject || resubmitModal.subject,
+      type: resubmitForm.type || resubmitModal.type,
     }).eq('id', resubmitModal.id);
     if (error) { alert('Erro ao reenviar.'); }
     else {
-      await supabase.from('notifications').insert({
-        title:   '📤 Material reenviado: "' + resubmitModal.title + '"',
-        message: 'Professor corrigiu o material e aguarda sua aprovação.',
-        type:    'info',
-      });
+      const { data: admins2 } = await supabase.from('profiles').select('id').eq('role', 'admin');
+      if (admins2) {
+        for (const admin of admins2) {
+          await supabase.from('notifications').insert({
+            user_id: admin.id,
+            title: '📤 Material reenviado: "' + resubmitModal.title + '"',
+            message: 'Professor corrigiu o material e aguarda sua aprovação.',
+            type: 'info',
+          });
+        }
+      }
       alert('✅ Reenviado! Aguardando aprovação.');
       setResubmitModal(null);
       setResubmitFile(null);
@@ -294,7 +305,7 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
                       </div>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button onClick={() => setPreviewUrl(m.file_url)} style={btnOutline}>👁 Ver</button>
-                        {m.approval_status === 'rejected' && <button onClick={() => setResubmitModal(m)} style={{ ...btnPrimary, background: '#dc2626' }}>🔁 Corrigir e Reenviar</button>}
+                        {m.approval_status === 'rejected' && <button onClick={() => { setResubmitModal(m); setResubmitForm({ title: m.title, grade: m.grade, subject: m.subject, type: m.type }); }} style={{ ...btnPrimary, background: '#dc2626' }}>🔁 Corrigir e Reenviar</button>}
                       </div>
                     </div>
                     {m.approval_status === 'rejected' && m.rejection_reason && (
@@ -430,6 +441,30 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
             <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '14px 16px' }}>
               <div style={{ fontWeight: 600, color: '#dc2626', fontSize: '13px', marginBottom: '6px' }}>❌ Motivo da reprovação:</div>
               <div style={{ color: '#7f1d1d', fontSize: '14px', lineHeight: 1.5 }}>{resubmitModal.rejection_reason}</div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={labelStyle}>Título *</label>
+                <input value={resubmitForm.title} onChange={e => setResubmitForm(f => ({ ...f, title: e.target.value }))} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Série *</label>
+                <select value={resubmitForm.grade} onChange={e => setResubmitForm(f => ({ ...f, grade: e.target.value }))} style={inputStyle}>
+                  {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Matéria *</label>
+                <select value={resubmitForm.subject} onChange={e => setResubmitForm(f => ({ ...f, subject: e.target.value }))} style={inputStyle}>
+                  {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Tipo *</label>
+                <select value={resubmitForm.type} onChange={e => setResubmitForm(f => ({ ...f, type: e.target.value }))} style={inputStyle}>
+                  {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
             </div>
             <div>
               <label style={labelStyle}>Arquivo Corrigido *</label>
