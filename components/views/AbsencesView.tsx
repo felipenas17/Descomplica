@@ -84,6 +84,17 @@ export default function AbsencesView() {
         reposicao_pendente: false,
         notes: (showRemarcarModal.notes || '') + ' | Remarcado para ' + remarcarData.date,
       }).eq('id', showRemarcarModal.id);
+
+      // Notificação para o professor
+      const teacherId = (remarcarData as any).teacher_id || showRemarcarModal.teacher_id;
+      if (teacherId) {
+        await supabase.from('notifications').insert({
+          user_id: teacherId,
+          title: '📅 Reposição agendada: ' + (showRemarcarModal.subject || 'Aula'),
+          message: 'Uma aula de reposição foi agendada para ' + new Date(remarcarData.date + 'T00:00:00').toLocaleDateString('pt-BR') + ' das ' + remarcarData.start_time + ' às ' + remarcarData.end_time + '.',
+          type: 'info',
+        });
+      }
       toast.success('Aula remarcada!');
       setShowRemarcarModal(null);
       setRemarcarData({ date: '', start_time: '08:00', end_time: '09:00', notes: '' });
