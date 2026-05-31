@@ -1,34 +1,40 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  TrendingUp, TrendingDown, DollarSign, AlertTriangle, CheckCircle, 
-  Clock, Plus, X, ArrowUpRight, ArrowDownRight, BarChart3,
-  Calendar, ChevronRight, Target, Zap
-} from 'lucide-react';
-import { 
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
-  LineChart, Line
-} from 'recharts';
+import { TrendingUp, TrendingDown, DollarSign, AlertTriangle, CheckCircle, Clock, Plus, X, ArrowUpRight, ArrowDownRight, BarChart3, Calendar, ChevronRight, Target, Zap } from 'lucide-react';
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from 'recharts';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
 const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const MONTHS_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const PAYMENT_METHODS = ['PIX','Boleto','Cartão de Crédito','Cartão de Débito','Dinheiro','Transferência'];
-const COLORS = ['#8A2BE2','#10B981','#F59E0B','#EF4444','#3B82F6','#EC4899'];
+const COLORS = ['#a78bfa','#22d3a5','#f59e0b','#f43f5e','#60a5fa','#ec4899'];
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtK = (v: number) => v >= 1000 ? `R$${(v/1000).toFixed(1)}k` : fmt(v);
 
+const D_BG = '#0f1117';
+const D_CARD = '#1a1d27';
+const D_BORDER = '#2a2d3a';
+const D_TEXT = '#e2e8f0';
+const D_MUTED = '#64748b';
+const D_GREEN = '#22d3a5';
+const D_RED = '#f43f5e';
+const D_PURPLE = '#a78bfa';
+const D_YELLOW = '#f59e0b';
+
+const cardStyle: React.CSSProperties = { background: D_CARD, borderRadius: 16, border: `1px solid ${D_BORDER}`, padding: '18px 20px' };
+const labelStyle: React.CSSProperties = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: D_MUTED, marginBottom: 6, display: 'block' };
+const inputStyle: React.CSSProperties = { width: '100%', background: '#0f1117', border: `1px solid ${D_BORDER}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: D_TEXT, outline: 'none', boxSizing: 'border-box' as const };
+
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-gray-900 text-white px-4 py-3 rounded-xl shadow-2xl text-xs">
-        <p className="font-black mb-1">{label}</p>
+      <div style={{ background: '#0f1117', border: `1px solid ${D_BORDER}`, borderRadius: 12, padding: '10px 14px', fontSize: 12 }}>
+        <p style={{ color: D_TEXT, fontWeight: 700, marginBottom: 4 }}>{label}</p>
         {payload.map((p: any, i: number) => (
-          <p key={i} style={{ color: p.color }}>{p.name}: {fmt(p.value)}</p>
+          <p key={i} style={{ color: p.color, margin: '2px 0' }}>{p.name}: {fmt(p.value)}</p>
         ))}
       </div>
     );
@@ -58,6 +64,7 @@ export default function FinanceView() {
   const [generating, setGenerating] = useState(false);
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [paymentMethod, setPaymentMethod] = useState('PIX');
+  const [comprovante, setComprovante] = useState<File | null>(null);
   const [generateFrom, setGenerateFrom] = useState(MONTHS_FULL[new Date().getMonth()]);
   const [generateTo, setGenerateTo] = useState('Dezembro');
   const [expenseForm, setExpenseForm] = useState({
@@ -95,27 +102,18 @@ export default function FinanceView() {
   };
 
   const monthPayments = payments.filter(p => {
-    if (periodMode === 'week') {
-      const { start, end } = getWeekRange();
-      return p.due_date >= start && p.due_date <= end;
-    }
+    if (periodMode === 'week') { const { start, end } = getWeekRange(); return p.due_date >= start && p.due_date <= end; }
     if (periodMode === 'month') return p.month === filterMonth && p.year === filterYear;
     if (periodMode === 'year') return p.year === filterYear;
-    const fromIdx = MONTHS_FULL.indexOf(periodFrom);
-    const toIdx = MONTHS_FULL.indexOf(periodTo);
-    const mIdx = MONTHS_FULL.indexOf(p.month);
+    const fromIdx = MONTHS_FULL.indexOf(periodFrom); const toIdx = MONTHS_FULL.indexOf(periodTo); const mIdx = MONTHS_FULL.indexOf(p.month);
     return p.year === filterYear && mIdx >= fromIdx && mIdx <= toIdx;
   });
+
   const monthExpenses = expenses.filter(e => {
-    if (periodMode === 'week') {
-      const { start, end } = getWeekRange();
-      return e.due_date >= start && e.due_date <= end;
-    }
+    if (periodMode === 'week') { const { start, end } = getWeekRange(); return e.due_date >= start && e.due_date <= end; }
     if (periodMode === 'month') return e.month === filterMonth && e.year === filterYear;
     if (periodMode === 'year') return e.year === filterYear;
-    const fromIdx = MONTHS_FULL.indexOf(periodFrom);
-    const toIdx = MONTHS_FULL.indexOf(periodTo);
-    const mIdx = MONTHS_FULL.indexOf(e.month);
+    const fromIdx = MONTHS_FULL.indexOf(periodFrom); const toIdx = MONTHS_FULL.indexOf(periodTo); const mIdx = MONTHS_FULL.indexOf(e.month);
     return e.year === filterYear && mIdx >= fromIdx && mIdx <= toIdx;
   });
 
@@ -129,7 +127,6 @@ export default function FinanceView() {
   const taxaRecebimento = totalEntradas > 0 ? Math.round((totalRecebido / totalEntradas) * 100) : 0;
   const inadimplentes = monthPayments.filter(p => p.status === 'overdue').length;
 
-  // Gráfico fluxo anual
   const fluxoAnual = MONTHS.map((m, i) => {
     const mFull = MONTHS_FULL[i];
     const p = payments.filter(x => x.month === mFull && x.year === filterYear);
@@ -140,15 +137,10 @@ export default function FinanceView() {
     return { mes: m, entradas, saidas, recebido, resultado: recebido - saidas };
   });
 
-  // Gráfico pizza despesas
   const expensesByCategory = Object.entries(
-    monthExpenses.reduce((acc: any, e) => {
-      acc[e.category_name] = (acc[e.category_name] || 0) + e.amount;
-      return acc;
-    }, {})
+    monthExpenses.reduce((acc: any, e) => { acc[e.category_name] = (acc[e.category_name] || 0) + e.amount; return acc; }, {})
   ).map(([name, value]) => ({ name, value }));
 
-  // Projeção 6 meses
   const currentMonthIdx = MONTHS_FULL.indexOf(filterMonth);
   const projection = Array.from({ length: 6 }, (_, i) => {
     const idx = (currentMonthIdx + i) % 12;
@@ -156,16 +148,13 @@ export default function FinanceView() {
     const month = MONTHS_FULL[idx];
     const p = payments.filter(x => x.month === month && x.year === year);
     const e = expenses.filter(x => x.month === month && x.year === year);
-    const entradas = p.reduce((a, x) => a + (x.final_amount || x.amount || 0), 0);
-    const saidas = e.reduce((a, x) => a + (x.amount || 0), 0);
-    return { mes: MONTHS[idx], entradas, saidas, resultado: entradas - saidas };
+    return { mes: MONTHS[idx], entradas: p.reduce((a, x) => a + (x.final_amount || x.amount || 0), 0), saidas: e.reduce((a, x) => a + (x.amount || 0), 0) };
   });
 
   const generatePeriod = async () => {
     setGenerating(true);
     try {
-      const fromIdx = MONTHS_FULL.indexOf(generateFrom);
-      const toIdx = MONTHS_FULL.indexOf(generateTo);
+      const fromIdx = MONTHS_FULL.indexOf(generateFrom); const toIdx = MONTHS_FULL.indexOf(generateTo);
       let totalCreated = 0;
       for (let i = fromIdx; i <= toIdx; i++) {
         const month = MONTHS_FULL[i];
@@ -184,8 +173,7 @@ export default function FinanceView() {
         }
       }
       toast.success(`${totalCreated} mensalidade(s) gerada(s)! ✅`);
-      setShowGenerateModal(false);
-      fetchData();
+      setShowGenerateModal(false); fetchData();
     } catch (e: any) { toast.error('Erro: ' + e.message); }
     finally { setGenerating(false); }
   };
@@ -205,140 +193,52 @@ export default function FinanceView() {
     if (!expense.teacher_id) return;
     const mesIdx = MONTHS_FULL.indexOf(expense.month || MONTHS_FULL[new Date().getMonth()]);
     const ano = expense.year || new Date().getFullYear();
-    const mesSegIdx = (mesIdx + 1) % 12;
-    const anoSeg = mesSegIdx === 0 ? ano + 1 : ano;
-    // Periodo: dia 10 do mes de referencia ate dia 10 do mes seguinte
+    const mesSegIdx = (mesIdx + 1) % 12; const anoSeg = mesSegIdx === 0 ? ano + 1 : ano;
     const dataInicio = ano + '-' + String(mesIdx + 1).padStart(2,'0') + '-10';
     const dataFim = anoSeg + '-' + String(mesSegIdx + 1).padStart(2,'0') + '-10';
-    const mesAnteriorIdx = mesIdx; // para o texto do periodo
-    const anoAnterior = ano;
     const { data: aulas } = await supabase.from('schedules').select('id, date, subject').eq('teacher_id', expense.teacher_id).gte('date', dataInicio).lte('date', dataFim).eq('status', 'concluido');
     const totalAulas = aulas?.length || 0;
     const numComprovante = Date.now().toString().slice(-8);
     const dataPgto = paymentDate ? new Date(paymentDate + 'T00:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
     const periodoInicio = '10/' + String(mesIdx + 1).padStart(2,'0') + '/' + ano;
     const periodoFim = '10/' + String(mesSegIdx + 1).padStart(2,'0') + '/' + anoSeg;
-
-    // Gera PDF
     const { jsPDF } = await import('jspdf');
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-    // Fundo
-    doc.setFillColor(245, 243, 255);
-    doc.rect(0, 0, 210, 297, 'F');
-
-    // Header roxo
-    doc.setFillColor(109, 40, 217);
-    doc.rect(0, 0, 210, 45, 'F');
-
-    // Logo texto
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
+    doc.setFillColor(245, 243, 255); doc.rect(0, 0, 210, 297, 'F');
+    doc.setFillColor(109, 40, 217); doc.rect(0, 0, 210, 45, 'F');
+    doc.setTextColor(255, 255, 255); doc.setFontSize(18); doc.setFont('helvetica', 'bold');
     doc.text('Professora Descomplica', 105, 18, { align: 'center' });
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10); doc.setFont('helvetica', 'normal');
     doc.text('Espaco Pedagogico', 105, 26, { align: 'center' });
     doc.text('CNPJ: 55.010.967/0001-46', 105, 34, { align: 'center' });
-
-    // Titulo comprovante
-    doc.setFillColor(255, 255, 255);
-    doc.roundedRect(20, 52, 170, 14, 4, 4, 'F');
-    doc.setTextColor(109, 40, 217);
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
+    doc.setFillColor(255, 255, 255); doc.roundedRect(20, 52, 170, 14, 4, 4, 'F');
+    doc.setTextColor(109, 40, 217); doc.setFontSize(14); doc.setFont('helvetica', 'bold');
     doc.text('COMPROVANTE DE PAGAMENTO', 105, 62, { align: 'center' });
-
-    // Numero
-    doc.setTextColor(120, 120, 120);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(120, 120, 120); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
     doc.text('N: ' + numComprovante, 105, 72, { align: 'center' });
-
-    // Box dados
-    doc.setFillColor(255, 255, 255);
-    doc.roundedRect(20, 78, 170, 90, 4, 4, 'F');
-
-    const rows = [
-      ['Professor(a)', expense.teacher_name],
-      ['Referencia', (expense.month || '') + ' ' + ano],
-      ['Periodo', periodoInicio + ' a ' + periodoFim],
-      ['Aulas realizadas', totalAulas + ' aula(s)'],
-      ['Valor', Number(expense.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })],
-      ['Data do pagamento', dataPgto],
-    ];
-
+    doc.setFillColor(255, 255, 255); doc.roundedRect(20, 78, 170, 90, 4, 4, 'F');
+    const rows = [['Professor(a)', expense.teacher_name],['Referencia', (expense.month || '') + ' ' + ano],['Periodo', periodoInicio + ' a ' + periodoFim],['Aulas realizadas', totalAulas + ' aula(s)'],['Valor', Number(expense.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })],['Data do pagamento', dataPgto]];
     let y = 90;
     rows.forEach(([label, value], i) => {
-      if (i % 2 === 0) {
-        doc.setFillColor(249, 246, 255);
-        doc.rect(22, y - 5, 166, 12, 'F');
-      }
-      doc.setTextColor(120, 120, 120);
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-      doc.text(label + ':', 28, y);
-      doc.setTextColor(30, 30, 30);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text(String(value), 28, y + 5);
-      y += 14;
+      if (i % 2 === 0) { doc.setFillColor(249, 246, 255); doc.rect(22, y - 5, 166, 12, 'F'); }
+      doc.setTextColor(120, 120, 120); doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.text(label + ':', 28, y);
+      doc.setTextColor(30, 30, 30); doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.text(String(value), 28, y + 5); y += 14;
     });
-
-    // Status pago
-    doc.setFillColor(220, 252, 231);
-    doc.roundedRect(20, 175, 170, 20, 4, 4, 'F');
-    doc.setTextColor(22, 163, 74);
-    doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
-    doc.text('✓ PAGAMENTO CONFIRMADO', 105, 188, { align: 'center' });
-
-    // Footer
-    doc.setTextColor(150, 150, 150);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
+    doc.setFillColor(220, 252, 231); doc.roundedRect(20, 175, 170, 20, 4, 4, 'F');
+    doc.setTextColor(22, 163, 74); doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+    doc.text('PAGAMENTO CONFIRMADO', 105, 188, { align: 'center' });
+    doc.setTextColor(150, 150, 150); doc.setFontSize(8); doc.setFont('helvetica', 'normal');
     doc.text('Professora Descomplica - Espaco Pedagogico', 105, 280, { align: 'center' });
     doc.text('CNPJ: 55.010.967/0001-46', 105, 286, { align: 'center' });
-
-    // Salva PDF no storage
     const pdfBlob = doc.output('blob');
     const fileName = 'comprovantes/comp-' + numComprovante + '.pdf';
     const { error: uploadError } = await supabase.storage.from('materials').upload(fileName, pdfBlob, { contentType: 'application/pdf', upsert: true });
-
     let pdfUrl = '';
-    if (!uploadError) {
-      const { data: urlData } = supabase.storage.from('materials').getPublicUrl(fileName);
-      pdfUrl = urlData.publicUrl;
-    }
-
-    // Envia no chat
-    const msgText = [
-      'PROFESSORA DESCOMPLICA - ESPACO PEDAGOGICO',
-      'CNPJ: 55.010.967/0001-46',
-      '---',
-      'COMPROVANTE DE PAGAMENTO',
-      'N: ' + numComprovante,
-      '---',
-      'Professor(a): ' + expense.teacher_name,
-      'Referencia: ' + (expense.month || '') + ' ' + ano,
-      'Periodo: 10/' + String(mesIdx + 1).padStart(2,'0') + '/' + ano + ' a 10/' + String(mesSegIdx + 1).padStart(2,'0') + '/' + anoSeg,
-      'Aulas realizadas: ' + totalAulas + ' aula(s)',
-      'Valor: ' + Number(expense.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-      'Data pagamento: ' + dataPgto,
-      '---',
-      'Pagamento confirmado!',
-      pdfUrl ? '📥 Baixar PDF: ' + pdfUrl : '',
-    ].filter(Boolean).join('\n');
-
+    if (!uploadError) { const { data: urlData } = supabase.storage.from('materials').getPublicUrl(fileName); pdfUrl = urlData.publicUrl; }
+    const msgText = ['PROFESSORA DESCOMPLICA - ESPACO PEDAGOGICO','CNPJ: 55.010.967/0001-46','---','COMPROVANTE DE PAGAMENTO','N: ' + numComprovante,'---','Professor(a): ' + expense.teacher_name,'Referencia: ' + (expense.month || '') + ' ' + ano,'Periodo: ' + periodoInicio + ' a ' + periodoFim,'Aulas realizadas: ' + totalAulas + ' aula(s)','Valor: ' + Number(expense.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),'Data pagamento: ' + dataPgto,'---','Pagamento confirmado!',pdfUrl ? 'Baixar PDF: ' + pdfUrl : ''].filter(Boolean).join('\n');
     const { data: userData } = await supabase.auth.getUser();
-    await supabase.from('messages').insert({
-      sender_id: userData.user?.id,
-      receiver_id: expense.teacher_id,
-      text: msgText,
-      read: false,
-      created_at: new Date().toISOString(),
-    });
-    toast.success('Comprovante PDF enviado no chat! 💬');
+    await supabase.from('messages').insert({ sender_id: userData.user?.id, receiver_id: expense.teacher_id, text: msgText, read: false, created_at: new Date().toISOString() });
+    toast.success('Comprovante PDF enviado no chat!');
   };
 
   const markExpenseAsPaid = async () => {
@@ -347,11 +247,8 @@ export default function FinanceView() {
     try {
       await supabase.from('expenses').update({ status: 'paid', paid_date: paymentDate }).eq('id', showPayExpenseModal.id);
       toast.success('Despesa paga! ✅');
-      if (showPayExpenseModal.category_name === 'Salário Professor' && showPayExpenseModal.teacher_id) {
-        await sendComprovanteToChat(showPayExpenseModal);
-      }
-      setShowPayExpenseModal(null);
-      fetchData();
+      if (showPayExpenseModal.category_name === 'Salário Professor' && showPayExpenseModal.teacher_id) await sendComprovanteToChat(showPayExpenseModal);
+      setShowPayExpenseModal(null); fetchData();
     } catch (e: any) { toast.error('Erro: ' + e.message); }
     finally { setSaving(false); }
   };
@@ -359,377 +256,274 @@ export default function FinanceView() {
   const deleteExpense = async (id: string) => {
     if (!confirm('Excluir esta despesa?')) return;
     await supabase.from('expenses').delete().eq('id', id);
-    fetchData();
-    toast.success('Despesa excluída!');
+    fetchData(); toast.success('Despesa excluída!');
   };
 
   const deletePayment = async (id: string) => {
     if (!confirm('Excluir este lançamento?')) return;
     await supabase.from('monthly_payments').delete().eq('id', id);
-    fetchData();
-    toast.success('Lançamento excluído!');
+    fetchData(); toast.success('Lançamento excluído!');
   };
 
   const saveExpense = async () => {
     setSaving(true);
     try {
       if (expenseForm.is_recurring && expenseForm.recorrente_ate) {
-        const fromIdx = MONTHS_FULL.indexOf(expenseForm.month);
-        const toIdx = MONTHS_FULL.indexOf(expenseForm.recorrente_ate);
+        const fromIdx = MONTHS_FULL.indexOf(expenseForm.month); const toIdx = MONTHS_FULL.indexOf(expenseForm.recorrente_ate);
         const inserts = [];
         for (let i = fromIdx; i <= toIdx; i++) {
-          const month = MONTHS_FULL[i];
-          const dueDay = expenseForm.due_date ? expenseForm.due_date.split('-')[2] : '10';
+          const month = MONTHS_FULL[i]; const dueDay = expenseForm.due_date ? expenseForm.due_date.split('-')[2] : '10';
           const dueDate = expenseForm.year + '-' + String(i + 1).padStart(2, '0') + '-' + dueDay;
-          inserts.push({
-            category_name: expenseForm.category_name,
-            description: expenseForm.description,
-            amount: expenseForm.amount,
-            month,
-            year: expenseForm.year,
-            due_date: dueDate,
-            is_recurring: true,
-            teacher_id: expenseForm.teacher_id || null,
-            teacher_name: expenseForm.teacher_name || null,
-            status: 'pending',
-            created_at: new Date().toISOString(),
-          });
+          inserts.push({ category_name: expenseForm.category_name, description: expenseForm.description, amount: expenseForm.amount, month, year: expenseForm.year, due_date: dueDate, is_recurring: true, teacher_id: expenseForm.teacher_id || null, teacher_name: expenseForm.teacher_name || null, status: 'pending', created_at: new Date().toISOString() });
         }
         const { error } = await supabase.from('expenses').insert(inserts);
         if (error) throw error;
         toast.success(inserts.length + ' despesa(s) criada(s)! ✅');
       } else {
-        const { error } = await supabase.from('expenses').insert({
-          category_name: expenseForm.category_name,
-          description: expenseForm.description,
-          amount: expenseForm.amount,
-          month: expenseForm.month,
-          year: expenseForm.year,
-          due_date: expenseForm.due_date,
-          is_recurring: expenseForm.is_recurring,
-          teacher_id: expenseForm.teacher_id || null,
-          teacher_name: expenseForm.teacher_name || null,
-          status: 'pending',
-          created_at: new Date().toISOString(),
-        });
+        const { error } = await supabase.from('expenses').insert({ category_name: expenseForm.category_name, description: expenseForm.description, amount: expenseForm.amount, month: expenseForm.month, year: expenseForm.year, due_date: expenseForm.due_date, is_recurring: expenseForm.is_recurring, teacher_id: expenseForm.teacher_id || null, teacher_name: expenseForm.teacher_name || null, status: 'pending', created_at: new Date().toISOString() });
         if (error) throw error;
         toast.success('Despesa registrada! ✅');
       }
-      setShowExpenseModal(false);
-      fetchData();
+      setShowExpenseModal(false); fetchData();
     } catch (e: any) { toast.error('Erro: ' + e.message); }
     finally { setSaving(false); }
   };
 
+  const Modal = ({ children, title, onClose }: any) => (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.75)', padding: 16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: D_CARD, borderRadius: 20, padding: 24, width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${D_BORDER}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: D_TEXT }}>{title}</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: D_MUTED, fontSize: 20 }}>✕</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+
   return (
-    <div className="space-y-6 pb-12">
+    <div style={{ background: D_BG, minHeight: '100vh', padding: '20px 16px 60px', fontFamily: 'system-ui, sans-serif' }}>
+
       {/* Header */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
-        {/* Botões de modo */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex bg-gray-100 p-1 rounded-xl gap-1">
-            {[
-              { key: 'week', label: '📅 Semana' },
-              { key: 'month', label: '📆 Mensal' },
-              { key: 'period', label: '🗓️ Período' },
-              { key: 'year', label: '📊 Anual' },
-            ].map(opt => (
-              <button key={opt.key} onClick={() => setPeriodMode(opt.key as any)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${periodMode === opt.key ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>
+      <div style={{ ...cardStyle, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const, marginBottom: 12 }}>
+          <div style={{ display: 'flex', background: '#0f1117', borderRadius: 10, padding: 4, gap: 4 }}>
+            {[{ key: 'week', label: 'Semana' },{ key: 'month', label: 'Mensal' },{ key: 'period', label: 'Período' },{ key: 'year', label: 'Anual' }].map(opt => (
+              <button key={opt.key} onClick={() => setPeriodMode(opt.key as any)} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 12, background: periodMode === opt.key ? D_PURPLE : 'transparent', color: periodMode === opt.key ? '#fff' : D_MUTED, transition: 'all 0.2s' }}>
                 {opt.label}
               </button>
             ))}
           </div>
-
-          {/* Semanal */}
           {periodMode === 'week' && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <input type="date" value={filterWeek} onChange={e => setFilterWeek(e.target.value)}
-                className="bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-purple-300" />
-              <span className="text-xs text-purple-600 font-bold">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input type="date" value={filterWeek} onChange={e => setFilterWeek(e.target.value)} style={{ ...inputStyle, width: 'auto' }} />
+              <span style={{ fontSize: 12, color: D_PURPLE, fontWeight: 600 }}>
                 {(() => { const { start, end } = getWeekRange(); return new Date(start + 'T00:00:00').toLocaleDateString('pt-BR') + ' – ' + new Date(end + 'T00:00:00').toLocaleDateString('pt-BR'); })()}
               </span>
             </div>
           )}
-
-          {/* Mensal */}
           {periodMode === 'month' && (
-            <div className="flex items-center gap-2">
-              <select value={filterMonth} onChange={e => setFilterMonth(e.target.value)}
-                className="bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-purple-300">
+            <div style={{ display: 'flex', gap: 8 }}>
+              <select value={filterMonth} onChange={e => setFilterMonth(e.target.value)} style={{ ...inputStyle, width: 'auto' }}>
                 {MONTHS_FULL.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
-              <input type="number" value={filterYear} onChange={e => setFilterYear(Number(e.target.value))}
-                className="bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm font-bold w-24 focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              <input type="number" value={filterYear} onChange={e => setFilterYear(Number(e.target.value))} style={{ ...inputStyle, width: 90 }} />
             </div>
           )}
-
-          {/* Período */}
           {periodMode === 'period' && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <select value={periodFrom} onChange={e => setPeriodFrom(e.target.value)}
-                className="bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-purple-300">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
+              <select value={periodFrom} onChange={e => setPeriodFrom(e.target.value)} style={{ ...inputStyle, width: 'auto' }}>
                 {MONTHS_FULL.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
-              <span className="text-gray-400 font-bold text-sm">até</span>
-              <select value={periodTo} onChange={e => setPeriodTo(e.target.value)}
-                className="bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-purple-300">
+              <span style={{ color: D_MUTED }}>até</span>
+              <select value={periodTo} onChange={e => setPeriodTo(e.target.value)} style={{ ...inputStyle, width: 'auto' }}>
                 {MONTHS_FULL.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
-              <input type="number" value={filterYear} onChange={e => setFilterYear(Number(e.target.value))}
-                className="bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm font-bold w-20 focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              <input type="number" value={filterYear} onChange={e => setFilterYear(Number(e.target.value))} style={{ ...inputStyle, width: 80 }} />
             </div>
           )}
-
-          {/* Anual */}
           {periodMode === 'year' && (
-            <div className="flex items-center gap-2">
-              <input type="number" value={filterYear} onChange={e => setFilterYear(Number(e.target.value))}
-                className="bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm font-bold w-24 focus:outline-none focus:ring-2 focus:ring-purple-300" />
-              <span className="text-sm font-black text-purple-600">Ano completo {filterYear}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input type="number" value={filterYear} onChange={e => setFilterYear(Number(e.target.value))} style={{ ...inputStyle, width: 90 }} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: D_PURPLE }}>Ano completo {filterYear}</span>
             </div>
           )}
         </div>
-
-        {/* Botões de ação */}
-        <div className="flex gap-2 flex-wrap">
-          <button onClick={() => setShowGenerateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold transition-all">
-            <Plus size={16} /> Gerar Mensalidades
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+          <button onClick={() => setShowGenerateModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: D_PURPLE, border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+            + Gerar Mensalidades
           </button>
-          <button onClick={() => { setActiveTab('saidas'); setShowExpenseModal(true); }}
-            className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold transition-all">
-            <Plus size={16} /> Nova Despesa
+          <button onClick={() => { setActiveTab('saidas'); setShowExpenseModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: D_RED, border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+            + Nova Despesa
           </button>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-purple-600 to-purple-800 rounded-2xl p-5 text-white shadow-xl shadow-purple-200">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-purple-200">Receita Prevista</p>
-            <TrendingUp size={18} className="text-purple-300" />
+      {/* KPIs */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
+        <div style={{ background: 'linear-gradient(135deg, #5b21b6, #7c3aed)', borderRadius: 16, padding: '18px 20px' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: '#c4b5fd', marginBottom: 8 }}>Receita Prevista</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: '#fff' }}>{fmt(totalEntradas)}</div>
+          <div style={{ height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: 2, marginTop: 10 }}>
+            <div style={{ height: 4, background: '#fff', borderRadius: 2, width: `${taxaRecebimento}%` }} />
           </div>
-          <p className="text-2xl font-black">{fmt(totalEntradas)}</p>
-          <p className="text-xs text-purple-300 mt-1">{monthPayments.length} aluno(s)</p>
-          <div className="mt-3 h-1.5 bg-purple-500 rounded-full">
-            <div className="h-full bg-white rounded-full" style={{ width: `${taxaRecebimento}%` }} />
-          </div>
-          <p className="text-[10px] text-purple-200 mt-1">{taxaRecebimento}% recebido</p>
+          <div style={{ fontSize: 11, color: '#c4b5fd', marginTop: 6 }}>{taxaRecebimento}% recebido · {monthPayments.length} aluno(s)</div>
         </div>
-
-        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Recebido</p>
-            <div className="w-8 h-8 bg-green-100 rounded-xl flex items-center justify-center">
-              <ArrowUpRight size={16} className="text-green-600" />
-            </div>
-          </div>
-          <p className="text-2xl font-black text-gray-900">{fmt(totalRecebido)}</p>
-          <p className="text-xs text-green-500 mt-1 flex items-center gap-1">
-            <CheckCircle size={12} /> {monthPayments.filter(p=>p.status==='paid').length} pagamentos
-          </p>
+        <div style={cardStyle}>
+          <div style={labelStyle}>Recebido</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: D_GREEN }}>{fmt(totalRecebido)}</div>
+          <div style={{ fontSize: 12, color: D_GREEN, marginTop: 6 }}>✓ {monthPayments.filter(p=>p.status==='paid').length} pagamentos</div>
         </div>
-
-        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Despesas</p>
-            <div className="w-8 h-8 bg-red-100 rounded-xl flex items-center justify-center">
-              <ArrowDownRight size={16} className="text-red-600" />
-            </div>
-          </div>
-          <p className="text-2xl font-black text-gray-900">{fmt(totalSaidas)}</p>
-          <p className="text-xs text-red-500 mt-1">{fmt(totalPago)} pago</p>
+        <div style={cardStyle}>
+          <div style={labelStyle}>Despesas</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: D_RED }}>{fmt(totalSaidas)}</div>
+          <div style={{ fontSize: 12, color: D_MUTED, marginTop: 6 }}>{fmt(totalPago)} pago</div>
         </div>
-
-        <div className={`rounded-2xl p-5 border shadow-sm ${resultado >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{resultado >= 0 ? 'Lucro' : 'Prejuízo'}</p>
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${resultado >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-              {resultado >= 0 ? <TrendingUp size={16} className="text-green-600" /> : <TrendingDown size={16} className="text-red-600" />}
-            </div>
-          </div>
-          <p className={`text-2xl font-black ${resultado >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(Math.abs(resultado))}</p>
-          <p className={`text-xs mt-1 ${resultado >= 0 ? 'text-green-500' : 'text-red-500'}`}>{resultado >= 0 ? '✅ Positivo' : '⚠️ Atenção'}</p>
+        <div style={{ ...cardStyle, borderColor: resultado >= 0 ? '#1a3a2a' : '#3a1a1a' }}>
+          <div style={labelStyle}>{resultado >= 0 ? 'Lucro' : 'Prejuízo'}</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: resultado >= 0 ? D_GREEN : D_RED }}>{fmt(Math.abs(resultado))}</div>
+          <div style={{ fontSize: 12, color: resultado >= 0 ? D_GREEN : D_RED, marginTop: 6 }}>{resultado >= 0 ? '✅ Positivo' : '⚠️ Atenção'}</div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-white border border-gray-100 p-1 rounded-2xl shadow-sm gap-1">
-        {[
-          { key: 'dashboard', label: '📊 Dashboard' },
-          { key: 'entradas', label: `💚 Entradas (${monthPayments.length})` },
-          { key: 'saidas', label: `🔴 Saídas (${monthExpenses.length})` },
-        ].map(tab => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key as any)}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === tab.key ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>
+      <div style={{ display: 'flex', background: D_CARD, border: `1px solid ${D_BORDER}`, padding: 4, borderRadius: 14, gap: 4, marginBottom: 16 }}>
+        {[{ key: 'dashboard', label: `Dashboard` },{ key: 'entradas', label: `Entradas (${monthPayments.length})` },{ key: 'saidas', label: `Saídas (${monthExpenses.length})` }].map(tab => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key as any)} style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: activeTab === tab.key ? D_PURPLE : 'transparent', color: activeTab === tab.key ? '#fff' : D_MUTED, transition: 'all 0.2s' }}>
             {tab.label}
           </button>
         ))}
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16"><div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" /></div>
+        <div style={{ textAlign: 'center', padding: 60, color: D_MUTED }}>Carregando...</div>
       ) : (
         <>
           {/* DASHBOARD */}
           {activeTab === 'dashboard' && (
-            <div className="space-y-6">
-              {/* Insights rápidos */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 16 }}>
+
+              {/* Insight IA */}
+              {(() => {
+                const receitaPorAluno = students.length > 0 ? totalEntradas / students.length : 0;
+                const margemLucro = totalEntradas > 0 ? ((totalEntradas - totalSaidas) / totalEntradas * 100) : 0;
+                const custoAluguel = monthExpenses.filter(e => e.category_name === 'Aluguel').reduce((a,e) => a+e.amount, 0);
+                const pctAluguel = totalEntradas > 0 ? (custoAluguel / totalEntradas * 100) : 0;
+                let insight = { icon: '✅', text: 'Finanças saudáveis! Continue monitorando mensalmente.', color: '#1a3a2a', borderColor: '#1a5a3a' };
+                if (inadimplentes > 0) insight = { icon: '🚨', text: `${inadimplentes} aluno(s) inadimplente(s) — risco de ${(inadimplentes * receitaPorAluno).toLocaleString('pt-BR', {style:'currency',currency:'BRL'})} em receita.`, color: '#3a1a1a', borderColor: '#5a1a1a' };
+                else if (resultado < 0) insight = { icon: '📉', text: `Prejuízo de ${fmt(Math.abs(resultado))} este período. Aumente alunos ou reduza custos fixos.`, color: '#3a2a1a', borderColor: '#5a3a1a' };
+                else if (pctAluguel > 40) insight = { icon: '⚠️', text: `Aluguel representa ${pctAluguel.toFixed(0)}% da receita. Considere dividir o espaço.`, color: '#3a2a1a', borderColor: '#5a3a1a' };
+                return (
+                  <div style={{ background: insight.color, border: `1px solid ${insight.borderColor}`, borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontSize: 22 }}>{insight.icon}</span>
+                    <span style={{ fontSize: 13, color: D_TEXT, lineHeight: 1.5 }}>{insight.text}</span>
+                  </div>
+                );
+              })()}
+
+              {/* Mini KPIs */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
                 {[
-                  { label: 'Em dia', value: monthPayments.filter(p=>p.status==='paid').length, total: monthPayments.length, color: 'text-green-600', bg: 'bg-green-50' },
-                  { label: 'Pendentes', value: monthPayments.filter(p=>p.status==='pending').length, total: monthPayments.length, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-                  { label: 'Inadimplentes', value: inadimplentes, total: monthPayments.length, color: 'text-red-600', bg: 'bg-red-50' },
-                  { label: 'A receber', value: fmt(totalPendente + totalAtrasado), total: null, color: 'text-purple-600', bg: 'bg-purple-50' },
+                  { label: 'Em dia', value: monthPayments.filter(p=>p.status==='paid').length, color: D_GREEN },
+                  { label: 'Pendentes', value: monthPayments.filter(p=>p.status==='pending').length, color: D_YELLOW },
+                  { label: 'Inadimplentes', value: inadimplentes, color: D_RED },
+                  { label: 'A receber', value: fmt(totalPendente + totalAtrasado), color: D_PURPLE },
                 ].map(item => (
-                  <div key={item.label} className={`${item.bg} rounded-2xl p-4`}>
-                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-wider">{item.label}</p>
-                    <p className={`text-xl font-black mt-1 ${item.color}`}>{item.value}</p>
-                    {item.total && <p className="text-[10px] text-gray-400 mt-0.5">de {item.total} alunos</p>}
+                  <div key={item.label} style={cardStyle}>
+                    <div style={labelStyle}>{item.label}</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: item.color }}>{item.value}</div>
                   </div>
                 ))}
               </div>
 
-              {/* Gráfico Fluxo Anual */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="font-black text-gray-900">Evolução do Fluxo de Caixa</h3>
-                    <p className="text-xs text-gray-400">Entradas vs Saídas — {filterYear}</p>
-                  </div>
+              {/* Gráfico fluxo anual */}
+              <div style={cardStyle}>
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: D_TEXT }}>Fluxo de Caixa Anual</div>
+                  <div style={{ fontSize: 12, color: D_MUTED, marginTop: 2 }}>Entradas vs Saídas — {filterYear}</div>
                 </div>
-                <ResponsiveContainer width="100%" height={220}>
+                <ResponsiveContainer width="100%" height={200}>
                   <AreaChart data={fluxoAnual}>
                     <defs>
-                      <linearGradient id="colorEntradas" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#8A2BE2" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#8A2BE2" stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorSaidas" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#EF4444" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#EF4444" stopOpacity={0}/>
-                      </linearGradient>
+                      <linearGradient id="gEnt" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={D_GREEN} stopOpacity={0.3}/><stop offset="95%" stopColor={D_GREEN} stopOpacity={0}/></linearGradient>
+                      <linearGradient id="gSai" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={D_RED} stopOpacity={0.3}/><stop offset="95%" stopColor={D_RED} stopOpacity={0}/></linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                    <XAxis dataKey="mes" tick={{ fontSize: 11, fontWeight: 700 }} />
-                    <YAxis tickFormatter={fmtK} tick={{ fontSize: 10 }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={D_BORDER} />
+                    <XAxis dataKey="mes" tick={{ fontSize: 11, fill: D_MUTED }} />
+                    <YAxis tickFormatter={fmtK} tick={{ fontSize: 10, fill: D_MUTED }} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Legend />
-                    <Area type="monotone" dataKey="entradas" name="Entradas" stroke="#8A2BE2" strokeWidth={2} fill="url(#colorEntradas)" />
-                    <Area type="monotone" dataKey="saidas" name="Saídas" stroke="#EF4444" strokeWidth={2} fill="url(#colorSaidas)" />
+                    <Area type="monotone" dataKey="entradas" name="Entradas" stroke={D_GREEN} strokeWidth={2} fill="url(#gEnt)" />
+                    <Area type="monotone" dataKey="saidas" name="Saídas" stroke={D_RED} strokeWidth={2} fill="url(#gSai)" />
                   </AreaChart>
                 </ResponsiveContainer>
+                <div style={{ display: 'flex', gap: 20, marginTop: 8, fontSize: 12, color: D_MUTED }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 3, background: D_GREEN, display: 'inline-block', borderRadius: 2 }}></span>Entradas</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 3, background: D_RED, display: 'inline-block', borderRadius: 2 }}></span>Saídas</span>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Pizza despesas */}
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                  <h3 className="font-black text-gray-900 mb-4">Despesas por Categoria</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                {/* Pizza */}
+                <div style={cardStyle}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: D_TEXT, marginBottom: 14 }}>Despesas por categoria</div>
                   {expensesByCategory.length === 0 ? (
-                    <div className="flex items-center justify-center h-40 text-gray-300">
-                      <div className="text-center">
-                        <BarChart3 size={40} className="mx-auto mb-2" />
-                        <p className="text-sm">Sem despesas registradas</p>
-                      </div>
-                    </div>
+                    <div style={{ textAlign: 'center', padding: '30px 0', color: D_MUTED, fontSize: 13 }}>Sem despesas registradas</div>
                   ) : (
-                    <ResponsiveContainer width="100%" height={200}>
+                    <ResponsiveContainer width="100%" height={180}>
                       <PieChart>
-                        <Pie data={expensesByCategory} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" nameKey="name">
+                        <Pie data={expensesByCategory} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" nameKey="name">
                           {expensesByCategory.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                         </Pie>
-                        <Tooltip formatter={(v: any) => fmt(v)} />
-                        <Legend iconSize={10} wrapperStyle={{ fontSize: '11px' }} />
+                        <Tooltip formatter={(v: any) => fmt(v)} contentStyle={{ background: D_CARD, border: `1px solid ${D_BORDER}`, borderRadius: 10 }} />
+                        <Legend iconSize={10} wrapperStyle={{ fontSize: 11, color: D_MUTED }} />
                       </PieChart>
                     </ResponsiveContainer>
                   )}
                 </div>
-
                 {/* Projeção */}
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                  <h3 className="font-black text-gray-900 mb-4">Projeção 6 Meses</h3>
-                  <ResponsiveContainer width="100%" height={200}>
+                <div style={cardStyle}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: D_TEXT, marginBottom: 14 }}>Projeção 6 meses</div>
+                  <ResponsiveContainer width="100%" height={180}>
                     <BarChart data={projection}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                      <XAxis dataKey="mes" tick={{ fontSize: 11, fontWeight: 700 }} />
-                      <YAxis tickFormatter={fmtK} tick={{ fontSize: 10 }} />
+                      <CartesianGrid strokeDasharray="3 3" stroke={D_BORDER} />
+                      <XAxis dataKey="mes" tick={{ fontSize: 11, fill: D_MUTED }} />
+                      <YAxis tickFormatter={fmtK} tick={{ fontSize: 10, fill: D_MUTED }} />
                       <Tooltip content={<CustomTooltip />} />
-                      <Bar dataKey="entradas" name="Entradas" fill="#8A2BE2" radius={[4,4,0,0]} />
-                      <Bar dataKey="saidas" name="Saídas" fill="#EF4444" radius={[4,4,0,0]} />
+                      <Bar dataKey="entradas" name="Entradas" fill={D_PURPLE} radius={[4,4,0,0]} />
+                      <Bar dataKey="saidas" name="Saídas" fill={D_RED} radius={[4,4,0,0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
-              {/* Insights Inteligentes */}
-              {(() => {
-                const insights = [];
-                const totalAlunos = students.length;
-                const receitaPorAluno = totalAlunos > 0 ? totalEntradas / totalAlunos : 0;
-                const margemLucro = totalEntradas > 0 ? ((totalEntradas - totalSaidas) / totalEntradas * 100) : 0;
-                const custoAluguel = monthExpenses.filter(e => e.category_name === 'Aluguel').reduce((a,e) => a+e.amount, 0);
-                const pctAluguel = totalEntradas > 0 ? (custoAluguel / totalEntradas * 100) : 0;
-
-                if (inadimplentes > 0) insights.push({ icon: '🚨', color: 'border-red-200 bg-red-50', text: `Você tem ${inadimplentes} aluno(s) inadimplente(s) — risco de ${(inadimplentes * receitaPorAluno).toLocaleString('pt-BR', {style:'currency',currency:'BRL'})} em receita.`, action: 'Enviar cobrança via WhatsApp' });
-                if (pctAluguel > 40) insights.push({ icon: '⚠️', color: 'border-yellow-200 bg-yellow-50', text: `Aluguel representa ${pctAluguel.toFixed(0)}% da sua receita. Para equilibrar, você precisa de pelo menos ${Math.ceil(custoAluguel / receitaPorAluno)} alunos só para cobrir o aluguel.`, action: null });
-                if (margemLucro < 20 && totalEntradas > 0) insights.push({ icon: '📉', color: 'border-orange-200 bg-orange-50', text: `Margem de lucro atual: ${margemLucro.toFixed(0)}%. Para chegar a 30%, você precisa aumentar a receita em ${((totalSaidas * 1.3 - totalEntradas)).toLocaleString('pt-BR', {style:'currency',currency:'BRL'})} ou reduzir custos.`, action: null });
-                if (totalAlunos > 0 && totalAlunos < 5) insights.push({ icon: '💡', color: 'border-blue-200 bg-blue-50', text: `Com ${totalAlunos} aluno(s), focar em aulas em grupo pode aumentar sua receita sem aumentar horas trabalhadas. 1 aula dupla = 2x receita no mesmo horário.`, action: null });
-                if (totalRecebido >= totalEntradas && totalEntradas > 0) insights.push({ icon: '🎉', color: 'border-green-200 bg-green-50', text: `Parabéns! 100% da receita deste período foi recebida. Ótima taxa de adimplência!`, action: null });
-                if (insights.length === 0) insights.push({ icon: '✅', color: 'border-green-200 bg-green-50', text: 'Suas finanças estão saudáveis! Continue monitorando mensalmente.', action: null });
-
-                return (
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                    <h3 className="font-black text-gray-900 mb-4 flex items-center gap-2">
-                      <span>🧠</span> Insights do Negócio
-                    </h3>
-                    <div className="space-y-3">
-                      {insights.map((insight, i) => (
-                        <div key={i} className={`p-4 rounded-xl border ${insight.color} flex items-start gap-3`}>
-                          <span className="text-xl shrink-0">{insight.icon}</span>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-800">{insight.text}</p>
-                            {insight.action && <p className="text-xs font-black text-purple-600 mt-1">→ {insight.action}</p>}
-                          </div>
-                        </div>
-                      ))}
+              {/* Comparativo */}
+              <div style={cardStyle}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: D_TEXT, marginBottom: 14 }}>Resultado detalhado</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                  <div style={{ background: '#0d2a1a', borderRadius: 12, padding: '14px 16px' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: D_GREEN, textTransform: 'uppercase' as const, marginBottom: 8 }}>Receitas</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: D_GREEN }}>{fmt(totalEntradas)}</div>
+                    <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}><span style={{ color: D_MUTED }}>Recebido</span><span style={{ color: D_GREEN, fontWeight: 700 }}>{fmt(totalRecebido)}</span></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}><span style={{ color: D_MUTED }}>Pendente</span><span style={{ color: D_YELLOW, fontWeight: 700 }}>{fmt(totalPendente)}</span></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}><span style={{ color: D_MUTED }}>Atrasado</span><span style={{ color: D_RED, fontWeight: 700 }}>{fmt(totalAtrasado)}</span></div>
                     </div>
                   </div>
-                );
-              })()}
-
-              {/* Resultado comparativo */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <h3 className="font-black text-gray-900 mb-4 flex items-center gap-2"><Zap size={18} className="text-purple-500" /> Resultado Comparativo — {filterMonth}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 bg-green-50 rounded-xl border border-green-100">
-                    <p className="text-[10px] font-black text-green-600 uppercase tracking-wider mb-2">Receitas</p>
-                    <p className="text-2xl font-black text-green-700">{fmt(totalEntradas)}</p>
-                    <div className="mt-3 space-y-1.5">
-                      <div className="flex justify-between text-xs"><span className="text-gray-500">Recebido</span><span className="font-black text-green-600">{fmt(totalRecebido)}</span></div>
-                      <div className="flex justify-between text-xs"><span className="text-gray-500">Pendente</span><span className="font-black text-yellow-600">{fmt(totalPendente)}</span></div>
-                      <div className="flex justify-between text-xs"><span className="text-gray-500">Atrasado</span><span className="font-black text-red-600">{fmt(totalAtrasado)}</span></div>
+                  <div style={{ background: '#2a0d0d', borderRadius: 12, padding: '14px 16px' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: D_RED, textTransform: 'uppercase' as const, marginBottom: 8 }}>Despesas</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: D_RED }}>{fmt(totalSaidas)}</div>
+                    <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}><span style={{ color: D_MUTED }}>Pago</span><span style={{ color: D_RED, fontWeight: 700 }}>{fmt(totalPago)}</span></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}><span style={{ color: D_MUTED }}>A pagar</span><span style={{ color: D_YELLOW, fontWeight: 700 }}>{fmt(totalSaidas - totalPago)}</span></div>
                     </div>
                   </div>
-                  <div className="p-4 bg-red-50 rounded-xl border border-red-100">
-                    <p className="text-[10px] font-black text-red-600 uppercase tracking-wider mb-2">Despesas</p>
-                    <p className="text-2xl font-black text-red-700">{fmt(totalSaidas)}</p>
-                    <div className="mt-3 space-y-1.5">
-                      <div className="flex justify-between text-xs"><span className="text-gray-500">Pago</span><span className="font-black text-red-600">{fmt(totalPago)}</span></div>
-                      <div className="flex justify-between text-xs"><span className="text-gray-500">A pagar</span><span className="font-black text-yellow-600">{fmt(totalSaidas - totalPago)}</span></div>
+                  <div style={{ background: resultado >= 0 ? '#0d1a2a' : '#2a0d0d', borderRadius: 12, padding: '14px 16px' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: resultado >= 0 ? D_PURPLE : D_RED, textTransform: 'uppercase' as const, marginBottom: 8 }}>Resultado</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: resultado >= 0 ? D_PURPLE : D_RED }}>{resultado >= 0 ? '+' : ''}{fmt(resultado)}</div>
+                    <div style={{ height: 4, background: D_BORDER, borderRadius: 2, marginTop: 14 }}>
+                      <div style={{ height: 4, background: resultado >= 0 ? D_PURPLE : D_RED, borderRadius: 2, width: `${Math.min(taxaRecebimento, 100)}%` }} />
                     </div>
-                  </div>
-                  <div className={`p-4 rounded-xl border ${resultado >= 0 ? 'bg-purple-50 border-purple-100' : 'bg-red-50 border-red-100'}`}>
-                    <p className="text-[10px] font-black text-purple-600 uppercase tracking-wider mb-2">Resultado</p>
-                    <p className={`text-2xl font-black ${resultado >= 0 ? 'text-purple-700' : 'text-red-700'}`}>{resultado >= 0 ? '+' : ''}{fmt(resultado)}</p>
-                    <div className="mt-3">
-                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${resultado >= 0 ? 'bg-purple-500' : 'bg-red-500'}`}
-                          style={{ width: `${totalEntradas > 0 ? Math.min((totalRecebido/totalEntradas)*100, 100) : 0}%` }} />
-                      </div>
-                      <p className="text-[10px] text-gray-400 mt-1">{taxaRecebimento}% da meta recebido</p>
-                    </div>
+                    <div style={{ fontSize: 11, color: D_MUTED, marginTop: 6 }}>{taxaRecebimento}% da meta recebido</div>
                   </div>
                 </div>
               </div>
@@ -738,57 +532,45 @@ export default function FinanceView() {
 
           {/* ENTRADAS */}
           {activeTab === 'entradas' && (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-gray-100 grid grid-cols-3 gap-3">
-                <div className="p-3 bg-green-50 rounded-xl text-center">
-                  <p className="text-[10px] font-black text-green-600 uppercase">Pagos</p>
-                  <p className="font-black text-green-700">{fmt(totalRecebido)}</p>
-                </div>
-                <div className="p-3 bg-yellow-50 rounded-xl text-center">
-                  <p className="text-[10px] font-black text-yellow-600 uppercase">Pendentes</p>
-                  <p className="font-black text-yellow-700">{fmt(totalPendente)}</p>
-                </div>
-                <div className="p-3 bg-red-50 rounded-xl text-center">
-                  <p className="text-[10px] font-black text-red-600 uppercase">Atrasados</p>
-                  <p className="font-black text-red-700">{fmt(totalAtrasado)}</p>
-                </div>
+            <div style={cardStyle}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
+                {[{ label: 'Pagos', value: fmt(totalRecebido), color: D_GREEN },{ label: 'Pendentes', value: fmt(totalPendente), color: D_YELLOW },{ label: 'Atrasados', value: fmt(totalAtrasado), color: D_RED }].map(item => (
+                  <div key={item.label} style={{ background: '#0f1117', borderRadius: 10, padding: '12px 14px', textAlign: 'center' as const }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: item.color, textTransform: 'uppercase' as const, marginBottom: 4 }}>{item.label}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: item.color }}>{item.value}</div>
+                  </div>
+                ))}
               </div>
-              <div className="divide-y divide-gray-50">
+              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 0 }}>
                 {monthPayments.length === 0 ? (
-                  <div className="text-center py-16">
-                    <DollarSign size={48} className="text-gray-200 mx-auto mb-4" />
-                    <p className="text-gray-400 font-bold">Clique em "Gerar Mensalidades" para começar!</p>
+                  <div style={{ textAlign: 'center', padding: '50px 0', color: D_MUTED }}>
+                    <div style={{ fontSize: 40, marginBottom: 12 }}>💰</div>
+                    <div style={{ fontSize: 14 }}>Clique em "Gerar Mensalidades" para começar!</div>
                   </div>
                 ) : monthPayments.map(payment => {
-                  const sc = payment.status === 'paid' ? { label: 'Pago', color: 'bg-green-100 text-green-700' } : payment.status === 'overdue' ? { label: 'Atrasado', color: 'bg-red-100 text-red-700' } : { label: 'Pendente', color: 'bg-yellow-100 text-yellow-700' };
+                  const sc = payment.status === 'paid' ? { label: 'Pago', color: D_GREEN, bg: '#0d2a1a' } : payment.status === 'overdue' ? { label: 'Atrasado', color: D_RED, bg: '#2a0d0d' } : { label: 'Pendente', color: D_YELLOW, bg: '#2a1f0d' };
                   return (
-                    <div key={payment.id} className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-all flex-wrap">
-                      <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-black shrink-0">
+                    <div key={payment.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 0', borderBottom: `1px solid ${D_BORDER}`, flexWrap: 'wrap' as const }}>
+                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#3b1d8a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c4b5fd', fontWeight: 700, fontSize: 16, flexShrink: 0 }}>
                         {payment.student_name?.[0]?.toUpperCase()}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-bold text-gray-900 text-sm">{payment.student_name}</p>
-                          {payment.is_extra && <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 font-bold">Extra</span>}
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${sc.color}`}>{sc.label}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
+                          <span style={{ fontWeight: 600, color: D_TEXT, fontSize: 14 }}>{payment.student_name}</span>
+                          {payment.is_extra && <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: '#1a2a3a', color: '#60a5fa', fontWeight: 700 }}>Extra</span>}
+                          <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: sc.bg, color: sc.color, fontWeight: 700 }}>{sc.label}</span>
                         </div>
-                        <div className="flex gap-3 mt-1 flex-wrap text-xs text-gray-400">
-                          {payment.due_date && <span>Vence: {new Date(payment.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}</span>}
-                          {payment.paid_date && <span className="text-green-500">Pago: {new Date(payment.paid_date + 'T00:00:00').toLocaleDateString('pt-BR')} • {payment.payment_method}</span>}
+                        <div style={{ fontSize: 12, color: D_MUTED, marginTop: 4 }}>
+                          {payment.due_date && `Vence: ${new Date(payment.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}`}
+                          {payment.paid_date && ` · Pago: ${new Date(payment.paid_date + 'T00:00:00').toLocaleDateString('pt-BR')} · ${payment.payment_method}`}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <p className="font-black text-gray-900 text-lg">{fmt(payment.final_amount || payment.amount)}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontWeight: 700, color: D_TEXT, fontSize: 16 }}>{fmt(payment.final_amount || payment.amount)}</span>
                         {payment.status !== 'paid' && (
-                          <button onClick={() => setShowPayModal(payment)}
-                            className="px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-xs font-bold transition-all">
-                            Marcar Pago
-                          </button>
+                          <button onClick={() => setShowPayModal(payment)} style={{ padding: '6px 12px', background: '#0d2a1a', color: D_GREEN, border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Pagar</button>
                         )}
-                        <button onClick={() => deletePayment(payment.id)}
-                          className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-bold transition-all">
-                          🗑
-                        </button>
+                        <button onClick={() => deletePayment(payment.id)} style={{ padding: '6px 10px', background: '#2a0d0d', color: D_RED, border: 'none', borderRadius: 8, fontSize: 12, cursor: 'pointer' }}>🗑</button>
                       </div>
                     </div>
                   );
@@ -799,56 +581,45 @@ export default function FinanceView() {
 
           {/* SAÍDAS */}
           {activeTab === 'saidas' && (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                <div className="grid grid-cols-2 gap-3 flex-1">
-                  <div className="p-3 bg-red-50 rounded-xl">
-                    <p className="text-[10px] font-black text-red-600 uppercase">Total Despesas</p>
-                    <p className="font-black text-red-700">{fmt(totalSaidas)}</p>
-                  </div>
-                  <div className="p-3 bg-green-50 rounded-xl">
-                    <p className="text-[10px] font-black text-green-600 uppercase">Já Pago</p>
-                    <p className="font-black text-green-700">{fmt(totalPago)}</p>
-                  </div>
+            <div style={cardStyle}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, flex: 1 }}>
+                  {[{ label: 'Total', value: fmt(totalSaidas), color: D_RED },{ label: 'Já pago', value: fmt(totalPago), color: D_GREEN }].map(item => (
+                    <div key={item.label} style={{ background: '#0f1117', borderRadius: 10, padding: '12px 14px' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: item.color, textTransform: 'uppercase' as const, marginBottom: 4 }}>{item.label}</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: item.color }}>{item.value}</div>
+                    </div>
+                  ))}
                 </div>
-                <button onClick={() => setShowExpenseModal(true)} className="ml-4 flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold transition-all shrink-0">
-                  <Plus size={16} /> Nova
-                </button>
+                <button onClick={() => setShowExpenseModal(true)} style={{ marginLeft: 14, padding: '10px 16px', background: D_RED, border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>+ Nova</button>
               </div>
-              <div className="divide-y divide-gray-50">
+              <div>
                 {monthExpenses.length === 0 ? (
-                  <div className="text-center py-16">
-                    <ArrowDownRight size={48} className="text-gray-200 mx-auto mb-4" />
-                    <p className="text-gray-400 font-bold">Nenhuma despesa registrada.</p>
-                    <button onClick={() => setShowExpenseModal(true)} className="mt-4 px-6 py-2 bg-red-500 text-white rounded-xl text-sm font-bold">Adicionar</button>
+                  <div style={{ textAlign: 'center', padding: '50px 0', color: D_MUTED }}>
+                    <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
+                    <div style={{ fontSize: 14 }}>Nenhuma despesa registrada.</div>
                   </div>
                 ) : monthExpenses.map(expense => (
-                  <div key={expense.id} className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-all flex-wrap">
-                    <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-black shrink-0 text-xs">
+                  <div key={expense.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 0', borderBottom: `1px solid ${D_BORDER}`, flexWrap: 'wrap' as const }}>
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#2a0d0d', display: 'flex', alignItems: 'center', justifyContent: 'center', color: D_RED, fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
                       {expense.category_name?.slice(0,2).toUpperCase()}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-bold text-gray-900 text-sm">{expense.description || expense.category_name}</p>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-bold">{expense.category_name}</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${expense.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
+                        <span style={{ fontWeight: 600, color: D_TEXT, fontSize: 14 }}>{expense.description || expense.category_name}</span>
+                        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: '#1a1a2a', color: D_MUTED, fontWeight: 700 }}>{expense.category_name}</span>
+                        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: expense.status === 'paid' ? '#0d2a1a' : '#2a1f0d', color: expense.status === 'paid' ? D_GREEN : D_YELLOW, fontWeight: 700 }}>
                           {expense.status === 'paid' ? '✅ Pago' : '⏳ Pendente'}
                         </span>
                       </div>
-                      {expense.due_date && <p className="text-xs text-gray-400 mt-1">Vence: {new Date(expense.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}</p>}
+                      {expense.due_date && <div style={{ fontSize: 12, color: D_MUTED, marginTop: 4 }}>Vence: {new Date(expense.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}</div>}
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <p className="font-black text-red-600 text-lg">{fmt(expense.amount)}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 700, color: D_RED, fontSize: 16 }}>{fmt(expense.amount)}</span>
                       {expense.status !== 'paid' && (
-                        <button onClick={() => setShowPayExpenseModal(expense)}
-                          className="px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-xs font-bold transition-all">
-                          Pagar
-                        </button>
+                        <button onClick={() => setShowPayExpenseModal(expense)} style={{ padding: '6px 12px', background: '#0d2a1a', color: D_GREEN, border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Pagar</button>
                       )}
-                      <button onClick={() => deleteExpense(expense.id)}
-                        className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-bold transition-all">
-                        🗑
-                      </button>
+                      <button onClick={() => deleteExpense(expense.id)} style={{ padding: '6px 10px', background: '#2a0d0d', color: D_RED, border: 'none', borderRadius: 8, fontSize: 12, cursor: 'pointer' }}>🗑</button>
                     </div>
                   </div>
                 ))}
@@ -860,225 +631,112 @@ export default function FinanceView() {
 
       {/* Modal Gerar */}
       {showGenerateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-black text-gray-900">Gerar Mensalidades</h2>
-              <button onClick={() => setShowGenerateModal(false)} className="p-2 hover:bg-gray-100 rounded-xl"><X size={20} /></button>
+        <Modal title="Gerar Mensalidades" onClose={() => setShowGenerateModal(false)}>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
+            <p style={{ fontSize: 13, color: D_MUTED }}>Gera mensalidades para todos os <strong style={{ color: D_TEXT }}>{students.length} alunos</strong> no período selecionado.</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div><label style={labelStyle}>De</label><select value={generateFrom} onChange={e => setGenerateFrom(e.target.value)} style={inputStyle}>{MONTHS_FULL.map(m => <option key={m} value={m}>{m}</option>)}</select></div>
+              <div><label style={labelStyle}>Até</label><select value={generateTo} onChange={e => setGenerateTo(e.target.value)} style={inputStyle}>{MONTHS_FULL.map(m => <option key={m} value={m}>{m}</option>)}</select></div>
             </div>
-            <div className="space-y-4">
-              <p className="text-sm text-gray-500">Gera mensalidades para todos os <strong>{students.length} alunos</strong> no período selecionado.</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">De</label>
-                  <select value={generateFrom} onChange={e => setGenerateFrom(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
-                    {MONTHS_FULL.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Até</label>
-                  <select value={generateTo} onChange={e => setGenerateTo(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
-                    {MONTHS_FULL.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="p-3 bg-purple-50 rounded-xl text-xs text-purple-700 font-bold">
-                Cada aluno terá seu valor individual aplicado automaticamente.
-              </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowGenerateModal(false)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold">Cancelar</button>
-              <button onClick={generatePeriod} disabled={generating}
-                className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2">
-                {generating ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Plus size={16} />}
-                {generating ? 'Gerando...' : 'Gerar'}
-              </button>
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <button onClick={() => setShowGenerateModal(false)} style={{ flex: 1, padding: '12px 0', border: `1px solid ${D_BORDER}`, borderRadius: 10, background: 'none', color: D_MUTED, fontWeight: 700, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={generatePeriod} disabled={generating} style={{ flex: 1, padding: '12px 0', background: D_PURPLE, border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, cursor: 'pointer' }}>{generating ? 'Gerando...' : 'Gerar'}</button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal Pagar entrada */}
       {showPayModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-black text-gray-900">Registrar Pagamento</h2>
-              <button onClick={() => setShowPayModal(null)} className="p-2 hover:bg-gray-100 rounded-xl"><X size={20} /></button>
-            </div>
-            <div className="p-4 bg-green-50 rounded-2xl mb-4">
-              <p className="font-black text-gray-900">{showPayModal.student_name}</p>
-              <p className="text-2xl font-black text-green-600 mt-1">{fmt(showPayModal.final_amount || showPayModal.amount)}</p>
-              <p className="text-xs text-gray-400">{showPayModal.month} {showPayModal.year}</p>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Data</label>
-                <input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Forma</label>
-                <div className="flex flex-wrap gap-2">
-                  {PAYMENT_METHODS.map(m => (
-                    <button key={m} onClick={() => setPaymentMethod(m)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${paymentMethod === m ? 'bg-purple-600 text-white border-purple-600' : 'border-gray-200 text-gray-600'}`}>
-                      {m}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Comprovante <span className="text-gray-300 font-normal">(opcional)</span></label>
-                <label className={`w-full border-2 border-dashed rounded-xl p-4 flex items-center gap-3 cursor-pointer transition-all ${comprovante ? 'border-purple-300 bg-purple-50' : 'border-gray-200 hover:border-purple-200'}`}>
-                  <input type="file" accept="image/*,.pdf" onChange={e => setComprovante(e.target.files?.[0] || null)} className="hidden" />
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${comprovante ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-400'}`}>
-                    📎
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-gray-700">{comprovante ? comprovante.name : 'Anexar comprovante'}</p>
-                    <p className="text-xs text-gray-400">{comprovante ? (comprovante.size / 1024).toFixed(0) + ' KB' : 'Foto ou PDF — opcional'}</p>
-                  </div>
-                  {comprovante && <button type="button" onClick={e => { e.preventDefault(); setComprovante(null); }} className="ml-auto text-gray-400 hover:text-red-500">✕</button>}
-                </label>
+        <Modal title="Registrar Pagamento" onClose={() => setShowPayModal(null)}>
+          <div style={{ background: '#0d2a1a', borderRadius: 12, padding: '16px 18px', marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, color: D_TEXT, fontSize: 15 }}>{showPayModal.student_name}</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: D_GREEN, marginTop: 4 }}>{fmt(showPayModal.final_amount || showPayModal.amount)}</div>
+            <div style={{ fontSize: 12, color: D_MUTED, marginTop: 4 }}>{showPayModal.month} {showPayModal.year}</div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
+            <div><label style={labelStyle}>Data</label><input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} style={inputStyle} /></div>
+            <div>
+              <label style={labelStyle}>Forma de pagamento</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8 }}>
+                {PAYMENT_METHODS.map(m => (
+                  <button key={m} onClick={() => setPaymentMethod(m)} style={{ padding: '6px 12px', borderRadius: 8, border: `1px solid ${paymentMethod === m ? D_PURPLE : D_BORDER}`, background: paymentMethod === m ? D_PURPLE : 'transparent', color: paymentMethod === m ? '#fff' : D_MUTED, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>{m}</button>
+                ))}
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowPayModal(null)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold">Cancelar</button>
-              <button onClick={markAsPaid} disabled={saving}
-                className="flex-1 py-3 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2">
-                {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle size={16} />}
-                Confirmar
-              </button>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowPayModal(null)} style={{ flex: 1, padding: '12px 0', border: `1px solid ${D_BORDER}`, borderRadius: 10, background: 'none', color: D_MUTED, fontWeight: 700, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={markAsPaid} disabled={saving} style={{ flex: 1, padding: '12px 0', background: D_GREEN, border: 'none', borderRadius: 10, color: '#0d2a1a', fontWeight: 700, cursor: 'pointer' }}>{saving ? 'Salvando...' : 'Confirmar'}</button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal Nova Despesa */}
       {showExpenseModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-black text-gray-900">Nova Despesa</h2>
-              <button onClick={() => setShowExpenseModal(false)} className="p-2 hover:bg-gray-100 rounded-xl"><X size={20} /></button>
+        <Modal title="Nova Despesa" onClose={() => setShowExpenseModal(false)}>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
+            <div><label style={labelStyle}>Categoria</label>
+              <select value={expenseForm.category_name} onChange={e => setExpenseForm(f => ({ ...f, category_name: e.target.value }))} style={inputStyle}>
+                <option value="">Selecione...</option>
+                {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+              </select>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Categoria</label>
-                <select value={expenseForm.category_name} onChange={e => setExpenseForm(f => ({ ...f, category_name: e.target.value }))}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
+            {expenseForm.category_name === 'Salário Professor' && (
+              <div><label style={labelStyle}>Professor</label>
+                <select value={expenseForm.teacher_id} onChange={e => { const t = teachers.find(x => x.id === e.target.value); setExpenseForm(f => ({ ...f, teacher_id: e.target.value, teacher_name: t?.name || '', description: 'Salário ' + (t?.name || '') })); }} style={inputStyle}>
                   <option value="">Selecione...</option>
-                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
-              {expenseForm.category_name === 'Salário Professor' && (
-                <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Professor</label>
-                  <select value={expenseForm.teacher_id} onChange={e => {
-                    const t = teachers.find(x => x.id === e.target.value);
-                    setExpenseForm(f => ({ ...f, teacher_id: e.target.value, teacher_name: t?.name || '', description: 'Salário ' + (t?.name || '') }));
-                  }} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
-                    <option value="">Selecione o professor...</option>
-                    {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                  </select>
-                </div>
-              )}
-              <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Descrição</label>
-                <input type="text" value={expenseForm.description} onChange={e => setExpenseForm(f => ({ ...f, description: e.target.value }))}
-                  placeholder="Ex: Salário Prof. L. Silva — Maio"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+            )}
+            <div><label style={labelStyle}>Descrição</label><input type="text" value={expenseForm.description} onChange={e => setExpenseForm(f => ({ ...f, description: e.target.value }))} placeholder="Ex: Aluguel Maio 2026" style={inputStyle} /></div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div><label style={labelStyle}>Valor (R$)</label><input type="number" value={expenseForm.amount} onChange={e => setExpenseForm(f => ({ ...f, amount: Number(e.target.value) }))} style={inputStyle} /></div>
+              <div><label style={labelStyle}>Vencimento</label><input type="date" value={expenseForm.due_date} onChange={e => setExpenseForm(f => ({ ...f, due_date: e.target.value }))} style={inputStyle} /></div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div><label style={labelStyle}>Mês</label>
+                <select value={expenseForm.month} onChange={e => setExpenseForm(f => ({ ...f, month: e.target.value }))} style={inputStyle}>
+                  {MONTHS_FULL.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Valor (R$)</label>
-                  <input type="number" value={expenseForm.amount} onChange={e => setExpenseForm(f => ({ ...f, amount: Number(e.target.value) }))}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Vencimento</label>
-                  <input type="date" value={expenseForm.due_date} onChange={e => setExpenseForm(f => ({ ...f, due_date: e.target.value }))}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Mês</label>
-                  <select value={expenseForm.month} onChange={e => setExpenseForm(f => ({ ...f, month: e.target.value }))}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
-                    {MONTHS_FULL.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-3 mt-6">
-                  <div className="flex items-center gap-2">
-                    <input type="checkbox" id="recorrente" checked={expenseForm.is_recurring} 
-                      onChange={e => setExpenseForm(f => ({ ...f, is_recurring: e.target.checked, recorrente_ate: '' }))} 
-                      className="w-5 h-5 accent-purple-600" />
-                    <label htmlFor="recorrente" className="text-sm font-bold text-gray-700">Recorrente</label>
-                  </div>
-                  {expenseForm.is_recurring && (
-                    <div className="p-3 bg-purple-50 rounded-xl border border-purple-100">
-                      <label className="text-[10px] font-black text-purple-600 uppercase tracking-widest block mb-2">Repetir até qual mês?</label>
-                      <select value={expenseForm.recorrente_ate} 
-                        onChange={e => setExpenseForm(f => ({ ...f, recorrente_ate: e.target.value }))}
-                        className="w-full bg-white border border-purple-200 rounded-xl py-2.5 px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-purple-300">
-                        <option value="">Selecione o mês final...</option>
-                        {MONTHS_FULL.slice(MONTHS_FULL.indexOf(expenseForm.month)).map(m => (
-                          <option key={m} value={m}>{m} {expenseForm.year}</option>
-                        ))}
-                      </select>
-                      {expenseForm.recorrente_ate && (
-                        <p className="text-xs text-purple-600 font-bold mt-2">
-                          ✅ Serão criadas {MONTHS_FULL.indexOf(expenseForm.recorrente_ate) - MONTHS_FULL.indexOf(expenseForm.month) + 1} despesa(s) de {expenseForm.month} até {expenseForm.recorrente_ate}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 20 }}>
+                <input type="checkbox" id="rec" checked={expenseForm.is_recurring} onChange={e => setExpenseForm(f => ({ ...f, is_recurring: e.target.checked, recorrente_ate: '' }))} style={{ width: 18, height: 18, accentColor: D_PURPLE }} />
+                <label htmlFor="rec" style={{ fontSize: 13, fontWeight: 600, color: D_TEXT, cursor: 'pointer' }}>Recorrente</label>
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowExpenseModal(false)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold">Cancelar</button>
-              <button onClick={saveExpense} disabled={saving || !expenseForm.category_name || !expenseForm.amount}
-                className="flex-1 py-3 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2">
-                {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Plus size={16} />}
-                Salvar
-              </button>
+            {expenseForm.is_recurring && (
+              <div style={{ background: '#1a1040', border: `1px solid #3b1d8a`, borderRadius: 10, padding: 14 }}>
+                <label style={{ ...labelStyle, color: D_PURPLE }}>Repetir até qual mês?</label>
+                <select value={expenseForm.recorrente_ate} onChange={e => setExpenseForm(f => ({ ...f, recorrente_ate: e.target.value }))} style={inputStyle}>
+                  <option value="">Selecione...</option>
+                  {MONTHS_FULL.slice(MONTHS_FULL.indexOf(expenseForm.month)).map(m => <option key={m} value={m}>{m} {expenseForm.year}</option>)}
+                </select>
+                {expenseForm.recorrente_ate && <p style={{ fontSize: 12, color: D_PURPLE, marginTop: 8, fontWeight: 600 }}>✅ {MONTHS_FULL.indexOf(expenseForm.recorrente_ate) - MONTHS_FULL.indexOf(expenseForm.month) + 1} despesa(s) serão criadas</p>}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowExpenseModal(false)} style={{ flex: 1, padding: '12px 0', border: `1px solid ${D_BORDER}`, borderRadius: 10, background: 'none', color: D_MUTED, fontWeight: 700, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={saveExpense} disabled={saving || !expenseForm.category_name || !expenseForm.amount} style={{ flex: 1, padding: '12px 0', background: D_RED, border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, cursor: 'pointer', opacity: saving || !expenseForm.category_name || !expenseForm.amount ? 0.5 : 1 }}>{saving ? 'Salvando...' : 'Salvar'}</button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal Pagar Despesa */}
       {showPayExpenseModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-black text-gray-900">Confirmar Pagamento</h2>
-              <button onClick={() => setShowPayExpenseModal(null)} className="p-2 hover:bg-gray-100 rounded-xl"><X size={20} /></button>
-            </div>
-            <div className="p-4 bg-red-50 rounded-2xl mb-4">
-              <p className="font-black text-gray-900">{showPayExpenseModal.description || showPayExpenseModal.category_name}</p>
-              <p className="text-2xl font-black text-red-600 mt-1">{fmt(showPayExpenseModal.amount)}</p>
-            </div>
-            <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Data</label>
-              <input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowPayExpenseModal(null)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold">Cancelar</button>
-              <button onClick={markExpenseAsPaid} disabled={saving}
-                className="flex-1 py-3 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2">
-                {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle size={16} />}
-                Confirmar
-              </button>
-            </div>
+        <Modal title="Confirmar Pagamento" onClose={() => setShowPayExpenseModal(null)}>
+          <div style={{ background: '#2a0d0d', borderRadius: 12, padding: '16px 18px', marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, color: D_TEXT, fontSize: 15 }}>{showPayExpenseModal.description || showPayExpenseModal.category_name}</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: D_RED, marginTop: 4 }}>{fmt(showPayExpenseModal.amount)}</div>
           </div>
-        </div>
+          <div><label style={labelStyle}>Data</label><input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} style={inputStyle} /></div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+            <button onClick={() => setShowPayExpenseModal(null)} style={{ flex: 1, padding: '12px 0', border: `1px solid ${D_BORDER}`, borderRadius: 10, background: 'none', color: D_MUTED, fontWeight: 700, cursor: 'pointer' }}>Cancelar</button>
+            <button onClick={markExpenseAsPaid} disabled={saving} style={{ flex: 1, padding: '12px 0', background: D_GREEN, border: 'none', borderRadius: 10, color: '#0d2a1a', fontWeight: 700, cursor: 'pointer' }}>{saving ? 'Salvando...' : 'Confirmar'}</button>
+          </div>
+        </Modal>
       )}
     </div>
   );
