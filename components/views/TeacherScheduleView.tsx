@@ -108,7 +108,11 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
         class_date: feedbackLesson.date,
         created_at: new Date().toISOString(),
       });
-      if (fbError) throw fbError;
+      if (fbError) {
+        console.error('Erro feedback:', JSON.stringify(fbError));
+        alert('Erro ao salvar feedback: ' + fbError.message + ' | ' + fbError.details + ' | code: ' + fbError.code);
+        throw fbError;
+      }
 
       // Registra falta se ausente
       if (feedback.attendance === 'Ausente') {
