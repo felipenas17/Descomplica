@@ -88,8 +88,11 @@ export default function AssistantView({ user }: AssistantViewProps) {
         const { error } = await supabase.from('expenses').insert({
           description: msg.dados.descricao,
           amount:      msg.dados.valor,
-          category:    msg.dados.categoria || 'Outros',
-          date:        msg.dados.data || new Date().toISOString().split('T')[0],
+          category_name: msg.dados.categoria || 'Outros',
+          month:         new Date().getMonth() + 1,
+          year:          new Date().getFullYear(),
+          status:        'pending',
+          due_date:      msg.dados.data || new Date().toISOString().split('T')[0],
         });
         resultado = error ? '❌ Erro ao lançar despesa: ' + error.message : '✅ Despesa lançada no financeiro!';
       }
