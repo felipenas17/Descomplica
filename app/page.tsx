@@ -236,7 +236,7 @@ export default function Home() {
             case 'agenda': return user?.role === 'professor' ? <TeacherScheduleView user={user} /> : <AdminAgendaView user={user} />;
             case 'feedbacks': return <FeedbacksView />;
             case 'users': return <UsersView />;
-            case 'materials': return <MaterialsView user={user} />;
+            case 'materials': return <MaterialsView userRole={user?.role} userId={user?.id || ''} />;
             case 'notifications': return <NotificationsView user={user} />;
             case 'absences': return <AbsencesView />;
             case 'contracts': return <ContractsView />;
