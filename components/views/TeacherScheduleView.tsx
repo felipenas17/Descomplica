@@ -146,8 +146,9 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
       if (scError) throw scError;
 
       // Notifica o admin para confirmar a aula
-      if (admins && admins.length > 0) {
-        await Promise.all(admins.map((admin: any) =>
+      const { data: admins3 } = await supabase.from('profiles').select('id').eq('role', 'admin');
+      if (admins3 && admins3.length > 0) {
+        await Promise.all(admins3.map((admin: any) =>
           supabase.from('notifications').insert({
             user_id: admin.id,
             title: '✅ Confirmar aula: ' + feedbackLesson.subject,
@@ -159,9 +160,9 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
           })
         ));
       }
-      const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'admin');
-      if (admins && admins.length > 0) {
-        await Promise.all(admins.map((admin: any) =>
+      const { data: admins2 } = await supabase.from('profiles').select('id').eq('role', 'admin');
+      if (admins2 && admins2.length > 0) {
+        await Promise.all(admins2.map((admin: any) =>
           supabase.from('notifications').insert({
             user_id: admin.id,
             title: 'Feedback de aula recebido! 📝',

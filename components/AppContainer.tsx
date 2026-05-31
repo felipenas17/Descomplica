@@ -93,7 +93,7 @@ const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, un
           <NavItem icon={GraduationCap} label="Professores" active={activeView === 'teachers'} onClick={() => setView('teachers')} />
           <NavItem icon={Users} label="Alunos" active={activeView === 'students'} onClick={() => setView('students')} />
           <NavItem icon={MessageSquareQuote} label="Feedbacks" active={activeView === 'feedbacks'} onClick={() => setView('feedbacks')} />
-          <NavItem icon={UserX} label="Controle de Aulas" active={activeView === 'absences'} onClick={() => setView('absences')} badge={aulasPendentes > 0 ? aulasPendentes : undefined} />
+          <NavItem icon={UserX} label="Controle de Aulas" active={activeView === 'absences'} onClick={() => setView('absences')} badge={(aulasPendentes ?? 0) > 0 ? (aulasPendentes ?? 0) : undefined} />
           <NavItem icon={FileText} label="Contratos" active={activeView === 'contracts'} onClick={() => setView('contracts')} />
           <NavItem icon={FileText} label="Contratos Professores" active={activeView === 'teacher_contracts'} onClick={() => setView('teacher_contracts')} />
           <NavItem icon={Star} label="Avaliar Professores" active={activeView === 'teacher_evaluations'} onClick={() => setView('teacher_evaluations')} />
@@ -393,10 +393,6 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
     assistant: '🤖 Assistente IA',
     notifications: 'Notificações',
     absences: 'Controle de Aulas',
-    contracts: 'Contratos',
-    teacher_feedbacks: 'Meus Feedbacks',
-    teacher_evaluations: 'Avaliacao de Professores',
-    teacher_contracts: 'Contratos de Professores',
     contracts: 'Contratos',
     teacher_feedbacks: 'Meus Feedbacks',
     teacher_evaluations: 'Avaliacao de Professores',

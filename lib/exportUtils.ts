@@ -68,7 +68,7 @@ export async function downloadAsWord(data: { title: string, sections: { title: s
                 new TableRow({
                   children: Object.keys(section.content[0] || {}).map(key => 
                     new TableCell({
-                      children: [new Paragraph({ text: key.charAt(0).toUpperCase() + key.slice(1), bold: true })],
+                      children: [new Paragraph({ text: key.charAt(0).toUpperCase() + key.slice(1) })],
                       shading: { fill: "f3f4f6" }
                     })
                   )

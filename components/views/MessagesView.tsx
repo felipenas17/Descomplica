@@ -83,7 +83,7 @@ export default function MessagesView({ user }: { user?: any }) {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, (payload) => {
         const msg = payload.new as Message;
         if (msg.sender_id === user.id || msg.receiver_id === user.id) {
-          setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, read: msg.read } : m));
+          setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, read: (msg as any).read } : m));
         }
       })
       .subscribe();
@@ -254,8 +254,8 @@ export default function MessagesView({ user }: { user?: any }) {
                     <p className={`text-xs mt-1 flex items-center justify-end gap-1 ${m.sender_id === user?.id ? 'text-purple-200' : 'text-gray-400'}`}>
                       {formatTime(m.created_at)}
                       {m.sender_id === user?.id && (
-                        <span className={`font-bold ${m.read ? 'text-white' : 'text-purple-300'}`}>
-                          {m.read ? '✓✓' : '✓'}
+                        <span className={`font-bold ${(m as any).read ? 'text-white' : 'text-purple-300'}`}>
+                          {(m as any).read ? '✓✓' : '✓'}
                         </span>
                       )}
                     </p>

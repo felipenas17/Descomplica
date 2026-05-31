@@ -275,7 +275,7 @@ export default function SchoolCalendar({ user }: { user?: any }) {
 
       toast.success('Aula incluída com sucesso! ✅');
       setShowModal(false);
-      setNewLesson({ date: new Date().toISOString().split('T')[0], time_start: '08:00', time_end: '09:00', subject: '', room: '', student_name: '', notes: '' });
+      setNewLesson({ date: new Date().toISOString().split('T')[0], time_start: '08:00', time_end: '09:00', subject: '', room: '', teacher_id: '', student_id: '', student_name: '', notes: '' });
       fetchLessons();
     } catch (e: any) {
       toast.error('Erro ao salvar: ' + e.message); console.error('SAVE ERROR FULL:', JSON.stringify(e), e?.code, e?.details, e?.hint);
@@ -378,9 +378,10 @@ export default function SchoolCalendar({ user }: { user?: any }) {
                             style={{ top: `${top}px`, height: `${height}px` }}
                             onClick={() => { setSelectedLesson(lesson); setEditingLesson({...lesson}); }} className={`absolute left-1 right-1 ${color.bg} border-l-4 ${color.border} rounded-xl p-1.5 z-10 overflow-hidden cursor-pointer hover:shadow-md transition-all`}>
                             <p className={`text-[9px] font-black uppercase ${color.text}`}>{lesson.subject}</p>
-                            <p className="text-[8px] text-gray-500 truncate">{lesson.start_time} - {lesson.end_time}</p>
+                            <p className="text-[8px] text-gray-500 truncate">{(lesson as any).time_start || (lesson as any).start_time} - {(lesson as any).time_end || (lesson as any).end_time}</p>
                             <p className="text-[8px] text-gray-500 truncate">👤 {lesson.student_name}</p>
                             <p className="text-[8px] text-gray-500 truncate">🎓 {lesson.teacher_name}</p>
+                          </div>
                         );
                       })}
                     </div>
@@ -414,7 +415,7 @@ export default function SchoolCalendar({ user }: { user?: any }) {
                       <div key={lesson.id} style={{ top: `${top}px`, height: `${height}px` }}
                         className={`absolute left-2 right-2 ${color.bg} border-l-4 ${color.border} rounded-xl p-3 z-10 overflow-hidden`}>
                         <p className={`text-xs font-black uppercase ${color.text}`}>{lesson.subject}</p>
-                        <p className="text-[10px] text-gray-500">{lesson.start_time} - {lesson.end_time}</p>
+                        <p className="text-[10px] text-gray-500">{(lesson as any).time_start || (lesson as any).start_time} - {(lesson as any).time_end || (lesson as any).end_time}</p>
                         <p className="text-[10px] text-gray-500 truncate">👤 {lesson.student_name}</p>
                         <p className="text-[10px] text-gray-500 truncate">🎓 {lesson.teacher_name}</p>
                       </div>
@@ -702,35 +703,35 @@ export default function SchoolCalendar({ user }: { user?: any }) {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Data</label>
-                  <input type="date" value={editingLesson.date || ""} onChange={e => setEditingLesson((l) => ({ ...l, date: e.target.value }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                  <input type="date" value={editingLesson.date || ""} onChange={e => setEditingLesson((l: any) => ({ ...l, date: e.target.value }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Horário Início</label>
-                  <input type="time" value={editingLesson.time_start || ""} onChange={e => setEditingLesson((l) => ({ ...l, time_start: e.target.value }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                  <input type="time" value={editingLesson.time_start || ""} onChange={e => setEditingLesson((l: any) => ({ ...l, time_start: e.target.value }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Horário Fim</label>
-                  <input type="time" value={editingLesson.time_end || ""} onChange={e => setEditingLesson((l) => ({ ...l, time_end: e.target.value }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                  <input type="time" value={editingLesson.time_end || ""} onChange={e => setEditingLesson((l: any) => ({ ...l, time_end: e.target.value }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Sala</label>
-                  <input type="text" value={editingLesson.room || ""} onChange={e => setEditingLesson((l) => ({ ...l, room: e.target.value }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="Ex: Sala 1" />
+                  <input type="text" value={editingLesson.room || ""} onChange={e => setEditingLesson((l: any) => ({ ...l, room: e.target.value }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="Ex: Sala 1" />
                 </div>
               </div>
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Disciplina</label>
-                <input type="text" value={editingLesson.subject || ""} onChange={e => setEditingLesson((l) => ({ ...l, subject: e.target.value }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="Ex: Matematica" />
+                <input type="text" value={editingLesson.subject || ""} onChange={e => setEditingLesson((l: any) => ({ ...l, subject: e.target.value }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="Ex: Matematica" />
               </div>
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Professor</label>
-                <select value={editingLesson.teacher_id || ""} onChange={e => setEditingLesson((l) => ({ ...l, teacher_id: e.target.value }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
+                <select value={editingLesson.teacher_id || ""} onChange={e => setEditingLesson((l: any) => ({ ...l, teacher_id: e.target.value }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
                   <option value="">Selecione...</option>
                   {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Observacoes / Motivo de alteracao</label>
-                <textarea rows={3} value={editingLesson.notes || ""} onChange={e => setEditingLesson((l) => ({ ...l, notes: e.target.value }))} placeholder="Ex: Remarcado a pedido do aluno..." className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                <textarea rows={3} value={editingLesson.notes || ""} onChange={e => setEditingLesson((l: any) => ({ ...l, notes: e.target.value }))} placeholder="Ex: Remarcado a pedido do aluno..." className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300" />
               </div>
             </div>
             <div className="p-6 border-t border-gray-100 flex gap-3">

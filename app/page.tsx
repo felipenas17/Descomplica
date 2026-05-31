@@ -238,7 +238,7 @@ export default function Home() {
             case 'assistant': return user?.role === 'admin' ? <AssistantView user={user} /> : null;
             case 'feedbacks': return <FeedbacksView />;
             case 'users': return <UsersView />;
-            case 'materials': return <MaterialsView userRole={user?.role} userId={user?.id || ''} />;
+            case 'materials': return <MaterialsView userRole={user?.role === 'professor' ? 'teacher' : user?.role as 'admin' | 'teacher'} userId={user?.id || ''} />;
             case 'notifications': return <NotificationsView user={user} />;
             case 'absences': return <AbsencesView />;
             case 'contracts': return <ContractsView />;

@@ -131,13 +131,13 @@ export function NotificationDropdown({ onViewAll }: { onViewAll?: () => void }) 
                           <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
                         )}
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                          notification.priority === 'high' ? 'bg-red-50' : 
+                          (notification as any).priority === 'high' ? 'bg-red-50' : 
                           (notification.type === 'new_enrollment' || notification.type === 'student_added') ? 'bg-green-50' :
                           (notification.type === 'new_class' || notification.type === 'class_scheduled' || notification.type === 'schedule_change') ? 'bg-blue-50' :
                           (notification.type === 'payment_due' || notification.type === 'overdue_payment') ? 'bg-amber-50' :
                           'bg-purple-50'
                         }`}>
-                          {getIcon(notification.type)}
+                          {getIcon(notification.type as any)}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-start mb-1">
@@ -145,7 +145,7 @@ export function NotificationDropdown({ onViewAll }: { onViewAll?: () => void }) 
                               {notification.title}
                             </p>
                             <span className="text-[9px] font-bold text-gray-400 whitespace-nowrap pt-0.5">
-                              {getTimeAgo(notification.timestamp)}
+                              {getTimeAgo(notification.created_at)}
                             </span>
                           </div>
                           <p className={`text-xs leading-relaxed mb-2 ${!notification.read ? 'text-gray-700 font-medium' : 'text-gray-500'}`}>
@@ -153,11 +153,11 @@ export function NotificationDropdown({ onViewAll }: { onViewAll?: () => void }) 
                           </p>
                           <div className="flex items-center gap-3">
                             <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
-                              notification.priority === 'high' ? 'bg-red-100 text-red-600' : 
-                              notification.priority === 'medium' ? 'bg-blue-100 text-blue-600' : 
+                              (notification as any).priority === 'high' ? 'bg-red-100 text-red-600' : 
+                              (notification as any).priority === 'medium' ? 'bg-blue-100 text-blue-600' : 
                               'bg-gray-100 text-gray-500'
                             }`}>
-                              {notification.priority}
+                              {(notification as any).priority}
                             </span>
                           </div>
                         </div>

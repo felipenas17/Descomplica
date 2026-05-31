@@ -59,7 +59,7 @@ export default function TeacherFeedbacksView({ user }: { user?: any }) {
 
   const openFeedback = (lesson: any) => {
     setFeedbackLesson(lesson);
-    setFeedback({ rating: 5, performance: 'Bom', attendance: 'Presente', notes: '', homework_given: false, homework_description: '' });
+    setFeedback({ attendance: 'Presente', notes: '', discipline: '', content: '', resources: '' });
   };
 
   const saveFeedback = async () => {

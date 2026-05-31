@@ -100,7 +100,7 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
     const { error: storageError } = await supabase.storage.from('materials').upload(path, uploadFile);
     if (storageError) { alert('Erro ao enviar arquivo.'); setUploading(false); return; }
     const { data: urlData } = supabase.storage.from('materials').getPublicUrl(path);
-    const status: ApprovalStatus = (userRole === 'teacher' || userRole === 'professor') ? 'pending' : 'approved';
+    const status: ApprovalStatus = (userRole === 'teacher' || (userRole as string) === 'professor') ? 'pending' : 'approved';
     const { error: dbError } = await supabase.from('materials').insert({
       title: uploadForm.title, type: uploadForm.type, subject: uploadForm.subject,
       grade: uploadForm.grade, file_url: urlData.publicUrl,
@@ -215,7 +215,7 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
         {[
           { key: 'biblioteca',  label: '📖 Biblioteca', show: true },
           { key: 'meus_envios', label: '📤 Meus Envios' + (meusEnvios.length > 0 ? ' (' + meusEnvios.length + ')' : ''), show: true },
-          { key: 'pendentes',   label: '⏳ Pendentes',  show: userRole === 'admin' || userRole === 'admin' },
+          { key: 'pendentes',   label: '⏳ Pendentes',  show: (userRole as string) === 'admin' },
         ].filter(t => t.show).map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key as any)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '13px', background: activeTab === tab.key ? '#fff' : 'transparent', color: activeTab === tab.key ? '#7c3aed' : '#6b7280', boxShadow: activeTab === tab.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
             {tab.label}
@@ -275,12 +275,12 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
                     <span style={{ color: '#9ca3af' }}>/</span>
                     <span style={{ color: '#374151', fontSize: '14px', fontWeight: 500 }}>{selectedSubject}</span>
                   </div>
-                  <MaterialGrid materials={materialsForView} userRole={userRole} onPreview={setPreviewUrl} onDelete={userRole === 'admin' ? async (id) => { if (!confirm('Excluir?')) return; await supabase.from('materials').delete().eq('id', id); fetchMaterials(); } : undefined} />
+                  <MaterialGrid materials={materialsForView} userRole={userRole} onPreview={setPreviewUrl} onDelete={(userRole === 'admin' || (userRole as string) === 'admin') ? async (id) => { if (!confirm('Excluir?')) return; await supabase.from('materials').delete().eq('id', id); fetchMaterials(); } : undefined} />
                 </div>
               )}
             </div>
           ) : (
-            <MaterialGrid materials={biblioteca} userRole={userRole} onPreview={setPreviewUrl} onDelete={userRole === 'admin' ? async (id) => { if (!confirm('Excluir?')) return; await supabase.from('materials').delete().eq('id', id); fetchMaterials(); } : undefined} />
+            <MaterialGrid materials={biblioteca} userRole={userRole} onPreview={setPreviewUrl} onDelete={(userRole === 'admin' || (userRole as string) === 'admin') ? async (id) => { if (!confirm('Excluir?')) return; await supabase.from('materials').delete().eq('id', id); fetchMaterials(); } : undefined} />
           )}
         </div>
       )}
@@ -327,7 +327,7 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
         </div>
       )}
 
-      {activeTab === 'pendentes' && userRole === 'admin' && (
+      {activeTab === 'pendentes' && (userRole === 'admin' || (userRole as string) === 'admin') && (
         <div>
           {pendentes.length === 0 ? <EmptyState message="Nenhum material aguardando aprovação. 🎉" /> : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -527,7 +527,7 @@ function MaterialGrid({ materials, userRole, onPreview, onDelete }: { materials:
           </div>
           <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
             <button onClick={() => onPreview(m.file_url)} style={{ ...btnOutline, flex: 1, fontSize: '12px', padding: '7px 8px' }}>👁 Ver</button>
-            {userRole === 'admin' && onDelete && <button onClick={() => onDelete(m.id)} style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer', fontSize: '12px', fontWeight: 500 }}>🗑</button>}
+            {(userRole === 'admin' || (userRole as string) === 'admin') && onDelete && <button onClick={() => onDelete(m.id)} style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer', fontSize: '12px', fontWeight: 500 }}>🗑</button>}
           </div>
         </div>
       ))}
