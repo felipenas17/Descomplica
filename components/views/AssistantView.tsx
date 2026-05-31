@@ -141,51 +141,41 @@ export default function AssistantView({ user }: AssistantViewProps) {
     setMessages(prev => [...prev, { role: 'assistant', text: '↩️ Ação cancelada. Posso ajudar com mais alguma coisa?' }]);
   };
 
-  const startRecording = async () => {
+  const startRecording = () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      chunksRef.current = [];
-      recorder.ondataavailable = e => chunksRef.current.push(e.data);
-      recorder.onstop = async () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        stream.getTracks().forEach(t => t.stop());
-        await transcribeAudio(blob);
-      };
-      recorder.start();
-      mediaRef.current = recorder;
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert('Seu navegador não suporta reconhecimento de voz. Use o Chrome ou Edge.');
+        return;
+      }
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'pt-BR';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
       setRecording(true);
+      recognition.start();
+      recognition.onresult = (event: any) => {
+        const text = event.results[0][0].transcript;
+        setRecording(false);
+        sendMessage(text);
+      };
+      recognition.onerror = () => {
+        setRecording(false);
+        alert('Erro ao reconhecer voz. Tente novamente.');
+      };
+      recognition.onend = () => {
+        setRecording(false);
+      };
+      mediaRef.current = recognition;
     } catch {
-      alert('Permita o acesso ao microfone para usar o áudio.');
+      setRecording(false);
+      alert('Erro ao iniciar reconhecimento de voz.');
     }
   };
 
   const stopRecording = () => {
-    mediaRef.current?.stop();
+    (mediaRef.current as any)?.stop();
     setRecording(false);
-  };
-
-  const transcribeAudio = async (blob: Blob) => {
-    setLoading(true);
-    setMessages(prev => [...prev, { role: 'user', text: '🎤 Áudio enviado — transcrevendo...' }]);
-    try {
-      const formData = new FormData();
-      formData.append('audio', blob, 'audio.webm');
-      const res = await fetch('/api/assistant/transcribe', {
-        method: 'POST',
-        body: formData,
-      });
-      const { text } = await res.json();
-      if (text) {
-        setMessages(prev => prev.map((m, i) =>
-          i === prev.length - 1 ? { ...m, text: '🎤 ' + text } : m
-        ));
-        await sendMessage(text);
-      }
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', text: '❌ Erro ao transcrever áudio.' }]);
-    }
-    setLoading(false);
   };
 
   const sugestoes = [
