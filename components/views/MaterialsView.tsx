@@ -105,7 +105,7 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
       grade: uploadForm.grade, file_url: urlData.publicUrl,
       approval_status: status, uploaded_by_role: userRole, uploaded_by_id: userId, uploader_name: uploaderName,
     });
-    if (dbError) { alert('Erro ao salvar material.'); }
+    if (dbError) { alert('Erro INSERT: ' + dbError.message + ' | ' + dbError.details + ' | code: ' + dbError.code); }
     else {
       alert(userRole === 'teacher' ? '✅ Enviado! Aguardando aprovação.' : '✅ Material publicado!');
       setShowUpload(false);
