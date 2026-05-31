@@ -94,7 +94,8 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
       return;
     }
     setUploading(true);
-    const path = 'materials/' + Date.now() + '_' + uploadFile.name;
+    const safeName = uploadFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = "materials/" + Date.now() + "_" + safeName;
     const { error: storageError } = await supabase.storage.from('materials').upload(path, uploadFile);
     if (storageError) { alert('Erro ao enviar arquivo.'); setUploading(false); return; }
     const { data: urlData } = supabase.storage.from('materials').getPublicUrl(path);
@@ -150,7 +151,8 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
   const handleResubmit = async () => {
     if (!resubmitModal || !resubmitFile) { alert('Selecione o arquivo corrigido.'); return; }
     setResubmitLoading(true);
-    const path = 'materials/' + Date.now() + '_' + resubmitFile.name;
+    const safeName2 = resubmitFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = "materials/" + Date.now() + "_" + safeName2;
     const { error: storageError } = await supabase.storage.from('materials').upload(path, resubmitFile);
     if (storageError) { alert('Erro ao enviar arquivo.'); setResubmitLoading(false); return; }
     const { data: urlData } = supabase.storage.from('materials').getPublicUrl(path);
