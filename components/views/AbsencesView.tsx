@@ -51,9 +51,15 @@ export default function AbsencesView() {
   };
 
   const markReposicao = async (id: string) => {
-    await supabase.from('schedules').update({ reposicao_pendente: true }).eq('id', id);
+    // Marca como reposição pendente e abre modal para agendar nova data
+    await supabase.from('schedules').update({ 
+      reposicao_pendente: true,
+      status: 'reposicao_marcada'
+    }).eq('id', id);
     fetchData();
-    toast.success('Marcado como Reposicao Pendente!');
+    toast.success('Reposição marcada! Agende a nova data.');
+    const s = schedules.find(x => x.id === id);
+    if (s) setShowRemarcarModal(s);
   };
 
   const remarcarAula = async () => {
@@ -102,7 +108,7 @@ export default function AbsencesView() {
       filterStatus === 'aguardando' ? s.status === 'aguardando_confirmacao' :
       filterStatus === 'falta' ? s.attendance_status === 'falta' || s.attendance_status === 'Ausente' :
       filterStatus === 'justificada' ? s.attendance_status === 'justificada' || s.attendance_status === 'Justificada' :
-      filterStatus === 'reposicao' ? s.reposicao_pendente === true : true;
+      filterStatus === 'reposicao' ? (s.reposicao_pendente === true || s.status === 'reposicao_marcada') : true;
     return matchSearch && matchTeacher && matchDate && matchDateRange && matchStatus;
   });
 
@@ -111,11 +117,12 @@ export default function AbsencesView() {
   const aguardando = schedules.filter(s => s.status === 'aguardando_confirmacao').length;
   const faltas = schedules.filter(s => s.attendance_status === 'falta' || s.attendance_status === 'Ausente').length;
   const justificadas = schedules.filter(s => s.attendance_status === 'justificada' || s.attendance_status === 'Justificada').length;
-  const reposicoes = schedules.filter(s => s.reposicao_pendente).length;
+  const reposicoes = schedules.filter(s => s.reposicao_pendente || s.status === 'reposicao_marcada').length;
 
   const getStatusLabel = (s: any) => {
     if (s.status === 'concluido' && s.admin_confirmed) return { label: 'Concluida', color: 'bg-green-100 text-green-700' };
     if (s.status === 'aguardando_confirmacao') return { label: 'Aguard. Confirmacao', color: 'bg-orange-100 text-orange-700' };
+    if (s.status === 'reposicao_marcada') return { label: 'Reposicao Marcada', color: 'bg-blue-100 text-blue-700' };
     if (s.status === 'concluido') return { label: 'Concluida', color: 'bg-green-100 text-green-700' };
     if (s.status === 'cancelado') return { label: 'Cancelada', color: 'bg-red-100 text-red-700' };
     return { label: 'Agendada', color: 'bg-blue-100 text-blue-700' };
