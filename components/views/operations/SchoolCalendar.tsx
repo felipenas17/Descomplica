@@ -417,11 +417,6 @@ export default function SchoolCalendar({ user }: { user?: any }) {
                         <p className="text-[10px] text-gray-500">{lesson.start_time} - {lesson.end_time}</p>
                         <p className="text-[10px] text-gray-500 truncate">👤 {lesson.student_name}</p>
                         <p className="text-[10px] text-gray-500 truncate">🎓 {lesson.teacher_name}</p>
-                        <div className="flex flex-wrap gap-3 mt-1">
-                          {lesson.time_start && <span className="flex items-center gap-1 text-xs text-gray-500"><Clock size={10} />{lesson.time_start} - {lesson.time_end}</span>}
-                          {lesson.room && <span className="flex items-center gap-1 text-xs text-gray-500"><MapPin size={10} />{lesson.room}</span>}
-                          {lesson.student_name && <span className="flex items-center gap-1 text-xs text-gray-500"><User size={10} />{lesson.student_name}</span>}
-                        </div>
                       </div>
                     );
                   })}
