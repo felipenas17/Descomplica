@@ -7,6 +7,7 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { generateStudentReportHTML } from './studentReportHelper';
 import { Avatar } from '@/components/ui/Avatar';
 import StudentForm from '@/components/forms/StudentForm';
+import StudentHistoryModal from '@/components/views/StudentHistoryModal';
 
 export default function StudentsView() {
   const [students, setStudents] = React.useState<any[]>([]);
@@ -121,7 +122,15 @@ export default function StudentsView() {
 
   return (
     <div className="space-y-10">
-      {showForm && <StudentForm onClose={() => setShowForm(false)} onSubmit={handleAddStudent} />}
+      {showForm {showForm && <StudentForm onClose={() => setShowForm(false)} onSubmit={handleAddStudent} />}{showForm && <StudentForm onClose={() => setShowForm(false)} onSubmit={handleAddStudent} />} <StudentForm onClose={() => setShowForm(false)} onSubmit={handleAddStudent} />}
+      {historyStudent && (
+        <StudentHistoryModal
+          student={historyStudent}
+          historyData={historyData}
+          loading={loadingHistory}
+          onClose={() => setHistoryStudent(null)}
+        />
+      )}
 
       {/* Modal Editar Aluno */}
       {editingStudent && (
