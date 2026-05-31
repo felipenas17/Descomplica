@@ -27,11 +27,44 @@ export function useNotifications(userId?: string) {
   }, [userId]);
 
   useEffect(() => {
+    if (!userId) return;
+
+    // Busca inicial
     fetchNotifications();
-    // Polling a cada 30 segundos
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
+
+    // Realtime — chega instantâneo quando inserir nova notificação
+    const channel = supabase
+      .channel('notifications_' + userId)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: 'user_id=eq.' + userId,
+        },
+        (payload) => {
+          setNotifications(prev => [payload.new as AppNotification, ...prev]);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications',
+          filter: 'user_id=eq.' + userId,
+        },
+        () => {
+          fetchNotifications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, fetchNotifications]);
 
   const markAsRead = useCallback(async (id: string) => {
     await supabase.from('notifications').update({ read: true }).eq('id', id);
