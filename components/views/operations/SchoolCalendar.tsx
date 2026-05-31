@@ -381,12 +381,6 @@ export default function SchoolCalendar({ user }: { user?: any }) {
                             <p className="text-[8px] text-gray-500 truncate">{lesson.start_time} - {lesson.end_time}</p>
                             <p className="text-[8px] text-gray-500 truncate">👤 {lesson.student_name}</p>
                             <p className="text-[8px] text-gray-500 truncate">🎓 {lesson.teacher_name}</p>
-                            {lesson.room && <p className="text-[9px] text-gray-500 truncate">🏫 {lesson.room}</p>}
-                            {lesson.teacher_name && <p className="text-[9px] text-gray-500 truncate">👤 {lesson.teacher_name}</p>}
-                            {lesson.student_name && <p className="text-[9px] text-gray-500 truncate">🎓 {lesson.student_name}</p>}
-                            {lesson.room && <p className="text-[9px] text-gray-500 truncate">{lesson.room}</p>}
-                            {lesson.time_start && <p className="text-[9px] text-gray-400">{lesson.time_start}</p>}
-                          </div>
                         );
                       })}
                     </div>
