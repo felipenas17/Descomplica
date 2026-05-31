@@ -122,7 +122,7 @@ export default function StudentsView() {
 
   return (
     <div className="space-y-10">
-      {showForm {showForm && <StudentForm onClose={() => setShowForm(false)} onSubmit={handleAddStudent} />}{showForm && <StudentForm onClose={() => setShowForm(false)} onSubmit={handleAddStudent} />} <StudentForm onClose={() => setShowForm(false)} onSubmit={handleAddStudent} />}
+      {showForm && <StudentForm onClose={() => setShowForm(false)} onSubmit={handleAddStudent} />}
       {historyStudent && (
         <StudentHistoryModal
           student={historyStudent}
