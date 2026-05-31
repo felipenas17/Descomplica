@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 
 export interface AppNotification {
@@ -14,6 +14,7 @@ export interface AppNotification {
 
 export function useNotifications(userId?: string) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const channelRef = useRef<any>(null);
 
   const fetchNotifications = useCallback(async () => {
     if (!userId) return;
@@ -21,6 +22,7 @@ export function useNotifications(userId?: string) {
       .from('notifications')
       .select('*')
       .eq('user_id', userId)
+      .eq('archived', false)
       .order('created_at', { ascending: false })
       .limit(50);
     setNotifications(data || []);
@@ -29,40 +31,32 @@ export function useNotifications(userId?: string) {
   useEffect(() => {
     if (!userId) return;
 
-    // Busca inicial
     fetchNotifications();
 
-    // Realtime — chega instantâneo quando inserir nova notificação
-    const channel = supabase
-      .channel('notifications_' + userId)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
+    try {
+      const channel = supabase
+        .channel('notif_' + userId)
+        .on('postgres_changes', {
+          event: '*',
           schema: 'public',
           table: 'notifications',
           filter: 'user_id=eq.' + userId,
-        },
-        (payload) => {
-          setNotifications(prev => [payload.new as AppNotification, ...prev]);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications',
-          filter: 'user_id=eq.' + userId,
-        },
-        () => {
+        }, () => {
           fetchNotifications();
-        }
-      )
-      .subscribe();
+        })
+        .subscribe();
+
+      channelRef.current = channel;
+    } catch (e) {
+      // fallback polling se realtime falhar
+      const interval = setInterval(fetchNotifications, 15000);
+      return () => clearInterval(interval);
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
     };
   }, [userId, fetchNotifications]);
 
