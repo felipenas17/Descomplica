@@ -21,6 +21,7 @@ interface AssistantViewProps {
 }
 
 export default function AssistantView({ user }: AssistantViewProps) {
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [messages, setMessages]       = useState<Message[]>([
     { role: 'assistant', text: '👋 Olá, ' + user.name + '! Sou seu assistente. Posso agendar aulas, compromissos, lançar despesas e muito mais. Como posso ajudar?' }
   ]);
@@ -35,6 +36,23 @@ export default function AssistantView({ user }: AssistantViewProps) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (!user.id || historyLoaded) return;
+      const { data } = await supabase
+        .from('assistant_messages')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(100);
+      if (data && data.length > 0) {
+        setMessages(data.map(m => ({ role: m.role as 'user' | 'assistant', text: m.content })));
+      }
+      setHistoryLoaded(true);
+    };
+    loadHistory();
+  }, [user.id, historyLoaded]);
+
   const sendMessage = async (text: string) => {
     if (!text.trim() || loading) return;
     setInput('');
@@ -42,6 +60,7 @@ export default function AssistantView({ user }: AssistantViewProps) {
 
     const userMsg: Message = { role: 'user', text };
     setMessages(prev => [...prev, userMsg]);
+    await supabase.from('assistant_messages').insert({ user_id: user.id, role: 'user', content: text });
 
     try {
       const res = await fetch('/api/assistant', {
@@ -59,6 +78,7 @@ export default function AssistantView({ user }: AssistantViewProps) {
         pendente: data.confirmacao_necessaria,
       };
       setMessages(prev => [...prev, assistantMsg]);
+      await supabase.from('assistant_messages').insert({ user_id: user.id, role: 'assistant', content: data.resposta });
     } catch (e) {
       setMessages(prev => [...prev, { role: 'assistant', text: '❌ Erro ao processar. Tente novamente.' }]);
     }
