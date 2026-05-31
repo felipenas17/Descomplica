@@ -86,6 +86,9 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
   const pendentes  = materials.filter(m => m.approval_status === 'pending');
 
   const handleUpload = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: profile } = await supabase.from('profiles').select('name').eq('id', user?.id).single();
+    const uploaderName = profile?.name || user?.email || 'Professor';
     if (!uploadFile || !uploadForm.title || !uploadForm.type || !uploadForm.subject || !uploadForm.grade) {
       alert('Preencha todos os campos e selecione um arquivo.');
       return;
@@ -99,7 +102,7 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
     const { error: dbError } = await supabase.from('materials').insert({
       title: uploadForm.title, type: uploadForm.type, subject: uploadForm.subject,
       grade: uploadForm.grade, file_url: urlData.publicUrl,
-      approval_status: status, uploaded_by_role: userRole, uploaded_by_id: userId, uploader_name: 'Professor',
+      approval_status: status, uploaded_by_role: userRole, uploaded_by_id: userId, uploader_name: uploaderName,
     });
     if (dbError) { alert('Erro ao salvar material.'); }
     else {
