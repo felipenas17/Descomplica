@@ -99,13 +99,13 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
     const { error: storageError } = await supabase.storage.from('materials').upload(path, uploadFile);
     if (storageError) { alert('Erro ao enviar arquivo.'); setUploading(false); return; }
     const { data: urlData } = supabase.storage.from('materials').getPublicUrl(path);
-    const status: ApprovalStatus = userRole === 'teacher' ? 'pending' : 'approved';
+    const status: ApprovalStatus = (userRole === 'teacher' || userRole === 'professor') ? 'pending' : 'approved';
     const { error: dbError } = await supabase.from('materials').insert({
       title: uploadForm.title, type: uploadForm.type, subject: uploadForm.subject,
       grade: uploadForm.grade, file_url: urlData.publicUrl,
       approval_status: status, uploaded_by_role: userRole, uploaded_by_id: userId, uploader_name: uploaderName,
     });
-    if (dbError) { alert('Erro INSERT: ' + dbError.message + ' | ' + dbError.details + ' | code: ' + dbError.code); }
+    if (dbError) { alert('Erro ao salvar material.'); }
     else {
       alert(userRole === 'teacher' ? '✅ Enviado! Aguardando aprovação.' : '✅ Material publicado!');
       setShowUpload(false);
@@ -204,7 +204,7 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
         {[
           { key: 'biblioteca',  label: '📖 Biblioteca', show: true },
           { key: 'meus_envios', label: '📤 Meus Envios' + (meusEnvios.length > 0 ? ' (' + meusEnvios.length + ')' : ''), show: true },
-          { key: 'pendentes',   label: '⏳ Pendentes',  show: userRole === 'admin' },
+          { key: 'pendentes',   label: '⏳ Pendentes',  show: userRole === 'admin' || userRole === 'admin' },
         ].filter(t => t.show).map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key as any)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '13px', background: activeTab === tab.key ? '#fff' : 'transparent', color: activeTab === tab.key ? '#7c3aed' : '#6b7280', boxShadow: activeTab === tab.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
             {tab.label}
