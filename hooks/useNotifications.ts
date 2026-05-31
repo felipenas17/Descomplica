@@ -22,7 +22,6 @@ export function useNotifications(userId?: string) {
       .from('notifications')
       .select('*')
       .eq('user_id', userId)
-      .eq('archived', false)
       .order('created_at', { ascending: false })
       .limit(50);
     setNotifications(data || []);
