@@ -8,13 +8,25 @@ const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', curren
 const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const MONTHS_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
+const D_BG    = '#0f1117';
+const D_CARD  = '#1a1d27';
+const D_BORDER= '#2a2d3a';
+const D_TEXT  = '#e2e8f0';
+const D_MUTED = '#64748b';
+const D_GREEN = '#22d3a5';
+const D_RED   = '#f43f5e';
+const D_PURPLE= '#a78bfa';
+const D_YELLOW= '#f59e0b';
+
+const cardStyle: React.CSSProperties = { background: D_CARD, borderRadius: 16, border: `1px solid ${D_BORDER}`, padding: '18px 20px' };
+
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-gray-900 text-white px-4 py-3 rounded-xl shadow-2xl text-xs">
-        <p className="font-black mb-1">{label}</p>
+      <div style={{ background: '#0f1117', border: `1px solid ${D_BORDER}`, borderRadius: 12, padding: '10px 14px', fontSize: 12 }}>
+        <p style={{ color: D_TEXT, fontWeight: 700, marginBottom: 4 }}>{label}</p>
         {payload.map((p: any, i: number) => (
-          <p key={i} style={{ color: p.color }}>{p.name}: {typeof p.value === 'number' && p.value > 100 ? fmt(p.value) : p.value}</p>
+          <p key={i} style={{ color: p.color, margin: '2px 0' }}>{p.name}: {typeof p.value === 'number' && p.value > 100 ? fmt(p.value) : p.value}</p>
         ))}
       </div>
     );
@@ -24,12 +36,15 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function DashboardView() {
   const [loading, setLoading] = useState(true);
+  const [meta, setMeta] = useState(5000);
+  const [editMeta, setEditMeta] = useState(false);
   const [data, setData] = useState<any>({
-    totalAlunos: 0, alunosAtivos: 0, totalProfessores: 0,
+    totalAlunos: 0, totalProfessores: 0,
     receitaMes: 0, recebidoMes: 0, despesasMes: 0, lucroMes: 0,
     ticketMedio: 0, taxaOcupacao: 0, inadimplentes: 0,
-    aulasMes: 0, aulasHoje: 0, aulasConcluidas: 0,
+    aulasHoje: 0, aulasConcluidas: 0,
     proximasAulas: [], alertas: [], fluxoAnual: [], aniversarios: [],
+    rankingProfessores: [], taxaRecebimento: 0,
   });
 
   useEffect(() => { fetchDashboard(); }, []);
@@ -55,38 +70,39 @@ export default function DashboardView() {
       const payments = paymentsRes.data || [];
       const expenses = expensesRes.data || [];
 
-      // KPIs básicos
-      const totalAlunos = students.length;
-      const totalProfessores = teachers.length;
       const receitaMes = payments.filter(p => p.month === mesAtual).reduce((a, p) => a + (p.final_amount || p.amount || 0), 0);
       const recebidoMes = payments.filter(p => p.month === mesAtual && p.status === 'paid').reduce((a, p) => a + (p.final_amount || p.amount || 0), 0);
       const despesasMes = expenses.filter(e => e.month === mesAtual).reduce((a, e) => a + (e.amount || 0), 0);
       const lucroMes = recebidoMes - despesasMes;
-      const ticketMedio = totalAlunos > 0 ? students.reduce((a, s) => a + (s.monthly_value || 0), 0) / totalAlunos : 0;
+      const ticketMedio = students.length > 0 ? students.reduce((a, s) => a + (s.monthly_value || 0), 0) / students.length : 0;
       const inadimplentes = payments.filter(p => p.month === mesAtual && p.status === 'overdue').length;
-
-      // Aulas
-      const aulasMes = schedules.filter(s => s.date?.startsWith(ano + '-' + String(new Date().getMonth() + 1).padStart(2, '0'))).length;
       const aulasHoje = schedules.filter(s => s.date === hoje).length;
       const aulasConcluidas = schedules.filter(s => s.status === 'concluido').length;
-      const totalAulas = schedules.length;
-      const taxaOcupacao = totalAulas > 0 ? Math.round((aulasConcluidas / totalAulas) * 100) : 0;
+      const taxaOcupacao = schedules.length > 0 ? Math.round((aulasConcluidas / schedules.length) * 100) : 0;
+      const taxaRecebimento = receitaMes > 0 ? Math.round((recebidoMes / receitaMes) * 100) : 0;
 
-      // Próximas aulas de hoje
       const proximasAulas = schedules
         .filter(s => s.date === hoje)
         .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''))
         .slice(0, 5);
 
-      // Alertas
-      const alertas = [];
-      if (inadimplentes > 0) alertas.push({ type: 'danger', msg: `${inadimplentes} aluno(s) inadimplente(s) este mês` });
-      const aguardando = schedules.filter(s => s.status === 'aguardando_confirmacao').length;
-      if (aguardando > 0) alertas.push({ type: 'warning', msg: `${aguardando} aula(s) aguardando confirmação` });
-      if (lucroMes < 0) alertas.push({ type: 'danger', msg: `Prejuízo de ${fmt(Math.abs(lucroMes))} este mês` });
-      if (totalAlunos < 5) alertas.push({ type: 'info', msg: 'Dica: Foque em aulas em grupo para aumentar receita sem mais horas' });
+      // Ranking professores
+      const rankingProfessores = teachers.map(t => ({
+        nome: t.name,
+        aulas: schedules.filter(s => s.teacher_id === t.id && s.status === 'concluido').length,
+        alunos: [...new Set(schedules.filter(s => s.teacher_id === t.id).map(s => s.student_id))].length,
+      })).sort((a, b) => b.aulas - a.aulas).slice(0, 5);
 
-      // Aniversários próximos (7 dias)
+      // Alertas inteligentes
+      const alertas: any[] = [];
+      if (inadimplentes > 0) alertas.push({ type: 'danger', msg: `🚨 ${inadimplentes} aluno(s) inadimplente(s) — risco de ${fmt(inadimplentes * ticketMedio)} em receita` });
+      const aguardando = schedules.filter(s => s.status === 'aguardando_confirmacao').length;
+      if (aguardando > 0) alertas.push({ type: 'warning', msg: `⏳ ${aguardando} aula(s) aguardando sua confirmação` });
+      if (lucroMes < 0) alertas.push({ type: 'danger', msg: `📉 Prejuízo de ${fmt(Math.abs(lucroMes))} este mês` });
+      if (recebidoMes < receitaMes * 0.5 && receitaMes > 0) alertas.push({ type: 'warning', msg: `💰 Apenas ${taxaRecebimento}% da receita foi recebida este mês` });
+      if (students.length < 5) alertas.push({ type: 'info', msg: '💡 Dica: Aulas em grupo aumentam receita sem mais horas trabalhadas' });
+
+      // Aniversários
       const aniversarios = students.filter(s => {
         if (!s.birth_date) return false;
         const bday = new Date(s.birth_date);
@@ -104,31 +120,27 @@ export default function DashboardView() {
         return { mes: m, entradas, saidas, recebido, lucro: recebido - saidas };
       });
 
-      setData({
-        totalAlunos, totalProfessores, receitaMes, recebidoMes,
-        despesasMes, lucroMes, ticketMedio, taxaOcupacao,
-        inadimplentes, aulasMes, aulasHoje, aulasConcluidas,
-        proximasAulas, alertas, fluxoAnual, aniversarios,
-        taxaRecebimento: receitaMes > 0 ? Math.round((recebidoMes / receitaMes) * 100) : 0,
-      });
+      setData({ totalAlunos: students.length, totalProfessores: teachers.length, receitaMes, recebidoMes, despesasMes, lucroMes, ticketMedio, taxaOcupacao, inadimplentes, aulasHoje, aulasConcluidas, proximasAulas, alertas, fluxoAnual, aniversarios, rankingProfessores, taxaRecebimento });
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
 
   if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 256, background: D_BG }}>
+      <div style={{ width: 40, height: 40, border: `4px solid ${D_PURPLE}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
     </div>
   );
 
+  const pctMeta = meta > 0 ? Math.min(Math.round((data.recebidoMes / meta) * 100), 100) : 0;
+
   return (
-    <div className="space-y-6 pb-12">
-      {/* Alertas críticos */}
+    <div style={{ background: D_BG, minHeight: '100vh', padding: '20px 16px 60px', fontFamily: 'system-ui, sans-serif', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* Alertas */}
       {data.alertas.length > 0 && (
-        <div className="space-y-2">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {data.alertas.map((a: any, i: number) => (
-            <div key={i} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold ${a.type === 'danger' ? 'bg-red-50 text-red-700 border border-red-200' : a.type === 'warning' ? 'bg-orange-50 text-orange-700 border border-orange-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
-              <AlertCircle size={16} />
+            <div key={i} style={{ padding: '12px 16px', borderRadius: 12, fontSize: 13, fontWeight: 600, background: a.type === 'danger' ? '#2a0d0d' : a.type === 'warning' ? '#2a1f0d' : '#0d1a2a', color: a.type === 'danger' ? D_RED : a.type === 'warning' ? D_YELLOW : '#60a5fa', border: `1px solid ${a.type === 'danger' ? '#5a1a1a' : a.type === 'warning' ? '#5a3a1a' : '#1a2a4a'}` }}>
               {a.msg}
             </div>
           ))}
@@ -136,163 +148,149 @@ export default function DashboardView() {
       )}
 
       {/* KPIs principais */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {/* Receita */}
-        <div className="bg-gradient-to-br from-purple-600 to-purple-800 rounded-2xl p-5 text-white shadow-xl shadow-purple-200 md:col-span-2">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-purple-200">Receita do Mês</p>
-            <TrendingUp size={18} className="text-purple-300" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+        <div style={{ background: 'linear-gradient(135deg, #5b21b6, #7c3aed)', borderRadius: 16, padding: '18px 20px', gridColumn: 'span 2' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#c4b5fd', marginBottom: 8 }}>Receita do Mês</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#fff' }}>{fmt(data.receitaMes)}</div>
+          <div style={{ height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: 2, marginTop: 10 }}>
+            <div style={{ height: 4, background: '#fff', borderRadius: 2, width: `${data.taxaRecebimento}%`, transition: 'width 1s' }} />
           </div>
-          <p className="text-3xl font-black">{fmt(data.receitaMes)}</p>
-          <div className="mt-3 h-2 bg-purple-500 rounded-full">
-            <div className="h-full bg-white rounded-full transition-all" style={{ width: `${data.taxaRecebimento}%` }} />
-          </div>
-          <div className="flex justify-between mt-1">
-            <p className="text-xs text-purple-300">Recebido: {fmt(data.recebidoMes)}</p>
-            <p className="text-xs text-purple-300">{data.taxaRecebimento}%</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 11, color: '#c4b5fd' }}>
+            <span>Recebido: {fmt(data.recebidoMes)}</span>
+            <span>{data.taxaRecebimento}%</span>
           </div>
         </div>
 
-        {/* Lucro */}
-        <div className={`rounded-2xl p-5 border shadow-sm ${data.lucroMes >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{data.lucroMes >= 0 ? 'Lucro' : 'Prejuízo'}</p>
-            {data.lucroMes >= 0 ? <ArrowUpRight size={18} className="text-green-600" /> : <ArrowDownRight size={18} className="text-red-600" />}
-          </div>
-          <p className={`text-2xl font-black ${data.lucroMes >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(Math.abs(data.lucroMes))}</p>
-          <p className="text-xs text-gray-400 mt-1">Despesas: {fmt(data.despesasMes)}</p>
+        <div style={{ ...cardStyle, borderColor: data.lucroMes >= 0 ? '#1a3a2a' : '#3a1a1a' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: D_MUTED, marginBottom: 8 }}>{data.lucroMes >= 0 ? 'Lucro' : 'Prejuízo'}</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: data.lucroMes >= 0 ? D_GREEN : D_RED }}>{fmt(Math.abs(data.lucroMes))}</div>
+          <div style={{ fontSize: 12, color: D_MUTED, marginTop: 6 }}>Despesas: {fmt(data.despesasMes)}</div>
         </div>
 
-        {/* Ticket médio */}
-        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Ticket Médio</p>
-            <Target size={18} className="text-purple-400" />
-          </div>
-          <p className="text-2xl font-black text-gray-900">{fmt(data.ticketMedio)}</p>
-          <p className="text-xs text-gray-400 mt-1">por aluno/mês</p>
+        <div style={cardStyle}>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: D_MUTED, marginBottom: 8 }}>Ticket Médio</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: D_PURPLE }}>{fmt(data.ticketMedio)}</div>
+          <div style={{ fontSize: 12, color: D_MUTED, marginTop: 6 }}>por aluno/mês</div>
+        </div>
+      </div>
+
+      {/* Meta mensal */}
+      <div style={cardStyle}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: D_TEXT }}>🎯 Meta Mensal de Receita</div>
+          <button onClick={() => setEditMeta(!editMeta)} style={{ fontSize: 12, color: D_PURPLE, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+            {editMeta ? 'Salvar' : '✏️ Editar'}
+          </button>
+        </div>
+        {editMeta && (
+          <input type="number" value={meta} onChange={e => setMeta(Number(e.target.value))}
+            style={{ width: '100%', background: '#0f1117', border: `1px solid ${D_BORDER}`, borderRadius: 10, padding: '8px 12px', fontSize: 14, color: D_TEXT, marginBottom: 12, outline: 'none', boxSizing: 'border-box' }} />
+        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: D_MUTED, marginBottom: 8 }}>
+          <span>Recebido: {fmt(data.recebidoMes)}</span>
+          <span>Meta: {fmt(meta)}</span>
+        </div>
+        <div style={{ height: 8, background: D_BORDER, borderRadius: 4 }}>
+          <div style={{ height: 8, borderRadius: 4, background: pctMeta >= 100 ? D_GREEN : pctMeta >= 60 ? D_PURPLE : D_YELLOW, width: `${pctMeta}%`, transition: 'width 1s' }} />
+        </div>
+        <div style={{ fontSize: 12, color: pctMeta >= 100 ? D_GREEN : D_MUTED, marginTop: 6, fontWeight: 600 }}>
+          {pctMeta >= 100 ? '🎉 Meta atingida!' : `${pctMeta}% da meta — faltam ${fmt(meta - data.recebidoMes)}`}
         </div>
       </div>
 
       {/* KPIs secundários */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
         {[
-          { label: 'Total de Alunos', value: data.totalAlunos, sub: 'cadastrados', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: 'Professores', value: data.totalProfessores, sub: 'ativos', icon: GraduationCap, color: 'text-purple-600', bg: 'bg-purple-50' },
-          { label: 'Aulas Hoje', value: data.aulasHoje, sub: 'agendadas', icon: Calendar, color: 'text-orange-600', bg: 'bg-orange-50' },
-          { label: 'Taxa de Ocupação', value: data.taxaOcupacao + '%', sub: 'aulas concluídas', icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
-        ].map(kpi => (
-          <div key={kpi.label} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-            <div className={`w-9 h-9 rounded-xl ${kpi.bg} flex items-center justify-center mb-3`}>
-              <kpi.icon size={18} className={kpi.color} />
-            </div>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{kpi.label}</p>
-            <p className={`text-2xl font-black mt-1 ${kpi.color}`}>{kpi.value}</p>
-            <p className="text-[10px] text-gray-400 mt-1">{kpi.sub}</p>
+          { label: 'Total Alunos', value: data.totalAlunos, color: '#60a5fa' },
+          { label: 'Professores', value: data.totalProfessores, color: D_PURPLE },
+          { label: 'Aulas Hoje', value: data.aulasHoje, color: D_YELLOW },
+          { label: 'Taxa Ocupação', value: data.taxaOcupacao + '%', color: D_GREEN },
+        ].map(k => (
+          <div key={k.label} style={cardStyle}>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: D_MUTED, marginBottom: 8 }}>{k.label}</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: k.color }}>{k.value}</div>
           </div>
         ))}
       </div>
 
-      {/* Gráfico fluxo anual */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="font-black text-gray-900">Fluxo de Caixa Anual</h3>
-            <p className="text-xs text-gray-400">Receita vs Despesas — {new Date().getFullYear()}</p>
-          </div>
-          <Zap size={20} className="text-purple-500" />
-        </div>
-        <ResponsiveContainer width="100%" height={220}>
+      {/* Gráfico */}
+      <div style={cardStyle}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: D_TEXT, marginBottom: 4 }}>Fluxo de Caixa Anual</div>
+        <div style={{ fontSize: 12, color: D_MUTED, marginBottom: 16 }}>Receita vs Despesas — {new Date().getFullYear()}</div>
+        <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={data.fluxoAnual}>
             <defs>
-              <linearGradient id="gradEntradas" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#8A2BE2" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#8A2BE2" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="gradSaidas" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#EF4444" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#EF4444" stopOpacity={0} />
-              </linearGradient>
+              <linearGradient id="gE" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={D_GREEN} stopOpacity={0.3}/><stop offset="95%" stopColor={D_GREEN} stopOpacity={0}/></linearGradient>
+              <linearGradient id="gS" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={D_RED} stopOpacity={0.3}/><stop offset="95%" stopColor={D_RED} stopOpacity={0}/></linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-            <XAxis dataKey="mes" tick={{ fontSize: 11, fontWeight: 700 }} />
-            <YAxis tickFormatter={v => v >= 1000 ? 'R$' + (v/1000).toFixed(0) + 'k' : 'R$' + v} tick={{ fontSize: 10 }} />
+            <CartesianGrid strokeDasharray="3 3" stroke={D_BORDER} />
+            <XAxis dataKey="mes" tick={{ fontSize: 11, fill: D_MUTED }} />
+            <YAxis tickFormatter={v => v >= 1000 ? 'R$' + (v/1000).toFixed(0) + 'k' : 'R$' + v} tick={{ fontSize: 10, fill: D_MUTED }} />
             <Tooltip content={<CustomTooltip />} />
-            <Area type="monotone" dataKey="entradas" name="Receita" stroke="#8A2BE2" strokeWidth={2} fill="url(#gradEntradas)" />
-            <Area type="monotone" dataKey="saidas" name="Despesas" stroke="#EF4444" strokeWidth={2} fill="url(#gradSaidas)" />
+            <Area type="monotone" dataKey="recebido" name="Receita" stroke={D_GREEN} strokeWidth={2} fill="url(#gE)" />
+            <Area type="monotone" dataKey="saidas" name="Despesas" stroke={D_RED} strokeWidth={2} fill="url(#gS)" />
           </AreaChart>
         </ResponsiveContainer>
+        <div style={{ display: 'flex', gap: 20, marginTop: 8, fontSize: 12, color: D_MUTED }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 3, background: D_GREEN, display: 'inline-block', borderRadius: 2 }}></span>Receita</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 3, background: D_RED, display: 'inline-block', borderRadius: 2 }}></span>Despesas</span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         {/* Aulas de hoje */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <h3 className="font-black text-gray-900 mb-4 flex items-center gap-2">
-            <Clock size={18} className="text-purple-500" /> Aulas de Hoje
-          </h3>
+        <div style={cardStyle}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: D_TEXT, marginBottom: 14 }}>🕐 Aulas de Hoje</div>
           {data.proximasAulas.length === 0 ? (
-            <div className="text-center py-8">
-              <Calendar size={40} className="text-gray-200 mx-auto mb-3" />
-              <p className="text-gray-400 text-sm font-bold">Nenhuma aula hoje</p>
-            </div>
+            <div style={{ textAlign: 'center', padding: '30px 0', color: D_MUTED, fontSize: 13 }}>Nenhuma aula hoje</div>
           ) : (
-            <div className="space-y-3">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {data.proximasAulas.map((s: any) => (
-                <div key={s.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                  <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600 font-black text-xs shrink-0">
+                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: '#0f1117', borderRadius: 10 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: '#1a1040', display: 'flex', alignItems: 'center', justifyContent: 'center', color: D_PURPLE, fontWeight: 700, fontSize: 11, flexShrink: 0 }}>
                     {s.start_time?.slice(0, 5)}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-black text-gray-900 text-sm truncate">{s.subject || 'Aula'}</p>
-                    <p className="text-xs text-gray-400">{s.student_name} • {s.teacher_name}</p>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, color: D_TEXT, fontSize: 13 }}>{s.subject || 'Aula'}</div>
+                    <div style={{ fontSize: 11, color: D_MUTED, marginTop: 2 }}>{s.student_name} · {s.teacher_name}</div>
                   </div>
-                  <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${s.status === 'concluido' ? 'bg-green-100 text-green-700' : s.status === 'aguardando_confirmacao' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
-                    {s.status === 'concluido' ? '✅' : s.status === 'aguardando_confirmacao' ? '⏳' : '📅'}
-                  </span>
+                  <span style={{ fontSize: 16 }}>{s.status === 'concluido' ? '✅' : s.status === 'aguardando_confirmacao' ? '⏳' : '📅'}</span>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* Alertas e aniversários */}
-        <div className="space-y-4">
-          {/* Inadimplentes */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <h3 className="font-black text-gray-900 mb-3 flex items-center gap-2">
-              <AlertCircle size={18} className="text-red-500" /> Situação Financeira
-            </h3>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="text-center p-3 bg-green-50 rounded-xl">
-                <p className="text-xl font-black text-green-600">{data.totalAlunos - data.inadimplentes}</p>
-                <p className="text-[10px] text-gray-400 font-bold">Em dia</p>
-              </div>
-              <div className="text-center p-3 bg-red-50 rounded-xl">
-                <p className="text-xl font-black text-red-600">{data.inadimplentes}</p>
-                <p className="text-[10px] text-gray-400 font-bold">Inadimp.</p>
-              </div>
-              <div className="text-center p-3 bg-purple-50 rounded-xl">
-                <p className="text-xl font-black text-purple-600">{data.taxaRecebimento}%</p>
-                <p className="text-[10px] text-gray-400 font-bold">Recebido</p>
-              </div>
+        {/* Situação financeira + aniversários */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={cardStyle}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: D_TEXT, marginBottom: 12 }}>💰 Situação Financeira</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+              {[
+                { label: 'Em dia', value: data.totalAlunos - data.inadimplentes, color: D_GREEN },
+                { label: 'Inadimp.', value: data.inadimplentes, color: D_RED },
+                { label: 'Recebido', value: data.taxaRecebimento + '%', color: D_PURPLE },
+              ].map(item => (
+                <div key={item.label} style={{ background: '#0f1117', borderRadius: 10, padding: '10px 8px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: item.color }}>{item.value}</div>
+                  <div style={{ fontSize: 10, color: D_MUTED, marginTop: 4 }}>{item.label}</div>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Aniversários */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <h3 className="font-black text-gray-900 mb-3 flex items-center gap-2">
-              <Award size={18} className="text-yellow-500" /> Aniversários nos próximos 7 dias
-            </h3>
+          <div style={cardStyle}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: D_TEXT, marginBottom: 12 }}>🎂 Aniversários — próximos 7 dias</div>
             {data.aniversarios.length === 0 ? (
-              <p className="text-sm text-gray-400 font-bold text-center py-4">Nenhum aniversário próximo 🎉</p>
+              <div style={{ textAlign: 'center', padding: '16px 0', color: D_MUTED, fontSize: 13 }}>Nenhum aniversário próximo 🎉</div>
             ) : (
-              <div className="space-y-2">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {data.aniversarios.map((s: any) => (
-                  <div key={s.id} className="flex items-center gap-3 p-3 bg-yellow-50 rounded-xl">
-                    <span className="text-2xl">🎂</span>
+                  <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: '#2a1f0d', borderRadius: 10 }}>
+                    <span style={{ fontSize: 20 }}>🎂</span>
                     <div>
-                      <p className="font-black text-gray-900 text-sm">{s.name}</p>
-                      <p className="text-xs text-gray-400">{new Date(s.birth_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</p>
+                      <div style={{ fontWeight: 600, color: D_TEXT, fontSize: 13 }}>{s.name}</div>
+                      <div style={{ fontSize: 11, color: D_YELLOW }}>{new Date(s.birth_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</div>
                     </div>
                   </div>
                 ))}
@@ -301,6 +299,33 @@ export default function DashboardView() {
           </div>
         </div>
       </div>
+
+      {/* Ranking professores */}
+      {data.rankingProfessores.length > 0 && (
+        <div style={cardStyle}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: D_TEXT, marginBottom: 14 }}>🏆 Ranking de Professores</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {data.rankingProfessores.map((p: any, i: number) => (
+              <div key={p.nome} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: i === 0 ? '#2a1f05' : i === 1 ? '#1a1a2a' : '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>
+                  {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}`}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, color: D_TEXT, fontSize: 13 }}>{p.nome}</div>
+                  <div style={{ fontSize: 11, color: D_MUTED }}>{p.alunos} aluno(s)</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontWeight: 700, color: D_PURPLE, fontSize: 14 }}>{p.aulas}</div>
+                  <div style={{ fontSize: 10, color: D_MUTED }}>aulas</div>
+                </div>
+                <div style={{ width: 80, height: 4, background: D_BORDER, borderRadius: 2 }}>
+                  <div style={{ height: 4, borderRadius: 2, background: i === 0 ? D_YELLOW : D_PURPLE, width: `${data.rankingProfessores[0].aulas > 0 ? (p.aulas / data.rankingProfessores[0].aulas) * 100 : 0}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
