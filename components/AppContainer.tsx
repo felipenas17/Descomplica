@@ -316,42 +316,38 @@ const TopBar = ({ title, user, setView, onLogout, onOpenChangePassword }: { titl
 };
 
 // --- Bottom Navigation (Mobile) ---
-const BottomNav = ({ activeView, setView, user }: { activeView: View, setView: (v: View) => void, user: any }) => (
-  <nav className="md:hidden fixed bottom-6 left-4 right-4 h-16 bg-white/70 backdrop-blur-xl border border-primary/10 shadow-2xl rounded-2xl flex justify-around items-center px-4 z-50">
-    {user?.role === 'admin' && (
-      <>
-        <button onClick={() => setView('dashboard')} className={`flex flex-col items-center gap-1 ${activeView === 'dashboard' ? 'text-primary' : 'text-gray-400 opacity-60'}`}>
-          <LayoutDashboard size={20} />
-          <span className="text-[10px] font-bold">Home</span>
-        </button>
-        <button onClick={() => setView('users')} className={`flex flex-col items-center gap-1 ${activeView === 'users' ? 'text-primary' : 'text-gray-400 opacity-60'}`}>
-          <ShieldCheck size={20} />
-          <span className="text-[10px] font-bold">Usuários</span>
-        </button>
-      </>
-    )}
-    <button onClick={() => setView('agenda')} className={`flex flex-col items-center gap-1 ${activeView === 'agenda' ? 'text-primary' : 'text-gray-400 opacity-60'}`}>
-      <CalendarCheck size={20} />
-      <span className="text-[10px] font-bold">Agenda</span>
-    </button>
-    <button onClick={() => setView('materials')} className={`flex flex-col items-center gap-1 ${activeView === 'materials' ? 'text-primary' : 'text-gray-400 opacity-60'}`}>
-      <FileText size={20} />
-      <span className="text-[10px] font-bold">Materiais</span>
-    </button>
-    {user?.role === 'admin' && (
-      <>
-        <button onClick={() => setView('finance')} className={`flex flex-col items-center gap-1 ${activeView === 'finance' ? 'text-primary' : 'text-gray-400 opacity-60'}`}>
-          <Wallet size={20} />
-          <span className="text-[10px] font-bold">Dinheiro</span>
-        </button>
-        <button onClick={() => setView('teachers')} className={`flex flex-col items-center gap-1 ${activeView === 'teachers' ? 'text-primary' : 'text-gray-400 opacity-60'}`}>
-          <GraduationCap size={20} />
-          <span className="text-[10px] font-bold">Profs</span>
-        </button>
-      </>
-    )}
-  </nav>
-);
+const BottomNav = ({ activeView, setView, user }: { activeView: View, setView: (v: View) => void, user: any }) => {
+  const adminItems = [
+    { view: 'dashboard', icon: LayoutDashboard, label: 'Home' },
+    { view: 'students',  icon: Users,           label: 'Alunos' },
+    { view: 'finance',   icon: Wallet,          label: 'Financeiro' },
+    { view: 'agenda',    icon: CalendarCheck,   label: 'Agenda' },
+    { view: 'assistant', icon: MessageSquare,   label: 'IA' },
+  ];
+  const teacherItems = [
+    { view: 'agenda',          icon: CalendarCheck,    label: 'Agenda' },
+    { view: 'materials',       icon: FileText,         label: 'Materiais' },
+    { view: 'notifications',   icon: Bell,             label: 'Alertas' },
+    { view: 'teacher_feedbacks', icon: MessageSquareQuote, label: 'Feedbacks' },
+    { view: 'messages',        icon: MessageSquare,    label: 'Chat' },
+  ];
+  const items = user?.role === 'admin' ? adminItems : teacherItems;
+  return (
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-gray-100 shadow-2xl flex justify-around items-center px-2 z-50">
+      {items.map(item => {
+        const active = activeView === item.view;
+        return (
+          <button key={item.view} onClick={() => setView(item.view as View)}
+            className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-all relative">
+            {active && <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-purple-600 rounded-full" />}
+            <item.icon size={22} className={active ? 'text-purple-600' : 'text-gray-400'} />
+            <span className={`text-[9px] font-bold ${active ? 'text-purple-600' : 'text-gray-400'}`}>{item.label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+};
 
 // --- Main Layout ---
 export function AppContainer({ children, activeView, setView, user, onLogout, onOpenChangePassword }: { children: React.ReactNode, activeView: View, setView: (v: View) => void, user: any, onLogout: () => void, onOpenChangePassword?: () => void }) {
