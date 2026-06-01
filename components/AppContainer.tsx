@@ -402,15 +402,67 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
       
       {/* Sidebar mobile overlay */}
       {isSidebarOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
-          <div className="relative w-[280px] h-full bg-sidebar z-50 overflow-y-auto">
+        <div className="md:hidden fixed inset-0 z-[100] flex">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
+          <div className="relative w-[280px] h-full z-[101] overflow-y-auto flex flex-col" style={{background: '#1e1b2e'}}>
             <div className="flex items-center justify-between p-5 border-b border-white/10">
-              <span className="text-white font-black text-lg">Menu</span>
-              <button onClick={() => setIsSidebarOpen(false)} className="text-white/60 hover:text-white p-1">✕</button>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center text-white font-black text-sm">D</div>
+                <span className="text-white font-black text-base">Descomplica</span>
+              </div>
+              <button onClick={() => setIsSidebarOpen(false)} className="text-white/60 hover:text-white p-1 text-xl">✕</button>
             </div>
-            <div onClick={() => setIsSidebarOpen(false)}>
-              <Sidebar activeView={activeView} setView={setView} user={user} onLogout={onLogout} onOpenChangePassword={onOpenChangePassword} unreadCount={unreadCount} unreadMessages={unreadMessages} setUnreadMessages={setUnreadMessages} aulasPendentes={aulasPendentes} />
+            <div className="flex-1 overflow-y-auto p-4 space-y-1">
+              {user?.role === 'admin' ? (
+                <>
+                  {[
+                    { view: 'dashboard', icon: '📊', label: 'Dashboard' },
+                    { view: 'schedule', icon: '📅', label: 'Central Operacional' },
+                    { view: 'finance', icon: '💰', label: 'Financeiro' },
+                    { view: 'teachers', icon: '👨‍🏫', label: 'Professores' },
+                    { view: 'students', icon: '👥', label: 'Alunos' },
+                    { view: 'feedbacks', icon: '💬', label: 'Feedbacks' },
+                    { view: 'absences', icon: '📋', label: 'Controle de Aulas' },
+                    { view: 'contracts', icon: '📄', label: 'Contratos' },
+                    { view: 'teacher_contracts', icon: '📄', label: 'Contratos Professores' },
+                    { view: 'teacher_evaluations', icon: '⭐', label: 'Avaliar Professores' },
+                    { view: 'materials', icon: '📚', label: 'Material de Apoio' },
+                    { view: 'agenda', icon: '🗓️', label: 'Agenda & Compromissos' },
+                    { view: 'messages', icon: '✉️', label: 'Mensagens' },
+                    { view: 'notifications', icon: '🔔', label: 'Notificações' },
+                    { view: 'assistant', icon: '🤖', label: 'Assistente IA' },
+                    { view: 'users', icon: '🛡️', label: 'Usuários' },
+                  ].map(item => (
+                    <button key={item.view} onClick={() => { setView(item.view as View); setIsSidebarOpen(false); }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all ${activeView === item.view ? 'bg-purple-600 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}>
+                      <span className="text-base">{item.icon}</span>
+                      {item.label}
+                    </button>
+                  ))}
+                </>
+              ) : (
+                <>
+                  {[
+                    { view: 'agenda', icon: '📅', label: 'Agenda & Compromissos' },
+                    { view: 'materials', icon: '📚', label: 'Material de Apoio' },
+                    { view: 'notifications', icon: '🔔', label: 'Notificações' },
+                    { view: 'teacher_feedbacks', icon: '💬', label: 'Meus Feedbacks' },
+                    { view: 'messages', icon: '✉️', label: 'Mensagens' },
+                  ].map(item => (
+                    <button key={item.view} onClick={() => { setView(item.view as View); setIsSidebarOpen(false); }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all ${activeView === item.view ? 'bg-purple-600 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}>
+                      <span className="text-base">{item.icon}</span>
+                      {item.label}
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+            <div className="p-4 border-t border-white/10">
+              <button onClick={() => { onLogout(); setIsSidebarOpen(false); }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-red-400 hover:bg-red-500/10 transition-all">
+                <span>🚪</span> Sair da Conta
+              </button>
             </div>
           </div>
         </div>
