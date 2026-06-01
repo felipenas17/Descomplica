@@ -138,7 +138,7 @@ const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, un
 );
 
 // --- TopBar Component ---
-const TopBar = ({ title, user, setView, onLogout, onOpenChangePassword }: { title: string, user: any, setView: (v: View) => void, onLogout: () => void, onOpenChangePassword?: () => void }) => {
+const TopBar = ({ title, user, setView, onLogout, onOpenChangePassword, onOpenSidebar }: { title: string, user: any, setView: (v: View) => void, onLogout: () => void, onOpenChangePassword?: () => void, onOpenSidebar?: () => void }) => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [results, setResults] = React.useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
@@ -192,7 +192,7 @@ const TopBar = ({ title, user, setView, onLogout, onOpenChangePassword }: { titl
   return (
     <header className="flex justify-between items-center px-8 py-4 w-full sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-primary/10">
       <div className="flex items-center gap-4">
-        <button className="md:hidden text-primary">
+        <button className="md:hidden text-primary" onClick={() => onOpenSidebar?.()}>
           <Menu size={24} />
         </button>
         <h2 className="text-2xl font-bold text-primary font-display">{title}</h2>
@@ -352,6 +352,7 @@ const BottomNav = ({ activeView, setView, user }: { activeView: View, setView: (
 // --- Main Layout ---
 export function AppContainer({ children, activeView, setView, user, onLogout, onOpenChangePassword }: { children: React.ReactNode, activeView: View, setView: (v: View) => void, user: any, onLogout: () => void, onOpenChangePassword?: () => void }) {
   const [aulasPendentes, setAulasPendentes] = React.useState(0);
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const { supported, subscribed, subscribe } = usePushNotifications(user?.id);
   React.useEffect(() => {
     const fetchPendentes = async () => {
@@ -399,8 +400,24 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
     <div className="min-h-screen bg-background-app flex selection:bg-primary/30 selection:text-primary">
       <Sidebar activeView={activeView} setView={setView} user={user} onLogout={onLogout} onOpenChangePassword={onOpenChangePassword} unreadCount={unreadCount} unreadMessages={unreadMessages} setUnreadMessages={setUnreadMessages} aulasPendentes={aulasPendentes} />
       
+      {/* Sidebar mobile overlay */}
+      {isSidebarOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
+          <div className="relative w-[280px] h-full bg-sidebar z-50 overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-white/10">
+              <span className="text-white font-black text-lg">Menu</span>
+              <button onClick={() => setIsSidebarOpen(false)} className="text-white/60 hover:text-white p-1">✕</button>
+            </div>
+            <div onClick={() => setIsSidebarOpen(false)}>
+              <Sidebar activeView={activeView} setView={setView} user={user} onLogout={onLogout} onOpenChangePassword={onOpenChangePassword} unreadCount={unreadCount} unreadMessages={unreadMessages} setUnreadMessages={setUnreadMessages} aulasPendentes={aulasPendentes} />
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="flex-1 md:ml-[280px] min-h-screen relative pb-32 md:pb-12">
-        <TopBar title={viewTitles[activeView]} user={user} setView={setView} onLogout={onLogout} onOpenChangePassword={onOpenChangePassword} />
+        <TopBar title={viewTitles[activeView]} user={user} setView={setView} onLogout={onLogout} onOpenChangePassword={onOpenChangePassword} onOpenSidebar={() => setIsSidebarOpen(true)} />
         
         <div className="p-6 md:p-10 max-w-7xl mx-auto">
           <AnimatePresence mode="wait">
