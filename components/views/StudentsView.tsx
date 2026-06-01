@@ -300,7 +300,7 @@ export default function StudentsView() {
             </div>
             
             <div className="bg-secondary/5 py-4 px-8 flex justify-between items-center group-hover:bg-secondary transition-colors">
-              <button className="text-xs font-bold text-secondary group-hover:text-black transition-colors flex items-center gap-2">
+              <button onClick={() => fetchStudentHistory(student)} className="text-xs font-bold text-secondary group-hover:text-black transition-colors flex items-center gap-2">
                 <History size={14} /> Histórico
               </button>
               <button onClick={() => generateReport(student)} className="text-xs font-bold text-purple-500 group-hover:text-purple-700 transition-colors uppercase tracking-widest">📄 Relatório</button>
