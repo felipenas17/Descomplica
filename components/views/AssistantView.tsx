@@ -86,6 +86,7 @@ export default function AssistantView({ user }: AssistantViewProps) {
   };
 
   const confirmarAcao = async (msg: Message) => {
+    console.log('ACAO:', msg.acao, 'DADOS:', JSON.stringify(msg.dados));
     if (!msg.acao || !msg.dados) return;
     setLoading(true);
 
