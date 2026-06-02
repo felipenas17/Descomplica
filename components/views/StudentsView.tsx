@@ -13,6 +13,7 @@ export default function StudentsView() {
   const [students, setStudents] = React.useState<any[]>([]);
   const [showForm, setShowForm] = React.useState(false);
   const [editingStudent, setEditingStudent] = React.useState<any>(null);
+  const [painelAluno, setPainelAluno] = React.useState<any>(null);
   const [historyStudent, setHistoryStudent] = React.useState<any>(null);
   const [historyData, setHistoryData] = React.useState<any>({ schedules: [], payments: [], feedbacks: [] });
   const [loadingHistory, setLoadingHistory] = React.useState(false);
@@ -311,7 +312,7 @@ export default function StudentsView() {
                 <History size={14} /> Histórico
               </button>
               <button onClick={() => generateReport(student)} className="text-xs font-bold text-purple-500 group-hover:text-purple-700 transition-colors uppercase tracking-widest">📄 Relatório</button>
-              <button onClick={() => fetchStudentHistory(student)} className="text-xs font-bold text-gray-500 group-hover:text-black/70 transition-colors uppercase tracking-widest">Painel Aluno</button>
+              <button onClick={() => setPainelAluno(student)} className="text-xs font-bold text-gray-500 group-hover:text-black/70 transition-colors uppercase tracking-widest">Painel Aluno</button>
             </div>
           </div>
         ))}
