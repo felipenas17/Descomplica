@@ -142,9 +142,30 @@ export default function AssistantView({ user }: AssistantViewProps) {
 
       else if (msg.acao === 'CANCELAR_AULA') {
         const { error } = await supabase.from('schedules').update({
-          status: 'cancelled'
+          status: 'cancelado'
         }).eq('id', msg.dados.aula_id);
         resultado = error ? '❌ Erro ao cancelar aula: ' + error.message : '✅ Aula cancelada com sucesso!';
+      }
+
+      else if (msg.acao === 'CONFIRMAR_AULA') {
+        const { error } = await supabase.from('schedules').update({
+          status: 'concluido',
+          admin_confirmed: true,
+        }).eq('id', msg.dados.aula_id);
+        resultado = error ? '❌ Erro ao confirmar aula: ' + error.message : '✅ Aula confirmada e marcada como concluída!';
+      }
+
+      else if (msg.acao === 'MARCAR_PAGO') {
+        const { error } = await supabase.from('monthly_payments').update({
+          status: 'paid',
+          paid_date: new Date().toISOString().split('T')[0],
+        }).eq('id', msg.dados.pagamento_id);
+        resultado = error ? '❌ Erro ao marcar como pago: ' + error.message : '✅ Mensalidade marcada como paga!';
+      }
+
+      else if (msg.acao === 'EXCLUIR_DESPESA') {
+        const { error } = await supabase.from('expenses').delete().eq('id', msg.dados.despesa_id);
+        resultado = error ? '❌ Erro ao excluir despesa: ' + error.message : '✅ Despesa excluída com sucesso!';
       }
 
       // Marca como executado e adiciona resultado
