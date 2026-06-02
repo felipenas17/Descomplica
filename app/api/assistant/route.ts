@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       { data: expenses },
       { data: agenda },
     ] = await Promise.all([
-      supabase.from('students').select('id, name, monthly_value, responsible_name, responsible_phone').limit(50),
+      supabase.from('profiles').select('id, name, monthly_value, responsible_name, responsible_phone').eq('role', 'student').limit(50),
       supabase.from('teachers').select('id, name').limit(20),
       supabase.from('schedules').select('*').gte('date', ano + '-01-01').limit(100),
       supabase.from('monthly_payments').select('*').eq('year', ano).limit(100),
