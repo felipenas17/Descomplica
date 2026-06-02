@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
       { data: expenses },
       { data: agenda },
       { data: feedbacks },
+      { data: pendingPayments },
       { data: expensesList },
     ] = await Promise.all([
       supabase.from('students').select('id, name, monthly_value, parent_name, parent_phone, status').eq('status', 'Ativo').limit(50),
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
       supabase.from('monthly_payments').select('*').eq('year', ano).limit(100),
       supabase.from('expenses').select('*').eq('year', ano).limit(50),
       supabase.from('admin_agenda').select('*').gte('date', hoje).limit(10),
+      supabase.from('monthly_payments').select('*, students(parent_name, parent_phone, parent_cell)').in('status', ['pending', 'overdue']).eq('year', ano).limit(50),
       supabase.from('feedbacks').select('*').order('created_at', { ascending: false }).limit(20),
       supabase.from('expenses').select('id, description, category_name, amount, status, month').eq('year', ano).limit(30),
     ]);
@@ -59,6 +61,15 @@ DADOS DO SISTEMA:
 - Recebido ${mesAtual}: R$ ${recebidoMes.toFixed(2)}
 - Despesas ${mesAtual}: R$ ${despesasMes.toFixed(2)}
 - Lucro/Prejuízo: R$ ${(recebidoMes - despesasMes).toFixed(2)}
+- Mensalidades pendentes COM telefone do responsável: ${JSON.stringify(pendingPayments?.map((p: any) => ({ 
+    id: p.id, 
+    aluno: p.student_name, 
+    valor: p.final_amount || p.amount, 
+    vencimento: p.due_date, 
+    status: p.status,
+    responsavel: p.students?.parent_name,
+    telefone: p.students?.parent_phone || p.students?.parent_cell
+  })))}
 - Pagamentos pendentes: ${JSON.stringify(payments?.filter(p => p.status === 'pending' && p.month === mesAtual)?.map((p: any) => ({ id: p.id, aluno: p.student_name, valor: p.final_amount || p.amount, vencimento: p.due_date })))}
 - Inadimplentes (${inadimplentes.length}): ${JSON.stringify(inadimplentes.map((p: any) => ({ aluno: p.student_name, valor: p.final_amount || p.amount })))}
 - Feedbacks recentes (${feedbacks?.length || 0}): ${JSON.stringify(feedbacks?.slice(0,10).map((f: any) => ({ aluno: f.student_name, professor: f.teacher_name, materia: f.subject, data: f.class_date, presenca: f.attendance, conteudo: f.content, observacoes: f.observations })))}
@@ -68,7 +79,7 @@ DADOS DO SISTEMA:
 RESPONDA SEMPRE EM JSON:
 {
   "resposta": "mensagem clara com emojis",
-  "acao": "NENHUMA | AGENDAR_AULA | CANCELAR_AULA | ALTERAR_AULA | AGENDAR_COMPROMISSO | LANCAR_DESPESA | CONFIRMAR_AULA | MARCAR_PAGO | EXCLUIR_DESPESA | ENVIAR_MENSAGEM | ENVIAR_NOTIFICACAO | COBRAR_INADIMPLENTE",
+  "acao": "NENHUMA | AGENDAR_AULA | CANCELAR_AULA | ALTERAR_AULA | AGENDAR_COMPROMISSO | LANCAR_DESPESA | CONFIRMAR_AULA | MARCAR_PAGO | EXCLUIR_DESPESA | ENVIAR_MENSAGEM | ENVIAR_NOTIFICACAO | COBRAR_INADIMPLENTE | ALERTAR_VENCIMENTO",
   "dados": {},
   "confirmacao_necessaria": true | false
 }
@@ -79,6 +90,7 @@ REGRAS:
 - Para CANCELAR_AULA: dados = { aula_id }
 - Para MARCAR_PAGO: dados = { pagamento_id } — marca mensalidade como paga
 - Para EXCLUIR_DESPESA: dados = { despesa_id }
+- Para ALERTAR_VENCIMENTO: dados = { aluno, responsavel, telefone, mes, valor, dias_para_vencer } — envia WhatsApp avisando que mensalidade está vencendo em breve
 - Para COBRAR_INADIMPLENTE: dados = { aluno, responsavel, telefone, mes, valor } — abre WhatsApp com mensagem de cobrança para o responsável
 - Para ENVIAR_MENSAGEM: dados = { destinatario_id, destinatario_nome, texto } — o destinatario_id é o ID do professor da lista acima
 - Para ENVIAR_NOTIFICACAO: dados = { destinatario_id, destinatario_nome, titulo, texto } — o destinatario_id é o ID do professor da lista acima
