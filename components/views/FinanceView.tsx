@@ -277,6 +277,22 @@ export default function FinanceView() {
     try {
       const fromIdx = MONTHS_FULL.indexOf(generateFrom); const toIdx = MONTHS_FULL.indexOf(generateTo);
       let totalCreated = 0;
+
+      // Detecta irmãos pelo mesmo parent_phone ou parent_name
+      const { data: allStudentsData } = await supabase.from('students').select('id, name, monthly_value, parent_phone, parent_name, enrollment_type');
+      const allStudentsFull = allStudentsData || [];
+
+      // Agrupa por responsável para detectar irmãos
+      const byParent: Record<string, any[]> = {};
+      allStudentsFull.forEach(s => {
+        const key = s.parent_phone || s.parent_name || s.id;
+        if (!byParent[key]) byParent[key] = [];
+        byParent[key].push(s);
+      });
+      const irmaosIds = new Set(
+        Object.values(byParent).filter(g => g.length > 1).flatMap(g => g.map(s => s.id))
+      );
+
       for (let i = fromIdx; i <= toIdx; i++) {
         const month = MONTHS_FULL[i];
         const existing = payments.filter(p => p.month === month && p.year === filterYear && !p.is_extra);
@@ -284,16 +300,29 @@ export default function FinanceView() {
         const toCreate = students.filter(s => !existingIds.has(s.id));
         if (toCreate.length > 0) {
           const dueDate = `${filterYear}-${String(i + 1).padStart(2, '0')}-07`;
-          await supabase.from('monthly_payments').insert(toCreate.map(s => ({
-            student_id: s.id, student_name: s.name, month, year: filterYear,
-            amount: s.monthly_value || 0, discount: 0, final_amount: s.monthly_value || 0,
-            due_date: dueDate, status: new Date() > new Date(dueDate) ? 'overdue' : 'pending',
-            is_extra: false, created_at: new Date().toISOString(),
-          })));
+          await supabase.from('monthly_payments').insert(toCreate.map(s => {
+            const fullStudent = allStudentsFull.find(x => x.id === s.id);
+            const isIrmao = irmaosIds.has(s.id);
+            const isAnual = fullStudent?.enrollment_type === 'anual';
+            const valorBase = s.monthly_value || 0;
+            let valorFinal = valorBase;
+            let desconto = 0;
+            if (isIrmao) { valorFinal = valorBase * 0.95; desconto = 5; }
+            else if (isAnual) { valorFinal = valorBase * 0.92; desconto = 8; }
+            return {
+              student_id: s.id, student_name: s.name, month, year: filterYear,
+              amount: valorBase,
+              discount: desconto,
+              final_amount: Math.round(valorFinal * 100) / 100,
+              due_date: dueDate,
+              status: new Date() > new Date(dueDate) ? 'overdue' : 'pending',
+              is_extra: false, created_at: new Date().toISOString(),
+            };
+          }));
           totalCreated += toCreate.length;
         }
       }
-      toast.success(`${totalCreated} mensalidade(s) gerada(s)! ✅`);
+      toast.success(`${totalCreated} mensalidade(s) gerada(s) com descontos aplicados! ✅`);
       setShowGenerateModal(false); fetchData();
     } catch (e: any) { toast.error('Erro: ' + e.message); }
     finally { setGenerating(false); }
