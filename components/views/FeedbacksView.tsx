@@ -25,6 +25,11 @@ export default function FeedbacksView() {
   const [filterStr, setFilterStr] = useState('');
   const [selectedFeedback, setSelectedFeedback] = useState<any>(null);
   const [filterPerformance, setFilterPerformance] = useState('Todos');
+  const [filterTeacher, setFilterTeacher] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
+  const [filterSent, setFilterSent] = useState('todos');
+  const [teachers, setTeachers] = useState<any[]>([]);
 
   const fetchFeedbacks = React.useCallback(async () => {
     if (!isSupabaseConfigured) {
@@ -138,14 +143,15 @@ _Professora Descomplica — ${new Date().toLocaleDateString('pt-BR')}_`
   };
 
   const filteredFeedbacks = feedbacks.filter(f => {
-    const matchesSearch = 
-      f.student_name.toLowerCase().includes(filterStr.toLowerCase()) ||
-      f.teacher_name.toLowerCase().includes(filterStr.toLowerCase()) ||
-      f.subject.toLowerCase().includes(filterStr.toLowerCase());
-    
-    const matchesPerformance = filterPerformance === 'Todos' || f.performance === filterPerformance;
-    
-    return matchesSearch && matchesPerformance;
+    const matchesSearch = !filterStr ||
+      f.student_name?.toLowerCase().includes(filterStr.toLowerCase()) ||
+      f.teacher_name?.toLowerCase().includes(filterStr.toLowerCase()) ||
+      f.subject?.toLowerCase().includes(filterStr.toLowerCase());
+    const matchesTeacher = !filterTeacher || f.teacher_name === filterTeacher;
+    const matchesFrom = !filterDateFrom || f.class_date >= filterDateFrom;
+    const matchesTo = !filterDateTo || f.class_date <= filterDateTo;
+    const matchesSent = filterSent === 'todos' || (filterSent === 'enviado' && f.sent_to_parent) || (filterSent === 'nao_enviado' && !f.sent_to_parent);
+    return matchesSearch && matchesTeacher && matchesFrom && matchesTo && matchesSent;
   });
 
   // Insights
