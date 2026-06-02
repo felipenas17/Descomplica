@@ -318,7 +318,79 @@ export default function StudentsView() {
         ))}
         </div>
       )}
+
+    {painelAluno && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-0 bg-white rounded-t-3xl p-5 border-b border-gray-100 flex items-center justify-between z-10">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-purple-600 flex items-center justify-center text-white font-black text-lg">
+                {painelAluno.name?.[0]?.toUpperCase()}
+              </div>
+              <div>
+                <h2 className="text-lg font-black text-gray-900">{painelAluno.name}</h2>
+                <p className="text-xs text-gray-400">MAT: {painelAluno.registration_number || painelAluno.id?.slice(0,8)}</p>
+              </div>
+            </div>
+            <button onClick={() => setPainelAluno(null)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400">✕</button>
+          </div>
+          <div className="p-5 space-y-4">
+            <div className="bg-purple-50 rounded-2xl p-4">
+              <p className="text-[10px] font-black text-purple-600 uppercase tracking-widest mb-3">Dados Pessoais</p>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {[
+                  { label: 'Email', value: painelAluno.email },
+                  { label: 'Telefone', value: painelAluno.phone },
+                  { label: 'Nascimento', value: painelAluno.birth_date ? new Date(painelAluno.birth_date + 'T00:00:00').toLocaleDateString('pt-BR') : null },
+                  { label: 'Sexo', value: painelAluno.sex },
+                  { label: 'Escola', value: painelAluno.school },
+                  { label: 'Série', value: painelAluno.grade },
+                  { label: 'Mensalidade', value: painelAluno.monthly_value ? 'R$ ' + Number(painelAluno.monthly_value).toLocaleString('pt-BR', {minimumFractionDigits:2}) : null },
+                ].map(item => item.value ? (
+                  <div key={item.label}>
+                    <p className="text-[10px] text-gray-400 font-bold">{item.label}</p>
+                    <p className="font-bold text-gray-900">{item.value}</p>
+                  </div>
+                ) : null)}
+              </div>
+            </div>
+            <div className="bg-blue-50 rounded-2xl p-4">
+              <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-3">Responsável</p>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {[
+                  { label: 'Nome', value: painelAluno.parent_name },
+                  { label: 'Telefone', value: painelAluno.parent_phone },
+                  { label: 'Email', value: painelAluno.parent_email },
+                  { label: 'CPF', value: painelAluno.parent_cpf },
+                ].map(item => item.value ? (
+                  <div key={item.label}>
+                    <p className="text-[10px] text-gray-400 font-bold">{item.label}</p>
+                    <p className="font-bold text-gray-900">{item.value}</p>
+                  </div>
+                ) : null)}
+              </div>
+              {painelAluno.parent_phone && (
+                <a href={'https://wa.me/55' + painelAluno.parent_phone.replace(/\D/g,'')}
+                  target="_blank" rel="noopener noreferrer"
+                  className="mt-3 flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-xl text-xs font-bold w-fit hover:bg-green-600 transition-all">
+                  💬 WhatsApp do Responsável
+                </a>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => { setPainelAluno(null); setEditingStudent(painelAluno); }}
+                className="flex-1 py-3 bg-purple-600 text-white rounded-xl text-sm font-bold hover:bg-purple-700 transition-all">
+                ✏️ Editar Dados
+              </button>
+              <button onClick={() => setPainelAluno(null)}
+                className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   );
-
 }
