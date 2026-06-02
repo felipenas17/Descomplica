@@ -94,11 +94,12 @@ export default function AssistantView({ user }: AssistantViewProps) {
 
       if (msg.acao === 'AGENDAR_COMPROMISSO') {
         const { error } = await supabase.from('admin_agenda').insert({
-          title:       msg.dados.titulo,
-          type:        msg.dados.tipo || 'Outro',
-          date:        msg.dados.data,
-          time:        msg.dados.hora,
-          description: msg.dados.descricao || '',
+          title:       msg.dados.titulo || msg.dados.title || 'Reunião com Pais',
+          type:        msg.dados.tipo || msg.dados.type || 'Outro',
+          date:        msg.dados.data || msg.dados.date,
+          start_time:  msg.dados.hora || msg.dados.start_time || msg.dados.hora_inicio || '08:00',
+          end_time:    msg.dados.hora_fim || msg.dados.end_time || '09:00',
+          description: msg.dados.descricao || msg.dados.description || '',
           user_id:     user.id,
         });
         resultado = error ? '❌ Erro ao agendar: ' + error.message : '✅ Compromisso agendado com sucesso!';
