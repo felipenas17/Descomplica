@@ -74,7 +74,16 @@ export default function FinanceView() {
     recorrente_ate: '', teacher_id: '', teacher_name: '',
   });
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+    const channel = supabase
+      .channel('monthly_payments_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'monthly_payments' }, () => {
+        fetchData();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);

@@ -29,7 +29,16 @@ export default function AdminAgendaView({ user }: { user?: any }) {
     start_time: '08:00', end_time: '09:00', type: 'outro',
   });
 
-  useEffect(() => { fetchEvents(); }, []);
+  useEffect(() => {
+    fetchEvents();
+    const channel = supabase
+      .channel('admin_agenda_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_agenda' }, () => {
+        fetchEvents();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const fetchEvents = async () => {
     setLoading(true);

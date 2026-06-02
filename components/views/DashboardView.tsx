@@ -47,7 +47,16 @@ export default function DashboardView() {
     rankingProfessores: [], taxaRecebimento: 0,
   });
 
-  useEffect(() => { fetchDashboard(); }, []);
+  useEffect(() => {
+    fetchDashboard();
+    const channel = supabase
+      .channel('schedules_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'schedules' }, () => {
+        fetchDashboard();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const fetchDashboard = async () => {
     setLoading(true);

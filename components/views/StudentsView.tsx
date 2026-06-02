@@ -50,6 +50,13 @@ export default function StudentsView() {
   React.useEffect(() => {
     setIsMounted(true);
     fetchStudents();
+    const channel = supabase
+      .channel('students_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
+        fetchStudents();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [fetchStudents]);
 
   const handleAddStudent = async (data: any) => {

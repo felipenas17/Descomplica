@@ -60,6 +60,13 @@ export default function FeedbacksView() {
       }
     };
     load();
+    const channel = supabase
+      .channel('feedbacks_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'feedbacks' }, () => {
+        fetchFeedbacks();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
     const sendWhatsApp = async (feedback: any) => {
     // Busca telefone do pai pelo nome do aluno
     const { data } = await supabase

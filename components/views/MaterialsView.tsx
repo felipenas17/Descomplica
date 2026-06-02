@@ -74,7 +74,16 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
     setLoading(false);
   };
 
-  useEffect(() => { fetchMaterials(); }, []);
+  useEffect(() => {
+    fetchMaterials();
+    const channel = supabase
+      .channel('materials_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'materials' }, () => {
+        fetchMaterials();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const biblioteca = materials.filter(m =>
     m.approval_status === 'approved' &&

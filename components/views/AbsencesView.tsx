@@ -19,7 +19,16 @@ export default function AbsencesView() {
   const [remarcarData, setRemarcarData] = useState({ date: '', start_time: '08:00', end_time: '09:00', notes: '' });
   const [savingRemarcar, setSavingRemarcar] = useState(false);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+    const channel = supabase
+      .channel('schedules_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'schedules' }, () => {
+        fetchData();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
