@@ -33,7 +33,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useNotifications } from '@/hooks/useNotifications';
 
 // --- Shared Types ---
-export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials' | 'messages' | 'notifications' | 'absences' | 'contracts' | 'teacher_feedbacks' | 'teacher_evaluations' | 'teacher_contracts' | 'assistant';
+export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials' | 'messages' | 'notifications' | 'absences' | 'contracts' | 'teacher_feedbacks' | 'teacher_evaluations' | 'teacher_contracts' | 'assistant' | 'comunicados';
 
 interface SearchResult {
   id: string;
@@ -104,6 +104,7 @@ const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, un
       <NavItem icon={Bell} label="Notificações" active={activeView === 'notifications'} onClick={() => setView('notifications')} badge={unreadCount} />
       <NavItem icon={CalendarCheck} label="Agenda & Compromissos" active={activeView === 'agenda'} onClick={() => setView('agenda')} />
       {user?.role === 'admin' && <NavItem icon={MessageSquare} label="🤖 Assistente IA" active={activeView === 'assistant'} onClick={() => setView('assistant')} />}
+      {user?.role === 'admin' && <NavItem icon={Bell} label="📢 Comunicados" active={activeView === 'comunicados'} onClick={() => setView('comunicados')} />}
       <NavItem icon={FileText} label="Material de Apoio" active={activeView === 'materials'} onClick={() => setView('materials')} />
       {user?.role === 'professor' && (
         <NavItem icon={MessageSquareQuote} label="Meus Feedbacks" active={activeView === 'teacher_feedbacks'} onClick={() => setView('teacher_feedbacks')} />
@@ -323,6 +324,7 @@ const BottomNav = ({ activeView, setView, user }: { activeView: View, setView: (
     { view: 'finance',   icon: Wallet,          label: 'Financeiro' },
     { view: 'agenda',    icon: CalendarCheck,   label: 'Agenda' },
     { view: 'assistant', icon: MessageSquare,   label: 'IA' },
+    { view: 'comunicados', icon: Bell,            label: 'Avisos' },
   ];
   const teacherItems = [
     { view: 'agenda',          icon: CalendarCheck,    label: 'Agenda' },
@@ -388,6 +390,7 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
     materials: 'Material de Apoio',
     messages: 'Mensagens',
     assistant: '🤖 Assistente IA',
+    comunicados: '📢 Comunicados',
     notifications: 'Notificações',
     absences: 'Controle de Aulas',
     contracts: 'Contratos',
@@ -431,6 +434,7 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
                     { view: 'messages', icon: '✉️', label: 'Mensagens' },
                     { view: 'notifications', icon: '🔔', label: 'Notificações' },
                     { view: 'assistant', icon: '🤖', label: 'Assistente IA' },
+                    { view: 'comunicados', icon: '📢', label: 'Comunicados' },
                     { view: 'users', icon: '🛡️', label: 'Usuários' },
                   ].map(item => (
                     <button key={item.view} onClick={() => { setView(item.view as View); setIsSidebarOpen(false); }}
