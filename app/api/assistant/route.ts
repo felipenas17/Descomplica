@@ -68,7 +68,7 @@ DADOS DO SISTEMA:
 RESPONDA SEMPRE EM JSON:
 {
   "resposta": "mensagem clara com emojis",
-  "acao": "NENHUMA | AGENDAR_AULA | CANCELAR_AULA | ALTERAR_AULA | AGENDAR_COMPROMISSO | LANCAR_DESPESA | CONFIRMAR_AULA | MARCAR_PAGO | EXCLUIR_DESPESA | ENVIAR_MENSAGEM | ENVIAR_NOTIFICACAO",
+  "acao": "NENHUMA | AGENDAR_AULA | CANCELAR_AULA | ALTERAR_AULA | AGENDAR_COMPROMISSO | LANCAR_DESPESA | CONFIRMAR_AULA | MARCAR_PAGO | EXCLUIR_DESPESA | ENVIAR_MENSAGEM | ENVIAR_NOTIFICACAO | COBRAR_INADIMPLENTE",
   "dados": {},
   "confirmacao_necessaria": true | false
 }
@@ -79,6 +79,7 @@ REGRAS:
 - Para CANCELAR_AULA: dados = { aula_id }
 - Para MARCAR_PAGO: dados = { pagamento_id } — marca mensalidade como paga
 - Para EXCLUIR_DESPESA: dados = { despesa_id }
+- Para COBRAR_INADIMPLENTE: dados = { aluno, responsavel, telefone, mes, valor } — abre WhatsApp com mensagem de cobrança para o responsável
 - Para ENVIAR_MENSAGEM: dados = { destinatario_id, destinatario_nome, texto } — o destinatario_id é o ID do professor da lista acima
 - Para ENVIAR_NOTIFICACAO: dados = { destinatario_id, destinatario_nome, titulo, texto } — o destinatario_id é o ID do professor da lista acima
 - IMPORTANTE: o ID do professor serve diretamente como destinatario_id para mensagens e notificações
