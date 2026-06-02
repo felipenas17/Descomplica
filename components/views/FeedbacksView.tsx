@@ -250,8 +250,8 @@ _Professora Descomplica — ${new Date().toLocaleDateString('pt-BR')}_`
                 <th className="px-8 py-5">Estudante</th>
                 <th className="px-8 py-5">Professor</th>
                 <th className="px-8 py-5">Matéria / Data</th>
-                <th className="px-8 py-5">Avaliação</th>
-                <th className="px-8 py-5">Status</th>
+                <th className="px-8 py-5">Presença</th>
+                <th className="px-8 py-5">Enviado ao Pai</th>
                 <th className="px-8 py-5 text-right">Ação</th>
               </tr>
             </thead>
@@ -298,25 +298,29 @@ _Professora Descomplica — ${new Date().toLocaleDateString('pt-BR')}_`
                     </div>
                   </td>
                   <td className="px-8 py-6">
-                    <div className="flex gap-0.5">
-                      {[1, 2, 3, 4, 5].map(s => (
-                        <Star 
-                          key={s} 
-                          size={14} 
-                          fill={s <= (f.rating || 0) ? "#FFD700" : "none"} 
-                          stroke={s <= (f.rating || 0) ? "#FFD700" : "#E5E7EB"}
-                        />
-                      ))}
-                    </div>
+                    <span className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase ${
+                      f.attendance === 'Presente' || f.attendance === 'presente' ? 'bg-green-100 text-green-700' :
+                      f.attendance === 'Justificada' || f.attendance === 'justificada' ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {f.attendance || 'Presente'}
+                    </span>
                   </td>
                   <td className="px-8 py-6">
-                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                      f.performance === 'Excelente' ? 'bg-emerald-100 text-emerald-700' :
-                      f.performance === 'Bom' ? 'bg-blue-100 text-blue-700' :
-                      f.performance === 'Regular' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
-                    }`}>
-                      {f.performance}
-                    </span>
+                    {f.sent_to_parent ? (
+                      <div>
+                        <span className="px-3 py-1.5 rounded-full text-[10px] font-black uppercase bg-green-100 text-green-700">
+                          ✅ Enviado
+                        </span>
+                        {f.sent_to_parent_at && (
+                          <p className="text-[10px] text-gray-400 mt-1">{new Date(f.sent_to_parent_at).toLocaleDateString('pt-BR')}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="px-3 py-1.5 rounded-full text-[10px] font-black uppercase bg-gray-100 text-gray-500">
+                        Não enviado
+                      </span>
+                    )}
                   </td>
                   <td className="px-8 py-6 text-right">
                     <button className="p-2 hover:bg-white rounded-xl text-gray-400 group-hover:text-purple-600 transition-all border border-transparent group-hover:border-purple-100 shadow-sm">
