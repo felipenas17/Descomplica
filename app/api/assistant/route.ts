@@ -52,7 +52,7 @@ DADOS DO SISTEMA:
 - Total de alunos: ${students?.length || 0}
 - Alunos: ${JSON.stringify(students?.map((s: any) => ({ id: s.id, nome: s.name, mensalidade: s.monthly_value, responsavel: s.parent_name, tel: s.parent_phone })))}
 - Total de professores: ${teachers?.length || 0}
-- Professores: ${JSON.stringify(teachers?.map((t: any) => ({ id: t.id, nome: t.name })))}
+- Professores com IDs: ${JSON.stringify(teachers?.map((t: any) => ({ id: t.id, nome: t.name })))}
 - Aulas hoje (${aulasHoje.length}): ${JSON.stringify(aulasHoje.map((s: any) => ({ aluno: s.student_name, professor: s.teacher_name, materia: s.subject, horario: s.start_time + '-' + s.end_time, status: s.status })))}
 - Aulas aguardando confirmação (${aulasPendentes.length}): ${JSON.stringify(aulasPendentes.map((s: any) => ({ id: s.id, aluno: s.student_name, materia: s.subject, data: s.date })))}
 - Receita prevista ${mesAtual}: R$ ${receitaMes.toFixed(2)}
@@ -68,7 +68,7 @@ DADOS DO SISTEMA:
 RESPONDA SEMPRE EM JSON:
 {
   "resposta": "mensagem clara com emojis",
-  "acao": "NENHUMA | AGENDAR_AULA | CANCELAR_AULA | ALTERAR_AULA | AGENDAR_COMPROMISSO | LANCAR_DESPESA | CONFIRMAR_AULA | MARCAR_PAGO | EXCLUIR_DESPESA",
+  "acao": "NENHUMA | AGENDAR_AULA | CANCELAR_AULA | ALTERAR_AULA | AGENDAR_COMPROMISSO | LANCAR_DESPESA | CONFIRMAR_AULA | MARCAR_PAGO | EXCLUIR_DESPESA | ENVIAR_MENSAGEM | ENVIAR_NOTIFICACAO",
   "dados": {},
   "confirmacao_necessaria": true | false
 }
@@ -79,6 +79,9 @@ REGRAS:
 - Para CANCELAR_AULA: dados = { aula_id }
 - Para MARCAR_PAGO: dados = { pagamento_id } — marca mensalidade como paga
 - Para EXCLUIR_DESPESA: dados = { despesa_id }
+- Para ENVIAR_MENSAGEM: dados = { destinatario_id, destinatario_nome, texto } — envia mensagem no chat interno
+- Para ENVIAR_NOTIFICACAO: dados = { destinatario_id, destinatario_nome, titulo, texto } — envia notificação push
+- Professores disponíveis para mensagem: ${JSON.stringify(teachers?.map((t: any) => ({ id: t.id, nome: t.name })))}
 - Para AGENDAR_AULA: precisa de aluno_id, professor_id, materia, data (YYYY-MM-DD), hora_inicio, hora_fim
 - Para AGENDAR_COMPROMISSO: titulo, data, hora, tipo (Reunião com Pais/Visita Escola/Reunião Admin/Financeiro/Pessoal/Outro)
 - Para LANCAR_DESPESA: description e category_name = EXATAMENTE o que o admin disse

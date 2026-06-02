@@ -168,6 +168,30 @@ export default function AssistantView({ user }: AssistantViewProps) {
         resultado = error ? '❌ Erro ao excluir despesa: ' + error.message : '✅ Despesa excluída com sucesso!';
       }
 
+      else if (msg.acao === 'ENVIAR_MENSAGEM') {
+        const { data: userData } = await supabase.auth.getUser();
+        const { error } = await supabase.from('messages').insert({
+          sender_id:   userData.user?.id,
+          receiver_id: msg.dados.destinatario_id,
+          text:        msg.dados.texto,
+          read:        false,
+          created_at:  new Date().toISOString(),
+        });
+        resultado = error ? '❌ Erro ao enviar mensagem: ' + error.message : '✅ Mensagem enviada para ' + msg.dados.destinatario_nome + '!';
+      }
+
+      else if (msg.acao === 'ENVIAR_NOTIFICACAO') {
+        const { error } = await supabase.from('notifications').insert({
+          user_id:    msg.dados.destinatario_id,
+          title:      msg.dados.titulo,
+          message:    msg.dados.texto,
+          type:       'info',
+          read:       false,
+          created_at: new Date().toISOString(),
+        });
+        resultado = error ? '❌ Erro ao enviar notificação: ' + error.message : '✅ Notificação enviada para ' + msg.dados.destinatario_nome + '!';
+      }
+
       // Marca como executado e adiciona resultado
       setMessages(prev => prev.map(m =>
         m === msg ? { ...m, pendente: false } : m
