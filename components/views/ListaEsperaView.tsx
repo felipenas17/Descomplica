@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 const TURNOS = ['Manhã', 'Tarde', 'Noite', 'Qualquer'];
 const MATERIAS = ['Matemática', 'Português', 'História', 'Geografia', 'Ciências', 'Física', 'Química', 'Inglês', 'Redação', 'Outra'];
 
-export default function ListaEsperaView({ user }: { user?: any }) {
+export default function ListaEsperaView({ user, setView }: { user?: any, setView?: (v: any) => void }) {
   const [lista, setLista] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -61,8 +61,18 @@ export default function ListaEsperaView({ user }: { user?: any }) {
 
   const matricular = async (item: any) => {
     await supabase.from('lista_espera').update({ status: 'matriculado' }).eq('id', item.id);
-    toast.success('Marcado como matriculado!');
+    // Salva dados para pré-preencher o formulário
+    sessionStorage.setItem('prefill_student', JSON.stringify({
+      name: item.nome,
+      phone: item.telefone,
+      email: item.email || '',
+      notes: item.observacoes || '',
+      lesson_type: item.tipo_aula || 'individual',
+      preferred_time: item.turno || '',
+    }));
+    toast.success('Redirecionando para matrícula...');
     fetchData();
+    if (setView) setView('students');
   };
 
   const remover = async (id: string) => {

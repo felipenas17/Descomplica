@@ -51,6 +51,18 @@ export default function StudentsView() {
   React.useEffect(() => {
     setIsMounted(true);
     fetchStudents();
+    // Verifica se veio da lista de espera
+    const prefill = sessionStorage.getItem('prefill_student');
+    if (prefill) {
+      try {
+        const data = JSON.parse(prefill);
+        sessionStorage.removeItem('prefill_student');
+        setTimeout(() => {
+          setShowForm(true);
+        }, 500);
+        toast.success('📋 Dados do interessado carregados! Complete o cadastro.');
+      } catch (e) {}
+    }
     const channel = supabase
       .channel('students_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
