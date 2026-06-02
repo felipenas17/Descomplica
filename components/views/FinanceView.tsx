@@ -49,7 +49,7 @@ export default function FinanceView() {
   const [students, setStudents] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'entradas' | 'saidas'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'entradas' | 'saidas' | 'projecao'>('dashboard');
   const [filterMonth, setFilterMonth] = useState(MONTHS_FULL[new Date().getMonth()]);
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
   const [periodMode, setPeriodMode] = useState<'month' | 'period' | 'year' | 'week'>('month');
@@ -541,7 +541,7 @@ export default function FinanceView() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', background: D_CARD, border: `1px solid ${D_BORDER}`, padding: 4, borderRadius: 14, gap: 4, marginBottom: 16 }}>
-        {[{ key: 'dashboard', label: `Dashboard` },{ key: 'entradas', label: `Entradas (${monthPayments.length})` },{ key: 'saidas', label: `Saídas (${monthExpenses.length})` }].map(tab => (
+        {[{ key: 'dashboard', label: `Dashboard` },{ key: 'entradas', label: `Entradas (${monthPayments.length})` },{ key: 'saidas', label: `Saídas (${monthExpenses.length})` },{ key: 'projecao', label: `📈 Projeção` }].map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key as any)} style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: activeTab === tab.key ? D_PURPLE : 'transparent', color: activeTab === tab.key ? '#fff' : D_MUTED, transition: 'all 0.2s' }}>
             {tab.label}
           </button>
@@ -733,6 +733,101 @@ export default function FinanceView() {
           )}
 
           {/* SAÍDAS */}
+          {activeTab === 'projecao' && (() => {
+            const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+            const now = new Date();
+            const receitaBase = students.reduce((a: number, s: any) => a + (s.monthly_value || 0), 0);
+            // Calcula média de despesas dos últimos 3 meses
+            const despesaMedia = (() => {
+              const ultimos3 = [0,1,2].map(i => {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const mes = MONTHS_PT[d.getMonth()];
+                const ano = d.getFullYear();
+                return expenses.filter((e: any) => e.month === mes && e.year === ano && !e.is_recurring)
+                  .reduce((a: number, e: any) => a + (e.amount || 0), 0);
+              });
+              return ultimos3.reduce((a, b) => a + b, 0) / 3;
+            })();
+            const despesaRecorrente = expenses.filter((e: any) => e.is_recurring)
+              .reduce((a: number, e: any) => a + (e.amount || 0), 0);
+            const projecao = Array.from({ length: 6 }, (_, i) => {
+              const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+              const mes = MONTHS_PT[d.getMonth()];
+              const ano = d.getFullYear();
+              const receitaReal = payments.filter((p: any) => p.month === mes && p.year === ano && p.status === 'paid')
+                .reduce((a: number, p: any) => a + (p.final_amount || p.amount || 0), 0);
+              const despesaReal = expenses.filter((e: any) => e.month === mes && e.year === ano)
+                .reduce((a: number, e: any) => a + (e.amount || 0), 0);
+              const isPassado = d < new Date(now.getFullYear(), now.getMonth(), 1);
+              const isFuturo = d > new Date(now.getFullYear(), now.getMonth(), 1);
+              return {
+                mes, ano,
+                receita: isPassado || !isFuturo ? receitaReal : receitaBase,
+                despesa: isPassado || !isFuturo ? despesaReal : despesaMedia + despesaRecorrente,
+                projetado: isFuturo,
+              };
+            });
+            const totalReceita = projecao.reduce((a, p) => a + p.receita, 0);
+            const totalDespesa = projecao.reduce((a, p) => a + p.despesa, 0);
+            const maxVal = Math.max(...projecao.map(p => Math.max(p.receita, p.despesa)), 1);
+            return (
+              <div style={{ padding: '20px 16px' }}>
+                {/* Resumo */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 24 }}>
+                  {[
+                    { label: 'Receita Projetada (6m)', value: totalReceita, color: '#22d3a5' },
+                    { label: 'Despesa Projetada (6m)', value: totalDespesa, color: '#f43f5e' },
+                    { label: 'Resultado Projetado', value: totalReceita - totalDespesa, color: totalReceita - totalDespesa >= 0 ? '#22d3a5' : '#f43f5e' },
+                  ].map(k => (
+                    <div key={k.label} style={{ background: '#0f1117', borderRadius: 12, padding: '14px 12px', textAlign: 'center' }}>
+                      <div style={{ fontSize: 10, color: '#64748b', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase' }}>{k.label}</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: k.color }}>R$ {Math.abs(k.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Info base */}
+                <div style={{ background: '#0d1a2a', border: '1px solid #1a2a4a', borderRadius: 10, padding: '12px 14px', marginBottom: 20, fontSize: 12, color: '#60a5fa' }}>
+                  💡 Receita base: <strong>R$ {receitaBase.toFixed(2)}</strong>/mês ({students.length} aluno(s)) · Despesa média: <strong>R$ {(despesaMedia + despesaRecorrente).toFixed(2)}</strong>/mês
+                </div>
+
+                {/* Gráfico de barras */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {projecao.map((p, i) => (
+                    <div key={i}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 12, fontWeight: 600 }}>
+                        <span style={{ color: '#e2e8f0' }}>{p.mes.slice(0,3)} {p.ano} {p.projetado ? <span style={{ fontSize: 10, color: '#64748b' }}>(projetado)</span> : ''}</span>
+                        <span style={{ color: p.receita - p.despesa >= 0 ? '#22d3a5' : '#f43f5e', fontWeight: 700 }}>
+                          {p.receita - p.despesa >= 0 ? '+' : ''}R$ {(p.receita - p.despesa).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ width: 60, fontSize: 10, color: '#22d3a5', fontWeight: 600 }}>Receita</span>
+                          <div style={{ flex: 1, background: '#1a1d27', borderRadius: 4, height: 16, overflow: 'hidden' }}>
+                            <div style={{ width: `${(p.receita / maxVal) * 100}%`, height: '100%', background: p.projetado ? 'repeating-linear-gradient(45deg, #22d3a5, #22d3a5 4px, transparent 4px, transparent 8px)' : '#22d3a5', borderRadius: 4, transition: 'width 0.5s' }} />
+                          </div>
+                          <span style={{ width: 80, fontSize: 11, color: '#22d3a5', textAlign: 'right', fontWeight: 600 }}>R$ {p.receita.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ width: 60, fontSize: 10, color: '#f43f5e', fontWeight: 600 }}>Despesa</span>
+                          <div style={{ flex: 1, background: '#1a1d27', borderRadius: 4, height: 16, overflow: 'hidden' }}>
+                            <div style={{ width: `${(p.despesa / maxVal) * 100}%`, height: '100%', background: p.projetado ? 'repeating-linear-gradient(45deg, #f43f5e, #f43f5e 4px, transparent 4px, transparent 8px)' : '#f43f5e', borderRadius: 4, transition: 'width 0.5s' }} />
+                          </div>
+                          <span style={{ width: 80, fontSize: 11, color: '#f43f5e', textAlign: 'right', fontWeight: 600 }}>R$ {p.despesa.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: 16, fontSize: 11, color: '#64748b', display: 'flex', gap: 16 }}>
+                  <span>▓ Real</span>
+                  <span>▨ Projetado</span>
+                </div>
+              </div>
+            );
+          })()}
+
           {activeTab === 'saidas' && (
             <div style={cardStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
