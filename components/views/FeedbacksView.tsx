@@ -154,99 +154,68 @@ _Professora Descomplica — ${new Date().toLocaleDateString('pt-BR')}_`
     return matchesSearch && matchesTeacher && matchesFrom && matchesTo && matchesSent;
   });
 
-  // Insights
-  const averageRating = feedbacks.length > 0 
-    ? (feedbacks.reduce((acc, f) => acc + (f.rating || 0), 0) / feedbacks.length).toFixed(1)
-    : 0;
-  
-  const badPerformanceCount = feedbacks.filter(f => f.performance === 'Ruim').length;
-  
-  const mostDifficultSubject = feedbacks.length > 0
-    ? Object.entries(feedbacks.reduce((acc: any, f) => {
-        if (f.performance === 'Ruim' || f.performance === 'Regular') {
-          acc[f.subject] = (acc[f.subject] || 0) + 1;
-        }
-        return acc;
-      }, {})).sort((a: any, b: any) => b[1] - a[1])[0]?.[0] || '---'
-    : '---';
-
   return (
-    <div className="space-y-8 pb-20">
-      {/* Header & Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="md:col-span-1 bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Média de Avaliação</p>
-          <div className="flex items-center gap-2">
-            <h3 className="text-3xl font-black text-gray-900">{averageRating}</h3>
-            <Star size={20} fill="#FFD700" stroke="#FFD700" className="drop-shadow-sm" />
-          </div>
-          <p className="text-[10px] text-emerald-500 font-bold mt-2 flex items-center gap-1">
-            <TrendingUp size={12} /> Satisfação estável
-          </p>
+    <div className="space-y-6 pb-20">
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Total</p>
+          <h3 className="text-3xl font-black text-purple-600">{feedbacks.length}</h3>
+          <p className="text-[10px] text-gray-400 mt-1">feedbacks registrados</p>
         </div>
-
-        <div className="md:col-span-1 bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Alertas de Desempenho</p>
-          <div className="flex items-center gap-2">
-            <h3 className="text-3xl font-black text-rose-600">{badPerformanceCount}</h3>
-            <AlertCircle size={20} className="text-rose-500" />
-          </div>
-          <p className="text-[10px] text-gray-400 font-bold mt-2">Feedbacks com status &quot;Ruim&quot;</p>
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Enviados ao Pai</p>
+          <h3 className="text-3xl font-black text-green-600">{feedbacks.filter(f => f.sent_to_parent).length}</h3>
+          <p className="text-[10px] text-gray-400 mt-1">de {feedbacks.length} total</p>
         </div>
-
-        <div className="md:col-span-2 bg-gradient-to-br from-purple-700 to-purple-900 text-white p-6 rounded-[2.5rem] shadow-xl relative overflow-hidden">
-          <div className="relative z-10">
-            <h3 className="text-lg font-black mb-4 flex items-center gap-2">
-              <Zap size={18} className="text-purple-300" />
-              Insights Pedagógicos
-            </h3>
-            <div className="space-y-2">
-              <p className="text-xs font-bold text-purple-200 flex items-center gap-2">
-                <ChevronRight size={14} /> Matéria com mais dificuldade: <span className="text-white">{mostDifficultSubject}</span>
-              </p>
-              <p className="text-xs font-bold text-purple-200 flex items-center gap-2">
-                <ChevronRight size={14} /> Taxa de participação alta: <span className="text-white">78% das aulas</span>
-              </p>
-            </div>
-          </div>
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <Award size={80} />
-          </div>
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Não Enviados</p>
+          <h3 className="text-3xl font-black text-yellow-600">{feedbacks.filter(f => !f.sent_to_parent).length}</h3>
+          <p className="text-[10px] text-gray-400 mt-1">pendentes de envio</p>
+        </div>
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Este Mês</p>
+          <h3 className="text-3xl font-black text-blue-600">{feedbacks.filter(f => f.class_date?.startsWith(new Date().toISOString().slice(0,7))).length}</h3>
+          <p className="text-[10px] text-gray-400 mt-1">aulas registradas</p>
         </div>
       </div>
 
-      {/* Filters & List */}
-      <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
-        <div className="p-8 border-b border-gray-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div>
-            <h3 className="text-xl font-black text-gray-900">Histórico de Feedbacks</h3>
-            <p className="text-xs font-bold text-gray-400 mt-1">Acompanhe o que está acontecendo em cada aula</p>
-          </div>
-          
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input 
-                type="text" 
-                placeholder="Aluno, Professor ou Matéria..."
-                value={filterStr}
-                onChange={(e) => setFilterStr(e.target.value)}
-                className="pl-10 pr-6 py-3 bg-gray-50 border-none rounded-2xl text-xs font-bold w-64 focus:ring-2 focus:ring-purple-600"
-              />
-            </div>
-            
-            <select 
-              value={filterPerformance}
-              onChange={(e) => setFilterPerformance(e.target.value)}
-              className="px-6 py-3 bg-gray-50 border-none rounded-2xl text-xs font-black text-gray-600 focus:ring-2 focus:ring-purple-600"
-            >
-              <option value="Todos">Desempenho: Todos</option>
-              <option value="Excelente">Excelente</option>
-              <option value="Bom">Bom</option>
-              <option value="Regular">Regular</option>
-              <option value="Ruim">Ruim</option>
-            </select>
-          </div>
+      {/* Filtros */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+          <input placeholder="Buscar aluno, professor, matéria..." value={filterStr} onChange={e => setFilterStr(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+        </div>
+        <select value={filterTeacher} onChange={e => setFilterTeacher(e.target.value)}
+          className="py-2.5 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
+          <option value="">Todos os professores</option>
+          {teachers.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+        </select>
+        <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)}
+          className="py-2.5 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+        <span className="text-gray-400 text-sm">até</span>
+        <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)}
+          className="py-2.5 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+        <select value={filterSent} onChange={e => setFilterSent(e.target.value)}
+          className="py-2.5 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
+          <option value="todos">Todos os status</option>
+          <option value="enviado">✅ Enviados ao pai</option>
+          <option value="nao_enviado">⏳ Não enviados</option>
+        </select>
+        {(filterStr || filterTeacher || filterDateFrom || filterDateTo || filterSent !== 'todos') && (
+          <button onClick={() => { setFilterStr(''); setFilterTeacher(''); setFilterDateFrom(''); setFilterDateTo(''); setFilterSent('todos'); }}
+            className="px-4 py-2.5 bg-red-50 text-red-600 rounded-xl text-sm font-bold hover:bg-red-100 transition-all">
+            ✕ Limpar
+          </button>
+        )}
+      </div>
+
+      {/* Lista */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+          <h3 className="text-sm font-black text-gray-900">Histórico de Feedbacks</h3>
+          <span className="text-xs text-gray-400 font-bold">{filteredFeedbacks.length} resultado(s)</span>
         </div>
 
         <div className="overflow-x-auto">
