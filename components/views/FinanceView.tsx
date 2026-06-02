@@ -737,19 +737,19 @@ export default function FinanceView() {
             const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
             const now = new Date();
             const receitaBase = students.reduce((a: number, s: any) => a + (s.monthly_value || 0), 0);
-            // Calcula média de despesas dos últimos 3 meses
+            // Calcula média de despesas dos últimos 3 meses com dados reais
+            const despesaRecorrente = expenses.filter((e: any) => e.is_recurring)
+              .reduce((a: number, e: any) => a + (e.amount || 0), 0);
             const despesaMedia = (() => {
-              const ultimos3 = [0,1,2].map(i => {
+              const mesesComDados = [0,1,2].map(i => {
                 const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
                 const mes = MONTHS_PT[d.getMonth()];
                 const ano = d.getFullYear();
                 return expenses.filter((e: any) => e.month === mes && e.year === ano && !e.is_recurring)
                   .reduce((a: number, e: any) => a + (e.amount || 0), 0);
-              });
-              return ultimos3.reduce((a, b) => a + b, 0) / 3;
+              }).filter(v => v > 0);
+              return mesesComDados.length > 0 ? mesesComDados.reduce((a, b) => a + b, 0) / mesesComDados.length : 0;
             })();
-            const despesaRecorrente = expenses.filter((e: any) => e.is_recurring)
-              .reduce((a: number, e: any) => a + (e.amount || 0), 0);
             const projecao = Array.from({ length: 6 }, (_, i) => {
               const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
               const mes = MONTHS_PT[d.getMonth()];
