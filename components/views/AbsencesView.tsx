@@ -105,6 +105,29 @@ export default function AbsencesView() {
         });
       }
       toast.success('Aula remarcada!');
+
+      // Abre WhatsApp para o responsável
+      const { data: studentData } = await supabase
+        .from('students')
+        .select('parent_name, parent_phone')
+        .ilike('name', showRemarcarModal.student_name)
+        .limit(1)
+        .single();
+
+      if (studentData?.parent_phone) {
+        const tel = studentData.parent_phone.replace(/\D/g, '');
+        const dataFormatada = new Date(remarcarData.date + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+        const msgTexto = encodeURIComponent(
+          'Olá, ' + (studentData.parent_name || 'Responsável') + '! 👋\n\n' +
+          '📅 Informamos que a aula de *' + showRemarcarModal.subject + '* do(a) *' + showRemarcarModal.student_name + '* foi remarcada.\n\n' +
+          '🗓️ *Nova data:* ' + dataFormatada + '\n' +
+          '🕐 *Horário:* ' + remarcarData.start_time + ' às ' + remarcarData.end_time + '\n\n' +
+          'Qualquer dúvida estamos à disposição! 🙏\n\n' +
+          '_Professora Descomplica_'
+        );
+        window.open('https://wa.me/55' + tel + '?text=' + msgTexto, '_blank');
+      }
+
       setShowRemarcarModal(null);
       setRemarcarData({ date: '', start_time: '08:00', end_time: '09:00', notes: '' });
       fetchData();
