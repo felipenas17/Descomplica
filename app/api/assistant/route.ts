@@ -23,6 +23,8 @@ export async function POST(req: NextRequest) {
       { data: payments },
       { data: expenses },
       { data: agenda },
+      { data: feedbacks },
+      { data: expensesList },
     ] = await Promise.all([
       supabase.from('students').select('id, name, monthly_value, parent_name, parent_phone, status').eq('status', 'Ativo').limit(50),
       supabase.from('teachers').select('id, name').limit(20),
@@ -30,6 +32,8 @@ export async function POST(req: NextRequest) {
       supabase.from('monthly_payments').select('*').eq('year', ano).limit(100),
       supabase.from('expenses').select('*').eq('year', ano).limit(50),
       supabase.from('admin_agenda').select('*').gte('date', hoje).limit(10),
+      supabase.from('feedbacks').select('*').order('created_at', { ascending: false }).limit(20),
+      supabase.from('expenses').select('id, description, category_name, amount, status, month').eq('year', ano).limit(30),
     ]);
 
     const aulasHoje = schedules?.filter(s => s.date === hoje) || [];
@@ -57,6 +61,8 @@ DADOS DO SISTEMA:
 - Lucro/Prejuízo: R$ ${(recebidoMes - despesasMes).toFixed(2)}
 - Pagamentos pendentes: ${JSON.stringify(payments?.filter(p => p.status === 'pending' && p.month === mesAtual)?.map((p: any) => ({ id: p.id, aluno: p.student_name, valor: p.final_amount || p.amount, vencimento: p.due_date })))}
 - Inadimplentes (${inadimplentes.length}): ${JSON.stringify(inadimplentes.map((p: any) => ({ aluno: p.student_name, valor: p.final_amount || p.amount })))}
+- Feedbacks recentes (${feedbacks?.length || 0}): ${JSON.stringify(feedbacks?.slice(0,10).map((f: any) => ({ aluno: f.student_name, professor: f.teacher_name, materia: f.subject, data: f.class_date, presenca: f.attendance, conteudo: f.content, observacoes: f.observations })))}
+- Despesas detalhadas: ${JSON.stringify(expensesList?.map((e: any) => ({ id: e.id, descricao: e.description, categoria: e.category_name, valor: e.amount, status: e.status, mes: e.month })))}
 - Próximos compromissos: ${JSON.stringify(agenda?.map((a: any) => ({ titulo: a.title, data: a.date, hora: a.start_time, tipo: a.type })))}
 
 RESPONDA SEMPRE EM JSON:
