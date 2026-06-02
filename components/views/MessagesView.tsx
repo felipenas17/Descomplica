@@ -148,9 +148,9 @@ export default function MessagesView({ user }: { user?: any }) {
   const formatTime = (ts: string) => new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className="flex h-[calc(100vh-140px)] gap-4">
+    <div className="flex h-[calc(100vh-140px)] gap-4 relative">
       {/* Sidebar */}
-      <div className="w-80 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden">
+      <div className={`${selected ? "hidden md:flex" : "flex"} w-full md:w-80 bg-white rounded-2xl border border-gray-100 shadow-sm flex-col overflow-hidden`}>
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-bold text-gray-900 flex items-center gap-2">
@@ -222,6 +222,7 @@ export default function MessagesView({ user }: { user?: any }) {
         {selected ? (
           <>
             <div className="p-4 border-b border-gray-100 flex items-center gap-3">
+              <button onClick={() => setSelected(null)} className="md:hidden p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 shrink-0">←</button>
               <div className="w-9 h-9 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-sm">
                 {selected.name[0]?.toUpperCase()}
               </div>
