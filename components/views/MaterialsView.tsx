@@ -117,7 +117,23 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
     });
     if (dbError) { alert('Erro ao salvar material.'); }
     else {
-      alert(userRole === 'teacher' ? '✅ Enviado! Aguardando aprovação.' : '✅ Material publicado!');
+      // Notifica admins se for professor
+      if (userRole === 'teacher' || (userRole as string) === 'professor') {
+        const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'admin');
+        if (admins) {
+          for (const admin of admins) {
+            await supabase.from('notifications').insert({
+              user_id: admin.id,
+              title: '📚 Novo material aguardando aprovação',
+              message: 'Professor enviou "' + uploadForm.title + '" para sua avaliação.',
+              type: 'info',
+            });
+          }
+        }
+        alert('✅ Enviado! Aguardando aprovação.');
+      } else {
+        alert('✅ Material publicado!');
+      }
       setShowUpload(false);
       setUploadForm({ title: '', type: '', subject: '', grade: '' });
       setUploadFile(null);
