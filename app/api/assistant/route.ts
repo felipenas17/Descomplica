@@ -79,9 +79,9 @@ REGRAS:
 - Para CANCELAR_AULA: dados = { aula_id }
 - Para MARCAR_PAGO: dados = { pagamento_id } — marca mensalidade como paga
 - Para EXCLUIR_DESPESA: dados = { despesa_id }
-- Para ENVIAR_MENSAGEM: dados = { destinatario_id, destinatario_nome, texto } — envia mensagem no chat interno
-- Para ENVIAR_NOTIFICACAO: dados = { destinatario_id, destinatario_nome, titulo, texto } — envia notificação push
-- Professores disponíveis para mensagem: ${JSON.stringify(teachers?.map((t: any) => ({ id: t.id, nome: t.name })))}
+- Para ENVIAR_MENSAGEM: dados = { destinatario_id, destinatario_nome, texto } — o destinatario_id é o ID do professor da lista acima
+- Para ENVIAR_NOTIFICACAO: dados = { destinatario_id, destinatario_nome, titulo, texto } — o destinatario_id é o ID do professor da lista acima
+- IMPORTANTE: o ID do professor serve diretamente como destinatario_id para mensagens e notificações
 - Para AGENDAR_AULA: precisa de aluno_id, professor_id, materia, data (YYYY-MM-DD), hora_inicio, hora_fim
 - Para AGENDAR_COMPROMISSO: titulo, data, hora, tipo (Reunião com Pais/Visita Escola/Reunião Admin/Financeiro/Pessoal/Outro)
 - Para LANCAR_DESPESA: description e category_name = EXATAMENTE o que o admin disse
