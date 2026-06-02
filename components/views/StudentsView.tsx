@@ -335,17 +335,19 @@ export default function StudentsView() {
             <button onClick={() => setPainelAluno(null)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400">✕</button>
           </div>
           <div className="p-5 space-y-4">
+            {/* Matrícula */}
             <div className="bg-purple-50 rounded-2xl p-4">
-              <p className="text-[10px] font-black text-purple-600 uppercase tracking-widest mb-3">Dados Pessoais</p>
+              <p className="text-[10px] font-black text-purple-600 uppercase tracking-widest mb-3">📋 Matrícula</p>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {[
-                  { label: 'Email', value: painelAluno.email },
-                  { label: 'Telefone', value: painelAluno.phone },
-                  { label: 'Nascimento', value: painelAluno.birth_date ? new Date(painelAluno.birth_date + 'T00:00:00').toLocaleDateString('pt-BR') : null },
-                  { label: 'Sexo', value: painelAluno.sex },
-                  { label: 'Escola', value: painelAluno.school },
+                  { label: 'Tipo', value: painelAluno.enrollment_type },
+                  { label: 'Status', value: painelAluno.status },
+                  { label: 'Turno', value: painelAluno.school_shift },
+                  { label: 'Segmento', value: painelAluno.segment },
                   { label: 'Série', value: painelAluno.grade },
-                  { label: 'Mensalidade', value: painelAluno.monthly_value ? 'R$ ' + Number(painelAluno.monthly_value).toLocaleString('pt-BR', {minimumFractionDigits:2}) : null },
+                  { label: 'Escola', value: painelAluno.school },
+                  { label: 'Turma', value: painelAluno.class_name },
+                  { label: 'N° Matrícula', value: painelAluno.registration_number },
                 ].map(item => item.value ? (
                   <div key={item.label}>
                     <p className="text-[10px] text-gray-400 font-bold">{item.label}</p>
@@ -354,14 +356,62 @@ export default function StudentsView() {
                 ) : null)}
               </div>
             </div>
+
+            {/* Dados Pessoais */}
             <div className="bg-blue-50 rounded-2xl p-4">
-              <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-3">Responsável</p>
+              <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-3">👤 Dados Pessoais</p>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {[
+                  { label: 'Email', value: painelAluno.email },
+                  { label: 'Telefone', value: painelAluno.phone },
+                  { label: 'Nascimento', value: painelAluno.birth_date ? new Date(painelAluno.birth_date + 'T00:00:00').toLocaleDateString('pt-BR') : null },
+                  { label: 'Sexo', value: painelAluno.sex },
+                  { label: 'Necessidades', value: painelAluno.special_needs },
+                  { label: 'Endereço', value: painelAluno.address },
+                  { label: 'Bairro', value: painelAluno.neighborhood },
+                  { label: 'Cidade', value: painelAluno.city },
+                  { label: 'CEP', value: painelAluno.cep },
+                ].map(item => item.value ? (
+                  <div key={item.label}>
+                    <p className="text-[10px] text-gray-400 font-bold">{item.label}</p>
+                    <p className="font-bold text-gray-900">{item.value}</p>
+                  </div>
+                ) : null)}
+              </div>
+            </div>
+
+            {/* Aulas */}
+            <div className="bg-green-50 rounded-2xl p-4">
+              <p className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-3">📚 Aulas</p>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {[
+                  { label: 'Tipo de Aula', value: painelAluno.lesson_type },
+                  { label: 'Dias', value: painelAluno.days_of_week },
+                  { label: 'Horário', value: painelAluno.preferred_time },
+                  { label: 'Duração', value: painelAluno.lesson_duration },
+                  { label: 'Mensalidade', value: painelAluno.monthly_value ? 'R$ ' + Number(painelAluno.monthly_value).toLocaleString('pt-BR', {minimumFractionDigits:2}) : null },
+                  { label: 'Como nos encontrou', value: painelAluno.how_found },
+                ].map(item => item.value ? (
+                  <div key={item.label}>
+                    <p className="text-[10px] text-gray-400 font-bold">{item.label}</p>
+                    <p className="font-bold text-gray-900">{item.value}</p>
+                  </div>
+                ) : null)}
+              </div>
+            </div>
+
+            {/* Responsável */}
+            <div className="bg-orange-50 rounded-2xl p-4">
+              <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-3">👨‍👩‍👧 Responsável</p>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {[
                   { label: 'Nome', value: painelAluno.parent_name },
                   { label: 'Telefone', value: painelAluno.parent_phone },
+                  { label: 'Celular', value: painelAluno.parent_cell },
                   { label: 'Email', value: painelAluno.parent_email },
                   { label: 'CPF', value: painelAluno.parent_cpf },
+                  { label: 'RG', value: painelAluno.parent_rg },
+                  { label: 'Profissão', value: painelAluno.parent_profession },
                 ].map(item => item.value ? (
                   <div key={item.label}>
                     <p className="text-[10px] text-gray-400 font-bold">{item.label}</p>
@@ -377,6 +427,14 @@ export default function StudentsView() {
                 </a>
               )}
             </div>
+
+            {/* Observações */}
+            {painelAluno.notes && (
+              <div className="bg-gray-50 rounded-2xl p-4">
+                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">📝 Observações</p>
+                <p className="text-sm text-gray-700">{painelAluno.notes}</p>
+              </div>
+            )}
             <div className="flex gap-3">
               <button onClick={() => { setPainelAluno(null); setEditingStudent(painelAluno); }}
                 className="flex-1 py-3 bg-purple-600 text-white rounded-xl text-sm font-bold hover:bg-purple-700 transition-all">
