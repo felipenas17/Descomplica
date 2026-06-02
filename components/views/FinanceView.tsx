@@ -59,6 +59,11 @@ export default function FinanceView() {
   const [showPayModal, setShowPayModal] = useState<any>(null);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<any[]>([]);
+  const [importing, setImporting] = useState(false);
+  const importFileRef = React.useRef<HTMLInputElement>(null);
   const [showPayExpenseModal, setShowPayExpenseModal] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -159,6 +164,113 @@ export default function FinanceView() {
     const e = expenses.filter(x => x.month === month && x.year === year);
     return { mes: MONTHS[idx], entradas: p.reduce((a, x) => a + (x.final_amount || x.amount || 0), 0), saidas: e.reduce((a, x) => a + (x.amount || 0), 0) };
   });
+
+  const parseCSV = (text: string) => {
+    const lines = text.split('\n').filter(l => l.trim());
+    const rows: any[] = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',').map(c => c.trim().replace(/"/g, ''));
+      if (cols.length < 3) continue;
+      
+      // Suporta formatos: Data, Descrição, Valor ou Data, Histórico, Valor, Tipo
+      let data = cols[0];
+      let descricao = cols[1];
+      let valorStr = cols[2] || cols[3] || '0';
+      
+      // Converte data BR (dd/mm/yyyy) para ISO
+      if (data.includes('/')) {
+        const [d, m, y] = data.split('/');
+        data = y + '-' + m.padStart(2,'0') + '-' + d.padStart(2,'0');
+      }
+      
+      // Limpa valor
+      const valor = Math.abs(parseFloat(valorStr.replace(/[R$\s.]/g, '').replace(',', '.'))) || 0;
+      if (valor === 0) continue;
+      
+      // Determina se é entrada ou saída
+      const isDebito = valorStr.includes('-') || cols[3]?.toLowerCase().includes('débito') || cols[3]?.toLowerCase().includes('debito');
+      
+      rows.push({ data, descricao, valor, tipo: isDebito ? 'saida' : 'entrada' });
+    }
+    return rows;
+  };
+
+  const handleImportFile = (file: File) => {
+    setImportFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      const rows = parseCSV(text);
+      setImportPreview(rows.slice(0, 10));
+    };
+    reader.readAsText(file, 'UTF-8');
+  };
+
+  const confirmImport = async () => {
+    if (!importFile) return;
+    setImporting(true);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const text = e.target?.result as string;
+      const rows = parseCSV(text);
+      let importadosSaidas = 0;
+      let importadosEntradas = 0;
+      let erros = 0;
+
+      for (const row of rows) {
+        // Detecta mês e ano de cada transação pela data
+        const dataObj = new Date(row.data + 'T00:00:00');
+        const mes = MONTHS_FULL[dataObj.getMonth()];
+        const ano = dataObj.getFullYear();
+
+        if (row.tipo === 'saida') {
+          const { error } = await supabase.from('expenses').insert({
+            description:   row.descricao,
+            category_name: 'Importado C6',
+            amount:        row.valor,
+            month:         mes,
+            year:          ano,
+            due_date:      row.data,
+            paid_date:     row.data,
+            status:        'paid',
+            is_recurring:  false,
+            created_at:    new Date().toISOString(),
+          });
+          if (error) erros++; else importadosSaidas++;
+        } else {
+          // Entradas viram receitas extras
+          const { error } = await supabase.from('monthly_payments').insert({
+            student_name:  row.descricao,
+            month:         mes,
+            year:          ano,
+            amount:        row.valor,
+            final_amount:  row.valor,
+            due_date:      row.data,
+            paid_date:     row.data,
+            status:        'paid',
+            is_extra:      true,
+            payment_method:'C6 Bank',
+            created_at:    new Date().toISOString(),
+          });
+          if (error) erros++; else importadosEntradas++;
+        }
+      }
+
+      toast.success(
+        '✅ Importado! ' + 
+        importadosSaidas + ' saída(s) e ' + 
+        importadosEntradas + ' entrada(s). ' + 
+        (erros > 0 ? '⚠️ ' + erros + ' erro(s).' : '')
+      );
+      setShowImportModal(false);
+      setImportFile(null);
+      setImportPreview([]);
+      fetchData();
+    };
+    reader.readAsText(importFile, 'UTF-8');
+    setImporting(false);
+  };
 
   const generatePeriod = async () => {
     setGenerating(true);
@@ -364,6 +476,9 @@ export default function FinanceView() {
           </button>
           <button onClick={() => { setActiveTab('saidas'); setShowExpenseModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: D_RED, border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
             + Nova Despesa
+          </button>
+          <button onClick={() => setShowImportModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#0891b2', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+            📥 Importar C6
           </button>
         </div>
       </div>
@@ -728,6 +843,53 @@ export default function FinanceView() {
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setShowExpenseModal(false)} style={{ flex: 1, padding: '12px 0', border: `1px solid ${D_BORDER}`, borderRadius: 10, background: 'none', color: D_MUTED, fontWeight: 700, cursor: 'pointer' }}>Cancelar</button>
               <button onClick={saveExpense} disabled={saving || !expenseForm.category_name || !expenseForm.amount} style={{ flex: 1, padding: '12px 0', background: D_RED, border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, cursor: 'pointer', opacity: saving || !expenseForm.category_name || !expenseForm.amount ? 0.5 : 1 }}>{saving ? 'Salvando...' : 'Salvar'}</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal Importar CSV */}
+      {showImportModal && (
+        <Modal title="📥 Importar Extrato C6 Bank" onClose={() => { setShowImportModal(false); setImportFile(null); setImportPreview([]); }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ background: '#0d1a2a', border: '1px solid #1a2a4a', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#60a5fa' }}>
+              💡 Exporte o extrato do C6 Bank em CSV. Saídas → despesas pagas. Entradas → receitas extras. Cada transação vai para o mês correto automaticamente!
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>Arquivo CSV *</label>
+              <input type="file" ref={importFileRef} accept=".csv,.txt" onChange={e => e.target.files?.[0] && handleImportFile(e.target.files[0])} style={{ display: 'none' }} />
+              <div onClick={() => importFileRef.current?.click()} style={{ border: '2px dashed #2a2d3a', borderRadius: 10, padding: 20, textAlign: 'center', cursor: 'pointer', color: '#64748b', fontSize: 14 }}>
+                {importFile ? '📎 ' + importFile.name : '📁 Clique para selecionar o CSV do C6'}
+              </div>
+            </div>
+
+            {importPreview.length > 0 && (
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', marginBottom: 8 }}>Preview ({importPreview.length} primeiras transações):</div>
+                <div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {importPreview.map((row, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#0f1117', borderRadius: 8, fontSize: 12 }}>
+                      <div>
+                        <div style={{ color: '#e2e8f0', fontWeight: 600 }}>{row.descricao}</div>
+                        <div style={{ color: '#64748b' }}>{row.data}</div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                        <div style={{ fontWeight: 700, color: row.tipo === 'saida' ? '#f43f5e' : '#22d3a5' }}>
+                          {row.tipo === 'saida' ? '-' : '+'}R$ {row.valor.toFixed(2)}
+                        </div>
+                        <div style={{ fontSize: 10, color: '#64748b' }}>{row.tipo === 'saida' ? '💸 Saída' : '💰 Entrada'}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => { setShowImportModal(false); setImportFile(null); setImportPreview([]); }} style={{ flex: 1, padding: '12px 0', border: '1px solid #2a2d3a', borderRadius: 10, background: 'none', color: '#64748b', fontWeight: 700, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={confirmImport} disabled={!importFile || importing} style={{ flex: 1, padding: '12px 0', background: '#0891b2', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, cursor: 'pointer', opacity: !importFile || importing ? 0.5 : 1 }}>
+                {importing ? 'Importando...' : '📥 Importar ' + importPreview.length + ' transações'}
+              </button>
             </div>
           </div>
         </Modal>
