@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       { data: expenses },
       { data: agenda },
     ] = await Promise.all([
-      supabase.from('profiles').select('id, name, monthly_value, responsible_name, responsible_phone').eq('role', 'student').limit(50),
+      supabase.from('students').select('id, name, monthly_value, parent_name, parent_phone, status').eq('status', 'Ativo').limit(50),
       supabase.from('teachers').select('id, name').limit(20),
       supabase.from('schedules').select('*').gte('date', ano + '-01-01').limit(100),
       supabase.from('monthly_payments').select('*').eq('year', ano).limit(100),
@@ -46,7 +46,7 @@ DATA ATUAL: ${new Date().toLocaleString('pt-BR')}
 
 DADOS DO SISTEMA:
 - Total de alunos: ${students?.length || 0}
-- Alunos: ${JSON.stringify(students?.map((s: any) => ({ id: s.id, nome: s.name, mensalidade: s.monthly_value, responsavel: s.responsible_name, tel: s.responsible_phone })))}
+- Alunos: ${JSON.stringify(students?.map((s: any) => ({ id: s.id, nome: s.name, mensalidade: s.monthly_value, responsavel: s.parent_name, tel: s.parent_phone })))}
 - Total de professores: ${teachers?.length || 0}
 - Professores: ${JSON.stringify(teachers?.map((t: any) => ({ id: t.id, nome: t.name })))}
 - Aulas hoje (${aulasHoje.length}): ${JSON.stringify(aulasHoje.map((s: any) => ({ aluno: s.student_name, professor: s.teacher_name, materia: s.subject, horario: s.start_time + '-' + s.end_time, status: s.status })))}
