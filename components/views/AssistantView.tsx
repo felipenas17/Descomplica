@@ -169,6 +169,7 @@ export default function AssistantView({ user }: AssistantViewProps) {
       }
 
       else if (msg.acao === 'ENVIAR_MENSAGEM') {
+        console.log('DADOS MENSAGEM:', JSON.stringify(msg.dados));
         const { data: userData } = await supabase.auth.getUser();
         const { error } = await supabase.from('messages').insert({
           sender_id:   userData.user?.id,
