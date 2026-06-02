@@ -14,6 +14,7 @@ interface Message {
   acao?: string;
   dados?: any;
   pendente?: boolean;
+  acoes_multiplas?: any[];
 }
 
 interface AssistantViewProps {
@@ -87,6 +88,18 @@ export default function AssistantView({ user }: AssistantViewProps) {
 
   const confirmarAcao = async (msg: Message) => {
     console.log('ACAO:', msg.acao, 'DADOS:', JSON.stringify(msg.dados));
+    // Suporte a múltiplas ações
+    if (msg.acoes_multiplas && msg.acoes_multiplas.length > 0) {
+      setLoading(true);
+      let resultados = [];
+      for (const acao_item of msg.acoes_multiplas) {
+        const fakeMsg = { ...msg, acao: acao_item.acao, dados: acao_item.dados, pendente: false };
+        await confirmarAcao(fakeMsg);
+      }
+      setMessages(prev => prev.map(m => m === msg ? { ...m, pendente: false } : m));
+      setLoading(false);
+      return;
+    }
     if (!msg.acao || !msg.dados) return;
     setLoading(true);
 
@@ -180,6 +193,58 @@ export default function AssistantView({ user }: AssistantViewProps) {
           created_at:  new Date().toISOString(),
         });
         resultado = error ? '❌ Erro ao enviar mensagem: ' + error.message : '✅ Mensagem enviada para ' + msg.dados.destinatario_nome + '!';
+      }
+
+      else if (msg.acao === 'APROVAR_MATERIAL') {
+        const { error } = await supabase.from('materials').update({
+          approval_status: 'approved',
+          reviewed_by_id: user.id,
+          reviewed_at: new Date().toISOString(),
+        }).eq('id', msg.dados.material_id);
+        resultado = error ? '❌ Erro ao aprovar: ' + error.message : '✅ Material "' + msg.dados.material_titulo + '" aprovado e publicado na biblioteca!';
+      }
+
+      else if (msg.acao === 'REPROVAR_MATERIAL') {
+        const { error } = await supabase.from('materials').update({
+          approval_status: 'rejected',
+          rejection_reason: msg.dados.motivo,
+          reviewed_by_id: user.id,
+          reviewed_at: new Date().toISOString(),
+        }).eq('id', msg.dados.material_id);
+        resultado = error ? '❌ Erro ao reprovar: ' + error.message : '❌ Material "' + msg.dados.material_titulo + '" reprovado. Professor será notificado.';
+      }
+
+      else if (msg.acao === 'MENSAGEM_MASSA') {
+        const destinatarios = msg.dados.destinatarios || [];
+        let enviados = 0;
+        for (const dest of destinatarios) {
+          const tel = dest.telefone?.replace(/\D/g, '');
+          if (tel) {
+            const texto = msg.dados.texto_template
+              .replace('{nome}', dest.nome || '')
+              .replace('{responsavel}', dest.responsavel || '');
+            const msgUrl = encodeURIComponent(texto);
+            window.open('https://wa.me/55' + tel + '?text=' + msgUrl, '_blank');
+            await new Promise(r => setTimeout(r, 1000));
+            enviados++;
+          }
+        }
+        resultado = '✅ WhatsApp aberto para ' + enviados + ' responsável(is)!';
+      }
+
+      else if (msg.acao === 'PARABENIZAR') {
+        const destinatarios = msg.dados.destinatarios || [];
+        let enviados = 0;
+        for (const dest of destinatarios) {
+          const tel = dest.telefone?.replace(/\D/g, '');
+          if (tel) {
+            const msgTexto = encodeURIComponent('Olá ' + (dest.responsavel || 'Responsável') + '! 🎉\n' + 'Hoje é aniversário de *' + dest.nome + '*! 🎂🎈\n' + 'A equipe da *Professora Descomplica* deseja um feliz aniversário cheio de conquistas e aprendizados! 🌟\n' + 'Parabéns! 🥳');
+            window.open('https://wa.me/55' + tel + '?text=' + msgTexto, '_blank');
+            await new Promise(r => setTimeout(r, 1000));
+            enviados++;
+          }
+        }
+        resultado = '🎉 Parabéns enviado para ' + enviados + ' responsável(is)!';
       }
 
       else if (msg.acao === 'ENVIAR_NOTIFICACAO') {
