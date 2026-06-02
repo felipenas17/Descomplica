@@ -26,6 +26,7 @@ import AdminAgendaView from '@/components/views/AdminAgendaView';
 import MessagesView from '@/components/views/MessagesView';
 import AssistantView from '@/components/views/AssistantView';
 import ComunicadosView from '@/components/views/ComunicadosView';
+import ListaEsperaView from '@/components/views/ListaEsperaView';
 import PasswordChangeModal from '@/components/modals/PasswordChangeModal';
 import ChangePasswordModal from '@/components/modals/ChangePasswordModal';
 import UserProfileModal from '@/components/modals/UserProfileModal';
@@ -238,6 +239,7 @@ export default function Home() {
             case 'agenda': return user?.role === 'professor' ? <TeacherScheduleView user={user} /> : <AdminAgendaView user={user} />;
             case 'assistant': return user?.role === 'admin' ? <AssistantView user={user} /> : null;
             case 'comunicados': return user?.role === 'admin' ? <ComunicadosView user={user} /> : null;
+            case 'lista_espera': return user?.role === 'admin' ? <ListaEsperaView user={user} /> : null;
             case 'feedbacks': return <FeedbacksView />;
             case 'users': return <UsersView />;
             case 'materials': return <MaterialsView userRole={user?.role === 'professor' ? 'teacher' : user?.role as 'admin' | 'teacher'} userId={user?.id || ''} />;

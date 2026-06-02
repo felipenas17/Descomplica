@@ -33,7 +33,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useNotifications } from '@/hooks/useNotifications';
 
 // --- Shared Types ---
-export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials' | 'messages' | 'notifications' | 'absences' | 'contracts' | 'teacher_feedbacks' | 'teacher_evaluations' | 'teacher_contracts' | 'assistant' | 'comunicados';
+export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials' | 'messages' | 'notifications' | 'absences' | 'contracts' | 'teacher_feedbacks' | 'teacher_evaluations' | 'teacher_contracts' | 'assistant' | 'comunicados' | 'lista_espera';
 
 interface SearchResult {
   id: string;
@@ -105,6 +105,7 @@ const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, un
       <NavItem icon={CalendarCheck} label="Agenda & Compromissos" active={activeView === 'agenda'} onClick={() => setView('agenda')} />
       {user?.role === 'admin' && <NavItem icon={MessageSquare} label="🤖 Assistente IA" active={activeView === 'assistant'} onClick={() => setView('assistant')} />}
       {user?.role === 'admin' && <NavItem icon={Bell} label="📢 Comunicados" active={activeView === 'comunicados'} onClick={() => setView('comunicados')} />}
+      {user?.role === 'admin' && <NavItem icon={Users} label="⏳ Lista de Espera" active={activeView === 'lista_espera'} onClick={() => setView('lista_espera')} />}
       <NavItem icon={FileText} label="Material de Apoio" active={activeView === 'materials'} onClick={() => setView('materials')} />
       {user?.role === 'professor' && (
         <NavItem icon={MessageSquareQuote} label="Meus Feedbacks" active={activeView === 'teacher_feedbacks'} onClick={() => setView('teacher_feedbacks')} />
@@ -391,6 +392,7 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
     messages: 'Mensagens',
     assistant: '🤖 Assistente IA',
     comunicados: '📢 Comunicados',
+    lista_espera: '⏳ Lista de Espera',
     notifications: 'Notificações',
     absences: 'Controle de Aulas',
     contracts: 'Contratos',
@@ -435,6 +437,7 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
                     { view: 'notifications', icon: '🔔', label: 'Notificações' },
                     { view: 'assistant', icon: '🤖', label: 'Assistente IA' },
                     { view: 'comunicados', icon: '📢', label: 'Comunicados' },
+                    { view: 'lista_espera', icon: '⏳', label: 'Lista de Espera' },
                     { view: 'users', icon: '🛡️', label: 'Usuários' },
                   ].map(item => (
                     <button key={item.view} onClick={() => { setView(item.view as View); setIsSidebarOpen(false); }}
