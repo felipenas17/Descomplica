@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
 const TIPOS = [
-  { value: 'geral', label: '📢 Geral', color: 'bg-blue-100 text-blue-700' },
+        '*' + form.titulo + '*\n\n' +
   { value: 'financeiro', label: '💰 Financeiro', color: 'bg-yellow-100 text-yellow-700' },
   { value: 'pedagogico', label: '📚 Pedagógico', color: 'bg-green-100 text-green-700' },
   { value: 'urgente', label: '🚨 Urgente', color: 'bg-red-100 text-red-700' },
@@ -71,8 +71,8 @@ export default function ComunicadosView({ user }: { user?: any }) {
       const tel = dest.parent_phone?.replace(/\D/g, '');
       if (!tel) continue;
       const msg = encodeURIComponent(
-        'Olá, ' + (dest.parent_name || 'Responsável') + '! 👋\n\n' +
-        '📢 *' + form.titulo + '*\n\n' +
+        'Ola, ' + (dest.parent_name || 'Responsavel') + '!\n\n' +
+        '*' + form.titulo + '*\n\n' +
         form.mensagem + '\n\n' +
         '_Professora Descomplica — ' + new Date().toLocaleDateString('pt-BR') + '_'
       );
@@ -96,7 +96,7 @@ export default function ComunicadosView({ user }: { user?: any }) {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-black text-gray-900">📢 Comunicados</h1>
+        '*' + form.titulo + '*\n\n' +
           <p className="text-sm text-gray-400 mt-1">Envie avisos em massa para os responsáveis via WhatsApp</p>
         </div>
         <button onClick={() => setShowModal(true)}
@@ -193,7 +193,7 @@ export default function ComunicadosView({ user }: { user?: any }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white rounded-t-3xl p-5 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-xl font-black text-gray-900">📢 Novo Comunicado</h2>
+        '*' + form.titulo + '*\n\n' +
               <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"><X size={20} /></button>
             </div>
             <div className="p-5 space-y-4">
