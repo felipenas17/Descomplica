@@ -287,6 +287,7 @@ export default function SchoolCalendar({ user }: { user?: any }) {
         is_experimental: true,
         exp_status: e.status,
         telefone: e.telefone,
+        feedback_professor: e.feedback_professor,
       }));
 
       setLessons([...(data || []), ...expLessons]);
