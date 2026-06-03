@@ -58,6 +58,9 @@ export default function SchoolCalendar({ user }: { user?: any }) {
   const [teachers, setTeachers] = useState<{id: string, name: string}[]>([]);
   const [showSubstModal, setShowSubstModal] = useState(false);
   const [showExpModal, setShowExpModal] = useState(false);
+  const [showDecisaoModal, setShowDecisaoModal] = useState(false);
+  const [expSelecionada, setExpSelecionada] = useState<any>(null);
+  const [anamneseData, setAnamneseData] = useState<any>(null);
   const [savingExp, setSavingExp] = useState(false);
   const [expForm, setExpForm] = useState({
     nome: '', telefone: '', email: '', materia: '',
@@ -71,6 +74,20 @@ export default function SchoolCalendar({ user }: { user?: any }) {
   useEffect(() => {
     supabase.from('feriados').select('*').then(({ data }) => setFeriados(data || []));
   }, []);
+
+  const tomarDecisao = async (decisao: string, motivo?: string) => {
+    if (!expSelecionada) return;
+    const expId = expSelecionada.exp_id;
+    await supabase.from('aulas_experimentais').update({
+      status: decisao,
+      resultado: decisao,
+      motivo_nao_conversao: motivo || null,
+    }).eq('id', expId);
+    setShowDecisaoModal(false);
+    setExpSelecionada(null);
+    setAnamneseData(null);
+    fetchLessons();
+  };
 
   const salvarExperimental = async () => {
     if (!expForm.nome || !expForm.telefone || !expForm.data) return;
@@ -505,7 +522,16 @@ export default function SchoolCalendar({ user }: { user?: any }) {
                         return (
                           <div key={lesson.id}
                             style={{ top: `${top}px`, height: `${height}px` }}
-                            onClick={() => { setSelectedLesson(lesson); setEditingLesson({...lesson}); }} className={`absolute left-1 right-1 ${color.bg} border-l-4 ${color.border} rounded-xl p-1.5 z-10 overflow-hidden cursor-pointer hover:shadow-md transition-all`}>
+                            onClick={() => {
+                              if ((lesson as any).is_experimental) {
+                                setExpSelecionada(lesson);
+                                const fb = (lesson as any).feedback_professor;
+                                try { setAnamneseData(fb ? JSON.parse(fb) : null); } catch { setAnamneseData(null); }
+                                setShowDecisaoModal(true);
+                              } else {
+                                setSelectedLesson(lesson); setEditingLesson({...lesson});
+                              }
+                            }} className={`absolute left-1 right-1 ${color.bg} border-l-4 ${color.border} rounded-xl p-1.5 z-10 overflow-hidden cursor-pointer hover:shadow-md transition-all`}>
                             <p className={`text-[9px] font-black uppercase ${color.text}`}>{(lesson as any).is_experimental ? 'EXPERIMENTAL' : lesson.subject}</p>
                             <p className="text-[8px] text-gray-500 truncate">{(lesson as any).time_start || (lesson as any).start_time} - {(lesson as any).time_end || (lesson as any).end_time}</p>
                             <p className="text-[8px] text-gray-500 truncate">👤 {lesson.student_name}</p>
@@ -895,6 +921,100 @@ export default function SchoolCalendar({ user }: { user?: any }) {
                 {savingExp ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Plus size={16} />}
                 {savingExp ? 'Agendando...' : 'Agendar Experimental'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Decisão Experimental */}
+      {showDecisaoModal && expSelecionada && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white rounded-t-3xl p-5 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-black text-gray-900">Aula Experimental</h2>
+                <p className="text-xs text-gray-400 mt-0.5">{expSelecionada.student_name}</p>
+              </div>
+              <button onClick={() => setShowDecisaoModal(false)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"><X size={20} /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              {/* Dados do interessado */}
+              <div className="p-4 bg-amber-50 rounded-2xl">
+                <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-2">Dados do Interessado</p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div><p className="text-[10px] text-gray-400 font-bold">Nome</p><p className="font-bold text-gray-900">{expSelecionada.student_name}</p></div>
+                  <div><p className="text-[10px] text-gray-400 font-bold">Telefone</p><p className="font-bold text-gray-900">{expSelecionada.telefone || '-'}</p></div>
+                  <div><p className="text-[10px] text-gray-400 font-bold">Materia</p><p className="font-bold text-gray-900">{expSelecionada.subject || '-'}</p></div>
+                  <div><p className="text-[10px] text-gray-400 font-bold">Data</p><p className="font-bold text-gray-900">{expSelecionada.date ? new Date(expSelecionada.date + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}</p></div>
+                </div>
+                {expSelecionada.telefone && (
+                  <a href={'https://wa.me/55' + expSelecionada.telefone.replace(/\D/g, '')} target="_blank" rel="noopener noreferrer"
+                    className="mt-3 flex items-center gap-2 px-3 py-2 bg-green-500 text-white rounded-xl text-xs font-bold w-fit hover:bg-green-600 transition-all">
+                    WhatsApp do Interessado
+                  </a>
+                )}
+              </div>
+
+              {/* Anamnese do professor */}
+              {anamneseData ? (
+                <div className="p-4 bg-purple-50 rounded-2xl">
+                  <p className="text-[10px] font-black text-purple-700 uppercase tracking-widest mb-3">Anamnese do Professor</p>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Nivel do aluno', value: anamneseData.nivel },
+                      { label: 'Principais dificuldades', value: anamneseData.dificuldades },
+                      { label: 'Materias com deficiencia', value: anamneseData.materias_deficiencia },
+                      { label: 'Engajamento', value: anamneseData.engajamento },
+                      { label: 'Conteudo trabalhado', value: anamneseData.conteudo_trabalhado },
+                      { label: 'Frequencia recomendada', value: anamneseData.frequencia_recomendada },
+                      { label: 'Observacoes', value: anamneseData.observacoes },
+                    ].filter(i => i.value).map(item => (
+                      <div key={item.label}>
+                        <p className="text-[10px] font-black text-gray-400 uppercase">{item.label}</p>
+                        <p className="text-sm text-gray-800 mt-0.5">{item.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 bg-gray-50 rounded-2xl text-center">
+                  <p className="text-sm text-gray-400 font-bold">Anamnese ainda nao preenchida pelo professor.</p>
+                </div>
+              )}
+
+              {/* Decisão */}
+              {(expSelecionada as any).exp_status !== 'matriculado' && (expSelecionada as any).exp_status !== 'arquivada' && (
+                <div>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Tomar Decisao</p>
+                  <div className="flex flex-col gap-2">
+                    <button onClick={() => tomarDecisao('matriculado')}
+                      className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-bold transition-all">
+                      Matricular Aluno
+                    </button>
+                    <button onClick={() => {
+                      const tel = expSelecionada.telefone?.replace(/\D/g, '');
+                      if (tel) window.open('https://wa.me/55' + tel, '_blank');
+                      tomarDecisao('negociando');
+                    }}
+                      className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-bold transition-all">
+                      Entrar em Contato / Negociar
+                    </button>
+                    <button onClick={() => {
+                      const motivo = prompt('Motivo para nao converter (opcional):');
+                      tomarDecisao('arquivada', motivo || '');
+                    }}
+                      className="w-full py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl text-sm font-bold transition-all">
+                      Arquivar / Nao Convertido
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {((expSelecionada as any).exp_status === 'matriculado' || (expSelecionada as any).exp_status === 'arquivada') && (
+                <div className={`p-3 rounded-xl text-sm font-bold text-center ${(expSelecionada as any).exp_status === 'matriculado' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                  {(expSelecionada as any).exp_status === 'matriculado' ? 'Aluno matriculado!' : 'Arquivado'}
+                </div>
+              )}
             </div>
           </div>
         </div>
