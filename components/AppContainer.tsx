@@ -356,6 +356,11 @@ const BottomNav = ({ activeView, setView, user }: { activeView: View, setView: (
 export function AppContainer({ children, activeView, setView, user, onLogout, onOpenChangePassword }: { children: React.ReactNode, activeView: View, setView: (v: View) => void, user: any, onLogout: () => void, onOpenChangePassword?: () => void }) {
   const [aulasPendentes, setAulasPendentes] = React.useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    (window as any).__setView = setView;
+    return () => { delete (window as any).__setView; };
+  }, [setView]);
   const { supported, subscribed, subscribe } = usePushNotifications(user?.id);
   React.useEffect(() => {
     const fetchPendentes = async () => {
