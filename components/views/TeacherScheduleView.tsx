@@ -49,6 +49,9 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
   }, [currentDate]);
 
   const [compromissos, setCompromissos] = useState<any[]>([]);
+  const [anamneseLesson, setAnamneseLesson] = useState<any>(null);
+  const [anamneseForm, setAnamneseForm] = useState({ nivel: '', dificuldades: '', materias_deficiencia: '', engajamento: '', conteudo_trabalhado: '', frequencia_recomendada: '', observacoes: '' });
+  const [savingAnamnese, setSavingAnamnese] = useState(false);
   const [feriados, setFeriados] = useState<any[]>([]);
 
   const fetchLessons = async () => {
@@ -106,6 +109,32 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
     fetchLessons();
     supabase.from('feriados').select('*').then(({ data }) => setFeriados(data || []));
   }, [period]);
+
+  const salvarAnamnese = async () => {
+    if (!anamneseLesson) return;
+    setSavingAnamnese(true);
+    try {
+      const expId = anamneseLesson.exp_id;
+      await supabase.from('aulas_experimentais').update({
+        status: 'realizada',
+        feedback_professor: JSON.stringify(anamneseForm),
+      }).eq('id', expId);
+      // Notifica admin
+      const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'admin');
+      for (const admin of (admins || [])) {
+        await supabase.from('notifications').insert({
+          user_id: admin.id,
+          title: 'Anamnese recebida: ' + anamneseLesson.student_name,
+          message: 'O professor ' + user?.name + ' preencheu a anamnese da aula experimental de ' + anamneseLesson.student_name + '. Aguardando sua decisao.',
+          type: 'info', read: false, created_at: new Date().toISOString(),
+        });
+      }
+      setAnamneseLesson(null);
+      setAnamneseForm({ nivel: '', dificuldades: '', materias_deficiencia: '', engajamento: '', conteudo_trabalhado: '', frequencia_recomendada: '', observacoes: '' });
+      fetchLessons();
+    } catch(e) { console.error(e); }
+    setSavingAnamnese(false);
+  };
 
   const startLesson = async (lesson: any) => {
     const { error } = await supabase.from('schedules').update({ status: 'em_andamento' }).eq('id', lesson.id);
@@ -318,7 +347,15 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
                     {lesson.notes && <p className="text-xs text-gray-400 mt-1 truncate">{lesson.notes}</p>}
 
                     {/* Botões de presença */}
-                    {!concluida && lesson.status !== 'aguardando_confirmacao' && (
+                    {isExp && (lesson as any).exp_status === 'agendada' && (
+                      <div className="flex gap-2 mt-3">
+                        <button onClick={() => setAnamneseLesson(lesson as any)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition-all">
+                          Preencher Anamnese →
+                        </button>
+                      </div>
+                    )}
+                    {!isExp && !concluida && lesson.status !== 'aguardando_confirmacao' && (
                       <div className="flex gap-2 mt-3 flex-wrap">
                         <button onClick={() => markAttendance(lesson, 'presente')}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${lesson.attendance_status === 'presente' ? 'bg-green-500 text-white' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}>
@@ -498,6 +535,50 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
               </span>
             </div>
           ))}
+        </div>
+      </div>
+    )}
+    {/* Modal Anamnese Experimental */}
+    {anamneseLesson && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-0 bg-white rounded-t-3xl p-5 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-black text-gray-900">Anamnese — Aula Experimental</h2>
+              <p className="text-xs text-gray-400 mt-0.5">{anamneseLesson.student_name}</p>
+            </div>
+            <button onClick={() => setAnamneseLesson(null)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400">✕</button>
+          </div>
+          <div className="p-5 space-y-4">
+            <div className="p-3 bg-amber-50 rounded-xl text-xs text-amber-700 font-bold">
+              Preencha com cuidado — essas informacoes serao enviadas ao administrador para decidir sobre a matricula.
+            </div>
+            {[
+              { label: 'Nivel do aluno', field: 'nivel', placeholder: 'Ex: Iniciante, Intermediario, Avancado' },
+              { label: 'Principais dificuldades identificadas', field: 'dificuldades', placeholder: 'Descreva as dificuldades observadas...' },
+              { label: 'Materias com mais deficiencia', field: 'materias_deficiencia', placeholder: 'Ex: Algebra, Interpretacao de texto...' },
+              { label: 'Engajamento durante a aula', field: 'engajamento', placeholder: 'Ex: Alto, Medio, Baixo — como o aluno reagiu...' },
+              { label: 'Conteudo trabalhado na aula', field: 'conteudo_trabalhado', placeholder: 'O que foi abordado na experimental...' },
+              { label: 'Frequencia recomendada', field: 'frequencia_recomendada', placeholder: 'Ex: 2x por semana, 3x por semana...' },
+              { label: 'Observacoes gerais', field: 'observacoes', placeholder: 'Qualquer informacao adicional relevante...' },
+            ].map(f => (
+              <div key={f.field}>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">{f.label}</label>
+                <textarea rows={2} value={(anamneseForm as any)[f.field]}
+                  onChange={e => setAnamneseForm(prev => ({ ...prev, [f.field]: e.target.value }))}
+                  placeholder={f.placeholder}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-300" />
+              </div>
+            ))}
+          </div>
+          <div className="sticky bottom-0 bg-white rounded-b-3xl p-5 border-t border-gray-100 flex gap-3">
+            <button onClick={() => setAnamneseLesson(null)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold">Cancelar</button>
+            <button onClick={salvarAnamnese} disabled={savingAnamnese}
+              className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2">
+              {savingAnamnese ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+              {savingAnamnese ? 'Enviando...' : 'Enviar para Admin'}
+            </button>
+          </div>
         </div>
       </div>
     )}
