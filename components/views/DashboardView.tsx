@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, GraduationCap, Wallet, AlertCircle, Clock, TrendingUp, TrendingDown, Target, CheckCircle, XCircle, Calendar, Zap, Award, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { gerarRelatorioPDF } from '@/lib/relatorioMensal';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -47,7 +47,7 @@ export default function DashboardView() {
   const [meta, setMeta] = useState(5000);
   const [editMeta, setEditMeta] = useState(false);
   const [data, setData] = useState<any>({
-    totalAlunos: 0, totalProfessores: 0,
+    totalAlunos: 0, totalProfessores: 0, alunosNovos: 0, alunosRenovacao: 0, expMatriculadas: 0, expNaoConvertidas: 0, expTotal: 0, expPorMes: [],
     receitaMes: 0, recebidoMes: 0, despesasMes: 0, lucroMes: 0,
     ticketMedio: 0, taxaOcupacao: 0, inadimplentes: 0,
     aulasHoje: 0, aulasConcluidas: 0,
@@ -137,7 +137,27 @@ export default function DashboardView() {
         return { mes: m, entradas, saidas, recebido, lucro: recebido - saidas };
       });
 
-      setData({ totalAlunos: students.length, totalProfessores: teachers.length, receitaMes, recebidoMes, despesasMes, lucroMes, ticketMedio, taxaOcupacao, inadimplentes, aulasHoje, aulasConcluidas, proximasAulas, alertas, fluxoAnual, aniversarios, rankingProfessores, taxaRecebimento });
+      // Busca dados de experimentais e renovações
+      const { data: experimentais } = await supabase.from('aulas_experimentais').select('*');
+      const expMatriculadas = (experimentais || []).filter((e: any) => e.status === 'matriculado').length;
+      const expNaoConvertidas = (experimentais || []).filter((e: any) => e.status === 'arquivada').length;
+      const expTotal = (experimentais || []).length;
+
+      const alunosNovos = students.filter((s: any) => s.enrollment_type === 'nova').length;
+      const alunosRenovacao = students.filter((s: any) => s.enrollment_type === 'renovacao' || s.enrollment_type === 'anual').length;
+
+      // Gráfico de conversão experimental por mês
+      const expPorMes = MONTHS.map((m, i) => {
+        const mesExp = (experimentais || []).filter((e: any) => new Date(e.created_at).getMonth() === i);
+        return {
+          mes: m,
+          total: mesExp.length,
+          matriculados: mesExp.filter((e: any) => e.status === 'matriculado').length,
+          nao_convertidos: mesExp.filter((e: any) => e.status === 'arquivada').length,
+        };
+      });
+
+      setData({ totalAlunos: students.length, totalProfessores: teachers.length, receitaMes, recebidoMes, despesasMes, lucroMes, ticketMedio, taxaOcupacao, inadimplentes, aulasHoje, aulasConcluidas, proximasAulas, alertas, fluxoAnual, aniversarios, rankingProfessores, taxaRecebimento, alunosNovos, alunosRenovacao, expMatriculadas, expNaoConvertidas, expTotal, expPorMes });
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -324,6 +344,40 @@ export default function DashboardView() {
           </div>
         </div>
       </div>
+
+      {/* KPIs de alunos e experimentais */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+        {[
+          { label: 'Novos Alunos', value: data.alunosNovos, color: '#60a5fa', sub: 'matriculas novas' },
+          { label: 'Renovacoes', value: data.alunosRenovacao, color: D_GREEN, sub: 'alunos renovados' },
+          { label: 'Exp. Convertidas', value: data.expMatriculadas, color: D_PURPLE, sub: 'de ' + data.expTotal + ' experimentais' },
+          { label: 'Nao Convertidas', value: data.expNaoConvertidas, color: D_RED, sub: 'arquivadas' },
+        ].map(k => (
+          <div key={k.label} style={{ ...cardStyle }}>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: D_MUTED, marginBottom: 8 }}>{k.label}</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: k.color }}>{k.value}</div>
+            <div style={{ fontSize: 11, color: D_MUTED, marginTop: 4 }}>{k.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Gráfico conversão experimental */}
+      {data.expTotal > 0 && (
+        <div style={{ ...cardStyle }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: D_TEXT, marginBottom: 4 }}>Aulas Experimentais — Conversao</div>
+          <div style={{ fontSize: 12, color: D_MUTED, marginBottom: 16 }}>Matriculados vs Nao Convertidos por mes</div>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={data.expPorMes.filter((m: any) => m.total > 0)}>
+              <CartesianGrid strokeDasharray="3 3" stroke={D_BORDER} />
+              <XAxis dataKey="mes" tick={{ fontSize: 11, fill: D_MUTED }} />
+              <YAxis tick={{ fontSize: 10, fill: D_MUTED }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="matriculados" name="Matriculados" fill={D_GREEN} radius={[4,4,0,0]} />
+              <Bar dataKey="nao_convertidos" name="Nao Convertidos" fill={D_RED} radius={[4,4,0,0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {/* Ranking professores */}
       {data.rankingProfessores.length > 0 && (
