@@ -14,6 +14,11 @@ export default function TeachersView() {
   const [savingEdit, setSavingEdit] = React.useState(false);
   const [showExtraEdit, setShowExtraEdit] = React.useState(false);
   const [viewingTeacher, setViewingTeacher] = React.useState<any>(null);
+  const [teacherStats, setTeacherStats] = React.useState<any>(null);
+  const [teacherPayments, setTeacherPayments] = React.useState<any[]>([]);
+  const [showPayModal, setShowPayModal] = React.useState(false);
+  const [payForm, setPayForm] = React.useState({ period_start: '', period_end: '', amount: '', notes: '' });
+  const [savingPay, setSavingPay] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isMounted, setIsMounted] = React.useState(false);
@@ -21,6 +26,75 @@ export default function TeachersView() {
   const DAYS_OF_WEEK = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
   const [selectedDaysEdit, setSelectedDaysEdit] = React.useState<string[]>([]);
   const [daySchedulesEdit, setDaySchedulesEdit] = React.useState<Record<string, { start: string; end: string }>>({});
+
+  const openTeacherPanel = async (teacher: any) => {
+    setViewingTeacher(teacher);
+    setTeacherStats(null);
+    setTeacherPayments([]);
+    const hoje = new Date();
+    const mesInicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
+    const [{ data: schedules }, { data: payments }] = await Promise.all([
+      supabase.from('schedules').select('*').eq('teacher_id', teacher.id).order('date', { ascending: false }).limit(50),
+      supabase.from('teacher_payments').select('*').eq('teacher_id', teacher.id).order('created_at', { ascending: false }),
+    ]);
+    const aulasMes = (schedules || []).filter(s => s.date >= mesInicio);
+    const aulasConcluidas = (schedules || []).filter(s => s.status === 'concluido');
+    const alunosUnicos = [...new Set((schedules || []).map(s => s.student_id).filter(Boolean))];
+    const proximasAulas = (schedules || []).filter(s => s.date >= hoje.toISOString().split('T')[0]).slice(0, 3);
+    setTeacherStats({
+      aulasMes: aulasMes.length,
+      aulasConcluidas: aulasConcluidas.length,
+      totalAulas: (schedules || []).length,
+      taxaConclusao: (schedules || []).length > 0 ? Math.round((aulasConcluidas.length / (schedules || []).length) * 100) : 0,
+      alunos: alunosUnicos.length,
+      proximasAulas,
+    });
+    setTeacherPayments(payments || []);
+    // Preenche form de pagamento
+    const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+    setPayForm({
+      period_start: mesInicio,
+      period_end: fim.toISOString().split('T')[0],
+      amount: teacher.monthly_value || '',
+      notes: '',
+    });
+  };
+
+  const registrarPagamento = async () => {
+    if (!payForm.amount || !payForm.period_start) { return; }
+    setSavingPay(true);
+    const { error } = await supabase.from('teacher_payments').insert({
+      teacher_id: viewingTeacher.id,
+      teacher_name: viewingTeacher.name,
+      amount: parseFloat(payForm.amount),
+      period_start: payForm.period_start,
+      period_end: payForm.period_end,
+      aulas_no_periodo: teacherStats?.aulasMes || 0,
+      payment_method: viewingTeacher.payment_method,
+      pix_key: viewingTeacher.pix_key,
+      notes: payForm.notes,
+      status: 'pago',
+      paid_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+    });
+    if (!error) {
+      // Envia mensagem para o professor
+      const msg = encodeURIComponent(
+        'Olá, ' + viewingTeacher.name + '! 👋\n\n' +
+        '💰 *Pagamento realizado!*\n\n' +
+        '📅 Período: ' + new Date(payForm.period_start + 'T00:00:00').toLocaleDateString('pt-BR') + ' a ' + new Date(payForm.period_end + 'T00:00:00').toLocaleDateString('pt-BR') + '\n' +
+        '💵 Valor: R$ ' + parseFloat(payForm.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '\n' +
+        '📚 Aulas no período: ' + (teacherStats?.aulasMes || 0) + '\n' +
+        (payForm.notes ? '📝 Obs: ' + payForm.notes + '\n' : '') +
+        '\n_Professora Descomplica_'
+      );
+      const tel = viewingTeacher.phone?.replace(/\D/g, '');
+      if (tel) window.open('https://wa.me/55' + tel + '?text=' + msg, '_blank');
+      setShowPayModal(false);
+      openTeacherPanel(viewingTeacher);
+    }
+    setSavingPay(false);
+  };
 
   const openEdit = (teacher: any) => {
     setEditingTeacher({ ...teacher });
@@ -250,7 +324,86 @@ export default function TeachersView() {
                 </div>
               )}
 
+              {/* KPIs de aulas */}
+              {teacherStats && (
+                <div>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Desempenho</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { label: 'Aulas este mês', value: teacherStats.aulasMes, color: 'text-purple-600' },
+                      { label: 'Taxa conclusão', value: teacherStats.taxaConclusao + '%', color: 'text-green-600' },
+                      { label: 'Alunos', value: teacherStats.alunos, color: 'text-blue-600' },
+                    ].map(k => (
+                      <div key={k.label} className="p-3 bg-gray-50 rounded-xl text-center">
+                        <p className="text-[10px] font-black text-gray-400 uppercase mb-1">{k.label}</p>
+                        <p className={`text-xl font-black ${k.color}`}>{k.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Próximas aulas */}
+              {teacherStats?.proximasAulas?.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Próximas Aulas</p>
+                  <div className="space-y-2">
+                    {teacherStats.proximasAulas.map((a: any) => (
+                      <div key={a.id} className="flex items-center gap-3 p-3 bg-purple-50 rounded-xl">
+                        <div className="text-[10px] font-black text-purple-600 w-12 text-center">
+                          {new Date(a.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-bold text-gray-900">{a.subject}</p>
+                          <p className="text-xs text-gray-400">{a.student_name} · {a.start_time}</p>
+                        </div>
+                        <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${a.status === 'concluido' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {a.status === 'concluido' ? '✅' : '📅'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Histórico de pagamentos */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pagamentos</p>
+                  <button onClick={() => setShowPayModal(true)}
+                    className="text-[10px] font-black text-purple-600 bg-purple-50 px-2 py-1 rounded-lg hover:bg-purple-100 transition-all">
+                    + Registrar Pagamento
+                  </button>
+                </div>
+                {teacherPayments.length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-4">Nenhum pagamento registrado.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {teacherPayments.slice(0, 5).map(p => (
+                      <div key={p.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">
+                            {new Date(p.period_start + 'T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                          </p>
+                          <p className="text-xs text-gray-400">{p.aulas_no_periodo} aulas · pago em {new Date(p.paid_at).toLocaleDateString('pt-BR')}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-black text-green-600">R$ {Number(p.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-green-100 text-green-700">✅ Pago</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="flex gap-3 pt-2">
+                {viewingTeacher.phone && (
+                  <a href={'https://wa.me/55' + viewingTeacher.phone.replace(/\D/g, '')} target="_blank" rel="noopener noreferrer"
+                    className="flex-1 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
+                    💬 WhatsApp
+                  </a>
+                )}
                 <button onClick={() => { setViewingTeacher(null); openEdit(viewingTeacher); }}
                   className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
                   <Pencil size={16} /> Editar
@@ -260,6 +413,60 @@ export default function TeachersView() {
                   Fechar
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Registrar Pagamento */}
+      {showPayModal && viewingTeacher && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-black text-gray-900">💰 Registrar Pagamento</h3>
+              <button onClick={() => setShowPayModal(false)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"><X size={18} /></button>
+            </div>
+            <div className="space-y-4">
+              <div className="p-3 bg-purple-50 rounded-xl text-sm font-bold text-purple-700">
+                Professor: {viewingTeacher.name} · {teacherStats?.aulasMes || 0} aulas este mês
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Período início</label>
+                  <input type="date" value={payForm.period_start} onChange={e => setPayForm(f => ({ ...f, period_start: e.target.value }))}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Período fim</label>
+                  <input type="date" value={payForm.period_end} onChange={e => setPayForm(f => ({ ...f, period_end: e.target.value }))}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Valor (R$)</label>
+                <input type="number" value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))}
+                  placeholder="0,00"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Observações</label>
+                <textarea rows={2} value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))}
+                  placeholder="Ex: 13 aulas concluídas..."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              </div>
+              {viewingTeacher.payment_method && (
+                <div className="p-3 bg-gray-50 rounded-xl text-xs text-gray-600 font-bold">
+                  {viewingTeacher.payment_method === 'pix' ? '💠 PIX: ' + (viewingTeacher.pix_key || 'não cadastrado') : viewingTeacher.payment_method === 'dinheiro' ? '💵 Dinheiro' : '🏦 Transferência'}
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setShowPayModal(false)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold">Cancelar</button>
+              <button onClick={registrarPagamento} disabled={savingPay}
+                className="flex-1 py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2">
+                {savingPay ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : '💰'}
+                {savingPay ? 'Salvando...' : 'Registrar e Enviar WhatsApp'}
+              </button>
             </div>
           </div>
         </div>
@@ -495,7 +702,7 @@ export default function TeachersView() {
               <button className="text-xs font-bold text-primary group-hover:text-white transition-colors flex items-center gap-2">
                 <Video size={14} /> Aulas Remotas
               </button>
-              <button onClick={() => setViewingTeacher(teacher)} className="text-xs font-bold text-gray-500 group-hover:text-white/70 transition-colors uppercase tracking-widest">Perfíl Completo</button>
+              <button onClick={() => openTeacherPanel(teacher)} className="text-xs font-bold text-gray-500 group-hover:text-white/70 transition-colors uppercase tracking-widest">Perfíl Completo</button>
             </div>
           </div>
         ))}
