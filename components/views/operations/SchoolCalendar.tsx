@@ -57,6 +57,13 @@ export default function SchoolCalendar({ user }: { user?: any }) {
   const [saving, setSaving] = useState(false);
   const [teachers, setTeachers] = useState<{id: string, name: string}[]>([]);
   const [showSubstModal, setShowSubstModal] = useState(false);
+  const [showExpModal, setShowExpModal] = useState(false);
+  const [savingExp, setSavingExp] = useState(false);
+  const [expForm, setExpForm] = useState({
+    nome: '', telefone: '', email: '', materia: '',
+    professor_id: '', data: new Date().toISOString().split('T')[0],
+    hora_inicio: '08:00', hora_fim: '09:00',
+  });
   const [substData, setSubstData] = useState({ professor_id: '', motivo: '' });
   const [savingSubst, setSavingSubst] = useState(false);
   const [feriados, setFeriados] = useState<any[]>([]);
@@ -64,6 +71,36 @@ export default function SchoolCalendar({ user }: { user?: any }) {
   useEffect(() => {
     supabase.from('feriados').select('*').then(({ data }) => setFeriados(data || []));
   }, []);
+
+  const salvarExperimental = async () => {
+    if (!expForm.nome || !expForm.telefone || !expForm.data) return;
+    setSavingExp(true);
+    try {
+      const prof = teachers.find(t => t.id === expForm.professor_id);
+      const { error } = await supabase.from('aulas_experimentais').insert({
+        ...expForm,
+        professor_nome: prof?.name || '',
+        status: 'agendada',
+        criado_por: user?.id,
+        created_at: new Date().toISOString(),
+      });
+      if (!error) {
+        // Notifica professor
+        if (expForm.professor_id) {
+          await supabase.from('notifications').insert({
+            user_id: expForm.professor_id,
+            title: 'Aula experimental agendada!',
+            message: 'Voce tem uma aula experimental com ' + expForm.nome + ' em ' + new Date(expForm.data + 'T00:00:00').toLocaleDateString('pt-BR') + ' as ' + expForm.hora_inicio + '.',
+            type: 'info', read: false, created_at: new Date().toISOString(),
+          });
+        }
+        setShowExpModal(false);
+        setExpForm({ nome: '', telefone: '', email: '', materia: '', professor_id: '', data: new Date().toISOString().split('T')[0], hora_inicio: '08:00', hora_fim: '09:00' });
+        fetchLessons();
+      }
+    } catch (e) { console.error(e); }
+    setSavingExp(false);
+  };
 
   const substituirProfessor = async () => {
     if (!substData.professor_id || !selectedLesson) return;
@@ -210,7 +247,32 @@ export default function SchoolCalendar({ user }: { user?: any }) {
 
       const { data, error } = await query;
       if (error) throw error;
-      setLessons(data || []);
+
+      // Busca aulas experimentais
+      let expQuery = supabase.from('aulas_experimentais').select('*').neq('status', 'arquivada');
+      if (start && end) expQuery = expQuery.gte('data', start).lte('data', end);
+      const { data: expData } = await expQuery;
+
+      // Converte experimentais para o formato de lesson
+      const expLessons = (expData || []).map((e: any) => ({
+        id: 'exp_' + e.id,
+        exp_id: e.id,
+        date: e.data,
+        time_start: e.hora_inicio,
+        time_end: e.hora_fim,
+        start_time: e.hora_inicio,
+        end_time: e.hora_fim,
+        subject: e.materia || 'Aula Experimental',
+        student_name: e.nome,
+        teacher_name: e.professor_nome,
+        teacher_id: e.professor_id,
+        status: 'experimental',
+        is_experimental: true,
+        exp_status: e.status,
+        telefone: e.telefone,
+      }));
+
+      setLessons([...(data || []), ...expLessons]);
     } catch (e) { setLessons([]); } finally { setLoading(false); }
   };
 
@@ -273,7 +335,8 @@ export default function SchoolCalendar({ user }: { user?: any }) {
     return lessons.filter(l => l.date === dateStr);
   };
 
-  const getLessonColor = (lesson: Lesson, idx: number) => {
+  const getLessonColor = (lesson: any, idx: number) => {
+    if ((lesson as any).is_experimental) return { bg: 'bg-amber-100', border: 'border-amber-500', text: 'text-amber-700' };
     if (lesson.status === 'concluido') return { bg: 'bg-green-100', border: 'border-green-500', text: 'text-green-700' };
     if (lesson.status === 'aguardando_confirmacao') return { bg: 'bg-yellow-100', border: 'border-yellow-500', text: 'text-yellow-700' };
     if (lesson.status === 'cancelado') return { bg: 'bg-red-100', border: 'border-red-500', text: 'text-red-700' };
@@ -376,6 +439,11 @@ export default function SchoolCalendar({ user }: { user?: any }) {
           </div>
 
           {/* Add Lesson Button */}
+          <button onClick={() => { setShowExpModal(true); fetchTeachersAndStudents(); }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-[11px] font-black uppercase transition-all">
+            <Plus size={16} />
+            Aula Experimental
+          </button>
           <button onClick={() => { setShowModal(true); fetchTeachersAndStudents(); }}
             className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-[11px] font-black uppercase transition-all shadow-lg shadow-purple-200">
             <Plus size={16} />
@@ -438,7 +506,7 @@ export default function SchoolCalendar({ user }: { user?: any }) {
                           <div key={lesson.id}
                             style={{ top: `${top}px`, height: `${height}px` }}
                             onClick={() => { setSelectedLesson(lesson); setEditingLesson({...lesson}); }} className={`absolute left-1 right-1 ${color.bg} border-l-4 ${color.border} rounded-xl p-1.5 z-10 overflow-hidden cursor-pointer hover:shadow-md transition-all`}>
-                            <p className={`text-[9px] font-black uppercase ${color.text}`}>{lesson.subject}</p>
+                            <p className={`text-[9px] font-black uppercase ${color.text}`}>{(lesson as any).is_experimental ? 'EXPERIMENTAL' : lesson.subject}</p>
                             <p className="text-[8px] text-gray-500 truncate">{(lesson as any).time_start || (lesson as any).start_time} - {(lesson as any).time_end || (lesson as any).end_time}</p>
                             <p className="text-[8px] text-gray-500 truncate">👤 {lesson.student_name}</p>
                             <p className="text-[8px] text-gray-500 truncate">🎓 {lesson.teacher_name}</p>
@@ -758,6 +826,80 @@ export default function SchoolCalendar({ user }: { user?: any }) {
         </div>
       )}
       {/* Modal Editar Aula */}
+      {showExpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white rounded-t-3xl p-5 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <span className="text-amber-600 text-sm font-black">E</span>
+                </div>
+                <h2 className="text-lg font-black text-gray-900">Nova Aula Experimental</h2>
+              </div>
+              <button onClick={() => setShowExpModal(false)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"><X size={20} /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="p-3 bg-amber-50 rounded-xl text-xs text-amber-700 font-bold">
+                Aula experimental aparecera no calendario em amarelo. Apos realizada, voce decide se converte em matricula.
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Nome do Interessado *</label>
+                  <input value={expForm.nome} onChange={e => setExpForm(f => ({ ...f, nome: e.target.value }))} placeholder="Nome completo"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Telefone *</label>
+                  <input value={expForm.telefone} onChange={e => setExpForm(f => ({ ...f, telefone: e.target.value }))} placeholder="(22) 99999-9999"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Email</label>
+                  <input value={expForm.email} onChange={e => setExpForm(f => ({ ...f, email: e.target.value }))} placeholder="email@exemplo.com"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Materia de Interesse</label>
+                  <input value={expForm.materia} onChange={e => setExpForm(f => ({ ...f, materia: e.target.value }))} placeholder="Ex: Matematica"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Professor</label>
+                  <select value={expForm.professor_id} onChange={e => setExpForm(f => ({ ...f, professor_id: e.target.value }))}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300">
+                    <option value="">Selecione...</option>
+                    {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Data *</label>
+                  <input type="date" value={expForm.data} onChange={e => setExpForm(f => ({ ...f, data: e.target.value }))}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Inicio</label>
+                  <input type="time" value={expForm.hora_inicio} onChange={e => setExpForm(f => ({ ...f, hora_inicio: e.target.value }))}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Fim</label>
+                  <input type="time" value={expForm.hora_fim} onChange={e => setExpForm(f => ({ ...f, hora_fim: e.target.value }))}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300" />
+                </div>
+              </div>
+            </div>
+            <div className="sticky bottom-0 bg-white rounded-b-3xl p-5 border-t border-gray-100 flex gap-3">
+              <button onClick={() => setShowExpModal(false)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold">Cancelar</button>
+              <button onClick={salvarExperimental} disabled={savingExp || !expForm.nome || !expForm.telefone}
+                className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2">
+                {savingExp ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Plus size={16} />}
+                {savingExp ? 'Agendando...' : 'Agendar Experimental'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showSubstModal && selectedLesson && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6">
