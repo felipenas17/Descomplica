@@ -18,6 +18,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 
 export default function AdminAgendaView({ user }: { user?: any }) {
   const [events, setEvents]     = useState<any[]>([]);
+  const [feriados, setFeriados]   = useState<any[]>([]);
   const [loading, setLoading]   = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving]     = useState(false);
@@ -44,8 +45,12 @@ export default function AdminAgendaView({ user }: { user?: any }) {
 
   const fetchEvents = async () => {
     setLoading(true);
-    const { data } = await supabase.from('admin_agenda').select('*').order('date').order('start_time');
-    setEvents(data || []);
+    const [{ data: agendaData }, { data: feriadosData }] = await Promise.all([
+      supabase.from('admin_agenda').select('*').order('date').order('start_time'),
+      supabase.from('feriados').select('*').order('data'),
+    ]);
+    setEvents(agendaData || []);
+    setFeriados(feriadosData || []);
     setLoading(false);
   };
 
@@ -150,9 +155,10 @@ export default function AdminAgendaView({ user }: { user?: any }) {
               const evs = eventsOnDay(day);
               const isToday = dateStr === hoje;
               const isSelected = dateStr === selectedDay;
+              const isFeriado = feriados.some((f: any) => f.data === dateStr || (f.data_fim && f.data <= dateStr && f.data_fim >= dateStr));
               return (
                 <button key={i} onClick={() => setSelectedDay(isSelected ? null : dateStr)}
-                  className={`relative flex flex-col items-center justify-center rounded-xl py-1.5 transition-all ${isSelected ? 'bg-purple-600 text-white' : isToday ? 'bg-purple-50 text-purple-600' : 'hover:bg-gray-50 text-gray-700'}`}>
+                  className={`relative flex flex-col items-center justify-center rounded-xl py-1.5 transition-all ${isSelected ? 'bg-purple-600 text-white' : isToday ? 'bg-purple-50 text-purple-600' : isFeriado ? 'bg-red-50 text-red-500' : 'hover:bg-gray-50 text-gray-700'}`}>
                   <span className={`text-xs font-black ${isSelected ? 'text-white' : isToday ? 'text-purple-600' : ''}`}>{day}</span>
                   {evs.length > 0 && (
                     <div className="flex gap-0.5 mt-0.5">
@@ -176,6 +182,15 @@ export default function AdminAgendaView({ user }: { user?: any }) {
                   + Adicionar
                 </button>
               </div>
+              {(() => {
+                const feriadoDia = feriados.find(f => f.data === selectedDay || (f.data_fim && selectedDay && f.data <= selectedDay && f.data_fim >= selectedDay));
+                return feriadoDia ? (
+                  <div className="flex items-center gap-2 px-2 py-2 bg-red-50 rounded-lg mb-2">
+                    <div className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
+                    <span className="text-xs font-bold text-red-600">{feriadoDia.titulo}</span>
+                  </div>
+                ) : null;
+              })()}
               {selectedEvents.length === 0 ? (
                 <p className="text-xs text-gray-400 text-center py-2">Nenhum compromisso neste dia</p>
               ) : selectedEvents.map(e => {
