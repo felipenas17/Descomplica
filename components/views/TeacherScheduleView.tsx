@@ -78,7 +78,10 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
     } catch (e) { setLessons([]); } finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchLessons(); }, [period]);
+  useEffect(() => {
+    fetchLessons();
+    supabase.from('feriados').select('*').then(({ data }) => setFeriados(data || []));
+  }, [period]);
 
   const startLesson = async (lesson: any) => {
     const { error } = await supabase.from('schedules').update({ status: 'em_andamento' }).eq('id', lesson.id);
