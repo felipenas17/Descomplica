@@ -68,16 +68,14 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
       const { data, error } = await query;
       if (error) throw error;
       setLessons(data || []);
-
+      setLessons(data || []);
       // Busca compromissos do admin que envolvem este professor
-      const todayStr = new Date().toISOString().split('T')[0];
-      const { data: compData } = await supabase
-        .from('admin_agenda')
-        .select('*')
-        .or(`teacher_id.eq.${user?.id},teacher_id.eq.todos`)
-        .gte('date', todayStr)
-        .order('date', { ascending: true });
-      setCompromissos(compData || []);
+      console.log('Buscando compromissos para:', user?.id);
+      const { data: compMeu } = await supabase.from('admin_agenda').select('*').eq('teacher_id', user?.id).order('date', { ascending: true });
+      const { data: compTodos } = await supabase.from('admin_agenda').select('*').eq('teacher_id', 'todos').order('date', { ascending: true });
+      console.log('Meus compromissos:', compMeu);
+      const allComp = [...(compMeu || []), ...(compTodos || [])].sort((a, b) => a.date.localeCompare(b.date));
+      setCompromissos(allComp);
     } catch (e) { setLessons([]); } finally { setLoading(false); }
   };
 
