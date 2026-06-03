@@ -12,7 +12,7 @@ import ClassroomStatus from './ClassroomStatus';
 import TeacherSchedule from './TeacherSchedule';
 import SchoolCalendar from './SchoolCalendar';
 
-export default function OperationsView() {
+export default function OperationsView({ onNavigate }: { onNavigate?: (view: any) => void }) {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalToday: 0, liveCount: 0, occupancyRate: 0,
@@ -99,7 +99,7 @@ export default function OperationsView() {
         <div className="lg:col-span-5"><DailyTimeline events={timelineEvents} /></div>
         <div className="lg:col-span-3"><TeacherSchedule teachers={teachers} /></div>
       </div>
-      <SchoolCalendar />
+      <SchoolCalendar onNavigate={onNavigate} />
     </div>
   );
 }

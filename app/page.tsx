@@ -232,7 +232,7 @@ export default function Home() {
         {(() => {
           switch (activeView) {
             case 'dashboard': return <DashboardView />;
-            case 'schedule': return <OperationsView />;
+            case 'schedule': return <OperationsView onNavigate={setActiveView} />;
             case 'finance': return <FinanceView />;
             case 'teachers': return <TeachersView />;
             case 'students': return <StudentsView />;

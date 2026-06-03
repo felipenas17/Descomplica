@@ -43,7 +43,7 @@ interface NewLesson {
   notes: string;
 }
 
-export default function SchoolCalendar({ user }: { user?: any }) {
+export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNavigate?: (view: any) => void }) {
   const [view, setView] = useState<'day' | 'week' | 'month' | 'year'>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [lessons, setLessons] = useState<Lesson[]>([]);
