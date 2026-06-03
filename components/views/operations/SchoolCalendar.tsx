@@ -988,7 +988,15 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                 <div>
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Tomar Decisao</p>
                   <div className="flex flex-col gap-2">
-                    <button onClick={() => tomarDecisao('matriculado')}
+                    <button onClick={async () => {
+                      await tomarDecisao('matriculado');
+                      sessionStorage.setItem('prefill_student', JSON.stringify({
+                        name: expSelecionada.student_name,
+                        phone: expSelecionada.telefone || '',
+                        notes: anamneseData ? 'Nivel: ' + (anamneseData.nivel || '') + ' | ' + (anamneseData.dificuldades || '') : '',
+                      }));
+                      if (onNavigate) onNavigate('students');
+                    }}
                       className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-bold transition-all">
                       Matricular Aluno
                     </button>
