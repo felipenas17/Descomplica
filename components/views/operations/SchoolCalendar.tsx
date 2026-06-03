@@ -56,11 +56,60 @@ export default function SchoolCalendar({ user }: { user?: any }) {
   });
   const [saving, setSaving] = useState(false);
   const [teachers, setTeachers] = useState<{id: string, name: string}[]>([]);
+  const [showSubstModal, setShowSubstModal] = useState(false);
+  const [substData, setSubstData] = useState({ professor_id: '', motivo: '' });
+  const [savingSubst, setSavingSubst] = useState(false);
   const [feriados, setFeriados] = useState<any[]>([]);
 
   useEffect(() => {
     supabase.from('feriados').select('*').then(({ data }) => setFeriados(data || []));
   }, []);
+
+  const substituirProfessor = async () => {
+    if (!substData.professor_id || !selectedLesson) return;
+    setSavingSubst(true);
+    try {
+      const novoProf = teachers.find(t => t.id === substData.professor_id);
+      // Salva histórico
+      await supabase.from('substituicoes').insert({
+        schedule_id: selectedLesson.id,
+        professor_original_id: selectedLesson.teacher_id,
+        professor_original_nome: selectedLesson.teacher_name,
+        professor_substituto_id: substData.professor_id,
+        professor_substituto_nome: novoProf?.name,
+        motivo: substData.motivo,
+        created_at: new Date().toISOString(),
+      });
+      // Atualiza a aula
+      await supabase.from('schedules').update({
+        teacher_id: substData.professor_id,
+        teacher_name: novoProf?.name,
+        notes: (selectedLesson.notes || '') + ' | Substituido: ' + (selectedLesson.teacher_name) + ' por ' + novoProf?.name,
+      }).eq('id', selectedLesson.id);
+      // Notifica professor substituto
+      await supabase.from('notifications').insert({
+        user_id: substData.professor_id,
+        title: 'Voce foi designado para uma aula!',
+        message: 'Voce substituira ' + selectedLesson.teacher_name + ' na aula de ' + selectedLesson.subject + ' com ' + selectedLesson.student_name + ' em ' + new Date(selectedLesson.date + 'T00:00:00').toLocaleDateString('pt-BR') + '.',
+        type: 'info', read: false, created_at: new Date().toISOString(),
+      });
+      // Notifica professor original
+      if (selectedLesson.teacher_id) {
+        await supabase.from('notifications').insert({
+          user_id: selectedLesson.teacher_id,
+          title: 'Sua aula foi redistribuida',
+          message: 'A aula de ' + selectedLesson.subject + ' com ' + selectedLesson.student_name + ' em ' + new Date(selectedLesson.date + 'T00:00:00').toLocaleDateString('pt-BR') + ' foi atribuida a ' + novoProf?.name + '.',
+          type: 'warning', read: false, created_at: new Date().toISOString(),
+        });
+      }
+      setShowSubstModal(false);
+      setSubstData({ professor_id: '', motivo: '' });
+      setSelectedLesson(null);
+      setEditingLesson(null);
+      fetchLessons();
+    } catch (e: any) { console.error(e); }
+    setSavingSubst(false);
+  };
 
   const getFeriadoNaData = (date: string) => {
     return feriados.find((f: any) => f.data === date || (f.data_fim && f.data <= date && f.data_fim >= date));
@@ -709,6 +758,46 @@ export default function SchoolCalendar({ user }: { user?: any }) {
         </div>
       )}
       {/* Modal Editar Aula */}
+      {showSubstModal && selectedLesson && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-black text-gray-900">Substituir Professor</h3>
+              <button onClick={() => setShowSubstModal(false)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"><X size={18} /></button>
+            </div>
+            <div className="space-y-4">
+              <div className="p-3 bg-orange-50 rounded-xl text-sm">
+                <p className="font-bold text-orange-700">Aula: {selectedLesson.subject}</p>
+                <p className="text-orange-600 text-xs mt-1">{selectedLesson.student_name} · {new Date(selectedLesson.date + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
+                <p className="text-orange-600 text-xs">Professor atual: {selectedLesson.teacher_name}</p>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Novo Professor *</label>
+                <select value={substData.professor_id} onChange={e => setSubstData(d => ({ ...d, professor_id: e.target.value }))}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
+                  <option value="">Selecione o substituto...</option>
+                  {teachers.filter(t => t.id !== selectedLesson.teacher_id).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Motivo</label>
+                <textarea rows={2} value={substData.motivo} onChange={e => setSubstData(d => ({ ...d, motivo: e.target.value }))}
+                  placeholder="Ex: Professor titular doente..."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setShowSubstModal(false)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold">Cancelar</button>
+              <button onClick={substituirProfessor} disabled={savingSubst || !substData.professor_id}
+                className="flex-1 py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2">
+                {savingSubst ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                {savingSubst ? 'Substituindo...' : 'Confirmar Substituicao'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedLesson && editingLesson && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -753,7 +842,8 @@ export default function SchoolCalendar({ user }: { user?: any }) {
             </div>
             <div className="p-6 border-t border-gray-100 flex gap-3">
               <button onClick={() => { setSelectedLesson(null); setEditingLesson(null); }} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all">Cancelar</button>
-              <button onClick={saveEdit} disabled={savingEdit} className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all">{savingEdit ? "Salvando..." : "Salvar Alteracoes"}</button>
+              <button onClick={() => setShowSubstModal(true)} className="px-4 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-bold transition-all">Substituir</button>
+              <button onClick={saveEdit} disabled={savingEdit} className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all">{savingEdit ? "Salvando..." : "Salvar"}</button>
             </div>
           </div>
         </div>
