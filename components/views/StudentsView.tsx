@@ -12,6 +12,7 @@ import StudentHistoryModal from '@/components/views/StudentHistoryModal';
 export default function StudentsView() {
   const [students, setStudents] = React.useState<any[]>([]);
   const [showForm, setShowForm] = React.useState(false);
+  const [prefillData, setPrefillData] = React.useState<any>(null);
   const [editingStudent, setEditingStudent] = React.useState<any>(null);
   const [painelAluno, setPainelAluno] = React.useState<any>(null);
   const [historyStudent, setHistoryStudent] = React.useState<any>(null);
@@ -57,10 +58,11 @@ export default function StudentsView() {
       try {
         const data = JSON.parse(prefill);
         sessionStorage.removeItem('prefill_student');
+        setPrefillData(data);
         setTimeout(() => {
           setShowForm(true);
-        }, 500);
-        toast.success('📋 Dados do interessado carregados! Complete o cadastro.');
+        }, 300);
+        toast.success('Dados do interessado carregados! Complete o cadastro.');
       } catch (e) {}
     }
     const channel = supabase
@@ -142,7 +144,7 @@ export default function StudentsView() {
 
   return (
     <div className="space-y-10">
-      {showForm && <StudentForm onClose={() => setShowForm(false)} onSubmit={handleAddStudent} />}
+      {showForm && <StudentForm onClose={() => { setShowForm(false); setPrefillData(null); }} onSubmit={handleAddStudent} prefill={prefillData} />}
       {historyStudent && (
         <StudentHistoryModal
           student={historyStudent}

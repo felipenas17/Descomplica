@@ -7,22 +7,23 @@ import { X, User, Mail, Hash, Phone, Calendar, School, Users, Clock, BookOpen, C
 interface StudentFormProps {
   onClose: () => void;
   onSubmit: (data: any) => void;
+  prefill?: any;
 }
 
 const DAYS_OF_WEEK = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
-export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
+export default function StudentForm({ onClose, onSubmit, prefill }: StudentFormProps) {
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [daySchedules, setDaySchedules] = useState<Record<string, { start: string; end: string }>>({});
   const [showExtra, setShowExtra] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
+    name: prefill?.name || '',
+    email: prefill?.email || '',
     registration: '',
     enrollment_type: 'nova',
-    phone: '',
-    parent_name: '',
-    parent_phone: '',
+    phone: prefill?.phone || '',
+    parent_name: prefill?.parent_name || '',
+    parent_phone: prefill?.parent_phone || '',
     parent_email: '',
     parent_cpf: '',
     parent_rg: '',
@@ -42,7 +43,7 @@ export default function StudentForm({ onClose, onSubmit }: StudentFormProps) {
     monthly_value: '',
     recurrence_start: new Date().toISOString().split('T')[0],
     recurrence_end: '',
-    notes: '',
+    notes: prefill?.notes || '',
     address: '',
     address_complement: '',
     city: '',
