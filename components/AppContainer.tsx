@@ -33,7 +33,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useNotifications } from '@/hooks/useNotifications';
 
 // --- Shared Types ---
-export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials' | 'messages' | 'notifications' | 'absences' | 'contracts' | 'teacher_feedbacks' | 'teacher_evaluations' | 'teacher_contracts' | 'assistant' | 'comunicados' | 'lista_espera' | 'feriados';
+export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials' | 'messages' | 'notifications' | 'absences' | 'contracts' | 'teacher_feedbacks' | 'teacher_evaluations' | 'teacher_contracts' | 'assistant' | 'comunicados' | 'lista_espera';
 
 interface SearchResult {
   id: string;
@@ -106,7 +106,6 @@ const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, un
       {user?.role === 'admin' && <NavItem icon={MessageSquare} label="🤖 Assistente IA" active={activeView === 'assistant'} onClick={() => setView('assistant')} />}
       {user?.role === 'admin' && <NavItem icon={Bell} label="📢 Comunicados" active={activeView === 'comunicados'} onClick={() => setView('comunicados')} />}
       {user?.role === 'admin' && <NavItem icon={Users} label="⏳ Lista de Espera" active={activeView === 'lista_espera'} onClick={() => setView('lista_espera')} />}
-      {user?.role === 'admin' && <NavItem icon={CalendarCheck} label="Calendario Escolar" active={activeView === 'feriados'} onClick={() => setView('feriados')} />}
       <NavItem icon={FileText} label="Material de Apoio" active={activeView === 'materials'} onClick={() => setView('materials')} />
       {user?.role === 'professor' && (
         <NavItem icon={MessageSquareQuote} label="Meus Feedbacks" active={activeView === 'teacher_feedbacks'} onClick={() => setView('teacher_feedbacks')} />
@@ -394,7 +393,6 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
     assistant: '🤖 Assistente IA',
     comunicados: '📢 Comunicados',
     lista_espera: '⏳ Lista de Espera',
-    feriados: 'Calendario Escolar',
     notifications: 'Notificações',
     absences: 'Controle de Aulas',
     contracts: 'Contratos',
@@ -440,7 +438,6 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
                     { view: 'assistant', icon: '🤖', label: 'Assistente IA' },
                     { view: 'comunicados', icon: '📢', label: 'Comunicados' },
                     { view: 'lista_espera', icon: '⏳', label: 'Lista de Espera' },
-                    { view: 'feriados', icon: '📅', label: 'Calendario Escolar' },
                     { view: 'users', icon: '🛡️', label: 'Usuários' },
                   ].map(item => (
                     <button key={item.view} onClick={() => { setView(item.view as View); setIsSidebarOpen(false); }}
