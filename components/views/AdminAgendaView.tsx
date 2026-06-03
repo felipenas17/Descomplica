@@ -54,15 +54,22 @@ export default function AdminAgendaView({ user }: { user?: any }) {
     try {
       const { error } = await supabase.from('admin_agenda').insert({ ...form, user_id: user?.id, created_at: new Date().toISOString() });
       if (error) throw error;
-      // Notifica professor se selecionado
-      if (form.teacher_id) {
+      // Notifica professor(es) se selecionado
+      if (form.teacher_id === 'todos') {
+        for (const t of teachers) {
+          await supabase.from('notifications').insert({
+            user_id: t.id,
+            title: '📅 Reunião agendada: ' + form.title,
+            message: 'Você tem um compromisso agendado para ' + new Date(form.date + 'T00:00:00').toLocaleDateString('pt-BR') + ' às ' + form.start_time + '.',
+            type: 'info', read: false, created_at: new Date().toISOString(),
+          });
+        }
+      } else if (form.teacher_id) {
         await supabase.from('notifications').insert({
           user_id: form.teacher_id,
           title: '📅 Reunião agendada: ' + form.title,
           message: 'Você tem um compromisso agendado para ' + new Date(form.date + 'T00:00:00').toLocaleDateString('pt-BR') + ' às ' + form.start_time + '.',
-          type: 'info',
-          read: false,
-          created_at: new Date().toISOString(),
+          type: 'info', read: false, created_at: new Date().toISOString(),
         });
       }
       toast.success('Compromisso salvo! ✅');
@@ -290,6 +297,7 @@ export default function AdminAgendaView({ user }: { user?: any }) {
                 <select value={form.teacher_id} onChange={e => setForm(f => ({ ...f, teacher_id: e.target.value }))}
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
                   <option value="">Nenhum</option>
+                  <option value="todos">👥 Todos os professores</option>
                   {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
