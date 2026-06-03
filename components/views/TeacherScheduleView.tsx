@@ -49,6 +49,7 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
   }, [currentDate]);
 
   const [compromissos, setCompromissos] = useState<any[]>([]);
+  const [feriados, setFeriados] = useState<any[]>([]);
 
   const fetchLessons = async () => {
     setLoading(true);
@@ -253,7 +254,22 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
                 <p className="text-gray-500 font-medium">Tudo em dia!</p>
                 <p className="text-sm text-gray-300 mt-1">Nenhuma aula para este período.</p>
               </div>
-            ) : lessons.map(lesson => {
+            ) : (() => {
+              const feriadosNoPeriodo = lessons.map(l => feriados.find(f => f.data === l.date || (f.data_fim && f.data <= l.date && f.data_fim >= l.date))).filter(Boolean);
+              const feriadosUnicos = [...new Map(feriadosNoPeriodo.map(f => [f.id, f])).values()];
+              return (<>
+                {feriadosUnicos.map(f => (
+                  <div key={f.id} className="flex items-center gap-3 p-3 bg-red-50 rounded-xl border border-red-100 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
+                    <div>
+                      <p className="text-xs font-black text-red-600">{f.titulo}</p>
+                      <p className="text-[10px] text-red-400">{new Date(f.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} — Feriado</p>
+                    </div>
+                  </div>
+                ))}
+              </>);
+            })()}
+            {lessons.map(lesson => {
               const status = STATUS_CONFIG[lesson.status || 'agendado'] || STATUS_CONFIG.agendado;
               const podeIniciar = lesson.status === 'confirmado' || lesson.status === 'agendado' || lesson.status === 'reposicao_marcada';
               const emAndamento = lesson.status === 'em_andamento';
@@ -327,10 +343,16 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
             {monthDays.map((day, i) => {
               const isToday = day && day.toDateString() === new Date().toDateString();
               const hasLesson = day && lessons.some(l => l.date === day.toISOString().split('T')[0]);
+              const dateStr = day ? day.toISOString().split('T')[0] : '';
+              const feriado = day ? feriados.find(f => f.data === dateStr || (f.data_fim && f.data <= dateStr && f.data_fim >= dateStr)) : null;
               return (
-                <div key={i} className={`aspect-square flex flex-col items-center justify-center rounded-lg text-xs font-semibold transition-all ${!day ? '' : isToday ? 'bg-purple-600 text-white' : hasLesson ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
-                  {day?.getDate()}
-                  {hasLesson && !isToday && <div className="w-1 h-1 bg-purple-400 rounded-full mt-0.5" />}
+                <div key={i} title={feriado ? feriado.titulo : undefined}
+                  className={`aspect-square flex flex-col items-center justify-center rounded-lg text-xs font-semibold transition-all relative overflow-hidden
+                    ${!day ? '' : isToday ? 'bg-purple-600 text-white' : feriado ? 'bg-red-100 text-red-500' : hasLesson ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+                  {feriado && !isToday && <div className="absolute inset-0 bg-red-200 opacity-30" />}
+                  <span className="relative z-10">{day?.getDate()}</span>
+                  {hasLesson && !isToday && !feriado && <div className="w-1 h-1 bg-purple-400 rounded-full mt-0.5" />}
+                  {feriado && <div className="w-1 h-1 bg-red-400 rounded-full mt-0.5 relative z-10" />}
                 </div>
               );
             })}

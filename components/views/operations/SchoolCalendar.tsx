@@ -56,6 +56,15 @@ export default function SchoolCalendar({ user }: { user?: any }) {
   });
   const [saving, setSaving] = useState(false);
   const [teachers, setTeachers] = useState<{id: string, name: string}[]>([]);
+  const [feriados, setFeriados] = useState<any[]>([]);
+
+  useEffect(() => {
+    supabase.from('feriados').select('*').then(({ data }) => setFeriados(data || []));
+  }, []);
+
+  const getFeriadoNaData = (date: string) => {
+    return feriados.find((f: any) => f.data === date || (f.data_fim && f.data <= date && f.data_fim >= date));
+  };
   const [students, setStudents] = useState<{id: string, name: string}[]>([]);
   const [dragLesson, setDragLesson] = useState<Lesson | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
@@ -594,6 +603,11 @@ export default function SchoolCalendar({ user }: { user?: any }) {
                     fetchTeacherAvailability(newLesson.teacher_id, e.target.value);
                   }}
                     className="w-full mt-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                  {newLesson.date && getFeriadoNaData(newLesson.date) && (
+                    <div className="flex items-center gap-2 mt-2 p-2.5 bg-red-50 border border-red-200 rounded-xl">
+                      <p className="text-xs font-bold text-red-600">Feriado: {getFeriadoNaData(newLesson.date)?.titulo} — Tem certeza que quer agendar neste dia?</p>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Sala</label>
