@@ -475,6 +475,20 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
         </div>
       )}
 
+      {/* Botão push no sidebar desktop */}
+      <div className="hidden md:block fixed left-0 bottom-20 w-[280px] px-4 z-40">
+        {supported && !subscribed && (
+          <button onClick={subscribe} className="w-full px-3 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-xl text-xs font-bold transition-all flex items-center gap-2">
+            🔔 Ativar notificações push
+          </button>
+        )}
+        {subscribed && (
+          <div className="w-full px-3 py-2 bg-green-500/20 text-green-300 rounded-xl text-xs font-bold flex items-center gap-2">
+            ✅ Notificações ativas
+          </div>
+        )}
+      </div>
+
       <main className="flex-1 md:ml-[280px] min-h-screen relative pb-32 md:pb-12">
         <TopBar title={viewTitles[activeView]} user={user} setView={setView} onLogout={onLogout} onOpenChangePassword={onOpenChangePassword} onOpenSidebar={() => setIsSidebarOpen(true)} />
         
