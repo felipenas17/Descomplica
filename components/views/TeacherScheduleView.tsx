@@ -68,8 +68,6 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
       }
       const { data, error } = await query;
       if (error) throw error;
-      setLessons(data || []);
-      setLessons(data || []);
       // Busca compromissos do admin que envolvem este professor
       const { data: compMeu } = await supabase.from('admin_agenda').select('*').eq('teacher_id', user?.id).order('date', { ascending: true });
       const { data: compTodos } = await supabase.from('admin_agenda').select('*').eq('teacher_id', 'todos').order('date', { ascending: true });
