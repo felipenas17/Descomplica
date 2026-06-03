@@ -32,6 +32,7 @@ export default function AdminAgendaView({ user }: { user?: any }) {
 
   useEffect(() => {
     fetchEvents();
+    supabase.from('teachers').select('id, name').order('name').then(({ data }) => setTeachers(data || []));
     const channel = supabase
       .channel('admin_agenda_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_agenda' }, () => {
