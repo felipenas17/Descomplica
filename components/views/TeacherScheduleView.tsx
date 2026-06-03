@@ -68,6 +68,32 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
       }
       const { data, error } = await query;
       if (error) throw error;
+
+      // Busca aulas experimentais do professor
+      const { data: expData } = await supabase.from('aulas_experimentais')
+        .select('*')
+        .eq('professor_id', user?.id)
+        .neq('status', 'arquivada');
+      const expLessons = (expData || []).map((e: any) => ({
+        id: 'exp_' + e.id,
+        exp_id: e.id,
+        date: e.data,
+        start_time: e.hora_inicio,
+        end_time: e.hora_fim,
+        subject: e.materia || 'Aula Experimental',
+        student_name: e.nome,
+        teacher_name: e.professor_nome,
+        teacher_id: e.professor_id,
+        status: 'experimental',
+        is_experimental: true,
+        exp_status: e.status,
+        telefone: e.telefone,
+      }));
+      setLessons(prev => {
+        const normais = prev.filter((l: any) => !l.is_experimental);
+        return [...normais, ...expLessons];
+      });
+
       // Busca compromissos do admin que envolvem este professor
       const { data: compMeu } = await supabase.from('admin_agenda').select('*').eq('teacher_id', user?.id).order('date', { ascending: true });
       const { data: compTodos } = await supabase.from('admin_agenda').select('*').eq('teacher_id', 'todos').order('date', { ascending: true });
