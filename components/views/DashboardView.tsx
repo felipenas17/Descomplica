@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, GraduationCap, Wallet, AlertCircle, Clock, TrendingUp, TrendingDown, Target, CheckCircle, XCircle, Calendar, Zap, Award, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { gerarRelatorioPDF } from '@/lib/relatorioMensal';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -36,6 +37,13 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function DashboardView() {
   const [loading, setLoading] = useState(true);
+  const [gerandoPDF, setGerandoPDF] = useState(false);
+
+  const handleGerarPDF = async () => {
+    setGerandoPDF(true);
+    try { await gerarRelatorioPDF(); } catch(e) { console.error(e); }
+    setGerandoPDF(false);
+  };
   const [meta, setMeta] = useState(5000);
   const [editMeta, setEditMeta] = useState(false);
   const [data, setData] = useState<any>({
@@ -181,6 +189,14 @@ export default function DashboardView() {
           <div style={{ fontSize: 26, fontWeight: 700, color: D_PURPLE }}>{fmt(data.ticketMedio)}</div>
           <div style={{ fontSize: 12, color: D_MUTED, marginTop: 6 }}>por aluno/mês</div>
         </div>
+      </div>
+
+      {/* Botão relatório PDF */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: -8 }}>
+        <button onClick={handleGerarPDF} disabled={gerandoPDF}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: '#7c3aed', border: 'none', borderRadius: 12, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: gerandoPDF ? 0.7 : 1 }}>
+          {gerandoPDF ? '⏳ Gerando...' : '📄 Relatório PDF'}
+        </button>
       </div>
 
       {/* Meta mensal */}
