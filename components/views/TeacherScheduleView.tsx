@@ -48,6 +48,8 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
     return days;
   }, [currentDate]);
 
+  const [compromissos, setCompromissos] = useState<any[]>([]);
+
   const fetchLessons = async () => {
     setLoading(true);
     try {
@@ -66,6 +68,16 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
       const { data, error } = await query;
       if (error) throw error;
       setLessons(data || []);
+
+      // Busca compromissos do admin que envolvem este professor
+      const todayStr = new Date().toISOString().split('T')[0];
+      const { data: compData } = await supabase
+        .from('admin_agenda')
+        .select('*')
+        .or(`teacher_id.eq.${user?.id},teacher_id.eq.todos`)
+        .gte('date', todayStr)
+        .order('date', { ascending: true });
+      setCompromissos(compData || []);
     } catch (e) { setLessons([]); } finally { setLoading(false); }
   };
 
