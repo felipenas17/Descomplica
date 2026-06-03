@@ -26,8 +26,9 @@ export default function AdminAgendaView({ user }: { user?: any }) {
   const [form, setForm] = useState({
     title: '', description: '',
     date: new Date().toISOString().split('T')[0],
-    start_time: '08:00', end_time: '09:00', type: 'outro',
+    start_time: '08:00', end_time: '09:00', type: 'outro', teacher_id: '',
   });
+  const [teachers, setTeachers] = useState<any[]>([]);
 
   useEffect(() => {
     fetchEvents();
@@ -53,9 +54,20 @@ export default function AdminAgendaView({ user }: { user?: any }) {
     try {
       const { error } = await supabase.from('admin_agenda').insert({ ...form, user_id: user?.id, created_at: new Date().toISOString() });
       if (error) throw error;
+      // Notifica professor se selecionado
+      if (form.teacher_id) {
+        await supabase.from('notifications').insert({
+          user_id: form.teacher_id,
+          title: '📅 Reunião agendada: ' + form.title,
+          message: 'Você tem um compromisso agendado para ' + new Date(form.date + 'T00:00:00').toLocaleDateString('pt-BR') + ' às ' + form.start_time + '.',
+          type: 'info',
+          read: false,
+          created_at: new Date().toISOString(),
+        });
+      }
       toast.success('Compromisso salvo! ✅');
       setShowForm(false);
-      setForm({ title: '', description: '', date: new Date().toISOString().split('T')[0], start_time: '08:00', end_time: '09:00', type: 'outro' });
+      setForm({ title: '', description: '', date: new Date().toISOString().split('T')[0], start_time: '08:00', end_time: '09:00', type: 'outro', teacher_id: '' });
       fetchEvents();
     } catch (e: any) { toast.error('Erro: ' + e.message); }
     finally { setSaving(false); }
@@ -272,6 +284,14 @@ export default function AdminAgendaView({ user }: { user?: any }) {
                   <input type="time" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
                 </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Professor Envolvido (opcional)</label>
+                <select value={form.teacher_id} onChange={e => setForm(f => ({ ...f, teacher_id: e.target.value }))}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
+                  <option value="">Nenhum</option>
+                  {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
               </div>
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Descrição</label>
