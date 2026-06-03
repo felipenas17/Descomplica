@@ -426,6 +426,33 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
           </div>
         </div>
       )}
+    {/* Compromissos do Admin */}
+    {compromissos.length > 0 && (
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-gray-50">
+          <h3 className="font-bold text-gray-900 flex items-center gap-2">📋 Reuniões & Compromissos</h3>
+        </div>
+        <div className="p-5 space-y-3">
+          {compromissos.map(c => (
+            <div key={c.id} className="flex items-center gap-3 p-3 bg-purple-50 rounded-xl border border-purple-100">
+              <div className="w-2 h-2 rounded-full bg-purple-500 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-gray-900 text-sm">{c.title}</p>
+                <p className="text-xs text-gray-500">
+                  {new Date(c.date + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
+                  {c.start_time ? ' · ' + c.start_time : ''}
+                  {c.end_time ? ' - ' + c.end_time : ''}
+                </p>
+                {c.description && <p className="text-xs text-gray-400 mt-0.5">{c.description}</p>}
+              </div>
+              <span className="text-[10px] font-black px-2 py-1 rounded-lg bg-purple-100 text-purple-700 shrink-0">
+                {c.type === 'reuniao_admin' ? '📋 Reunião' : c.type === 'reuniao_pais' ? '👨‍👩‍👧 Pais' : '📌'}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
     </div>
   );
 }
