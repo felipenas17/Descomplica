@@ -273,17 +273,18 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
               </>);
             })()}
             {lessons.map(lesson => {
-              const status = STATUS_CONFIG[lesson.status || 'agendado'] || STATUS_CONFIG.agendado;
-              const podeIniciar = lesson.status === 'confirmado' || lesson.status === 'agendado' || lesson.status === 'reposicao_marcada';
-              const emAndamento = lesson.status === 'em_andamento';
-              const concluida = lesson.status === 'concluido';
+              const isExp = (lesson as any).is_experimental;
+              const status = isExp ? { bg: 'bg-amber-50', border: 'border-amber-400', badge: 'bg-amber-100 text-amber-800', label: 'EXPERIMENTAL' } : (STATUS_CONFIG[lesson.status || 'agendado'] || STATUS_CONFIG.agendado);
+              const podeIniciar = !isExp && (lesson.status === 'confirmado' || lesson.status === 'agendado' || lesson.status === 'reposicao_marcada');
+              const emAndamento = !isExp && lesson.status === 'em_andamento';
+              const concluida = !isExp && lesson.status === 'concluido';
               return (
                 <div key={lesson.id} className={`flex gap-4 p-4 rounded-xl border transition-all ${emAndamento ? 'border-yellow-200 bg-yellow-50/40' : 'border-gray-100 hover:border-purple-100 hover:bg-purple-50/20'}`}>
                   <div className={`w-1 rounded-full shrink-0 ${emAndamento ? 'bg-yellow-400' : concluida ? 'bg-gray-300' : 'bg-purple-400'}`} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 flex-wrap">
                       <p className="font-semibold text-gray-900 text-sm">{lesson.subject || 'Aula'}</p>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${status.color}`}>{status.label}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${(status as any).badge || (status as any).color}`}>{status.label}</span>
                     </div>
                     <div className="flex flex-wrap gap-3 mt-2">
                       {lesson.start_time && <span className="flex items-center gap-1 text-xs text-gray-400"><Clock size={12} />{lesson.start_time}{lesson.end_time ? ` - ${lesson.end_time}` : ''}</span>}
