@@ -105,9 +105,6 @@ export default function StudentsView() {
         allergy_details: data.allergy_details || '',
         lesson_type: data.lesson_type || 'individual',
         lesson_duration: data.lesson_duration || '60',
-        weekly_frequency: data.weekly_frequency || '',
-        recurrence_start: data.recurrence_start || null,
-        recurrence_end: data.recurrence_end || null,
         notes: data.notes || '',
 
       }]);
