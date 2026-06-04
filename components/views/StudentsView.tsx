@@ -81,11 +81,35 @@ export default function StudentsView() {
 
       const { error } = await supabase.from('students').insert([{
         name: data.name,
-        email: data.email,
+        email: data.email || '',
         phone: data.phone || '',
         registration_number: data.registration || '',
-        class_name: data.class || '',
-        status: 'Ativo'
+        status: 'Ativo',
+        enrollment_type: data.enrollment_type || 'nova',
+        monthly_value: data.monthly_value ? parseFloat(data.monthly_value) : null,
+        parent_name: data.parent_name || '',
+        parent_phone: data.parent_phone || '',
+        parent_email: data.parent_email || '',
+        parent_cpf: data.parent_cpf || '',
+        parent_rg: data.parent_rg || '',
+        parent_profession: data.parent_profession || '',
+        age: data.age || null,
+        birth_date: data.birth_date || null,
+        sex: data.sex || '',
+        school: data.school || '',
+        grade: data.grade || '',
+        segment: data.segment || '',
+        school_shift: data.school_shift || '',
+        special_needs: data.special_needs || [],
+        has_allergy: data.has_allergy || '',
+        allergy_details: data.allergy_details || '',
+        lesson_type: data.lesson_type || 'individual',
+        lesson_duration: data.lesson_duration || '60',
+        weekly_frequency: data.weekly_frequency || '',
+        recurrence_start: data.recurrence_start || null,
+        recurrence_end: data.recurrence_end || null,
+        notes: data.notes || '',
+        contract_status: 'pendente',
       }]);
 
       if (error) throw error;
