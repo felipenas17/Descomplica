@@ -109,7 +109,7 @@ export default function StudentsView() {
         recurrence_start: data.recurrence_start || null,
         recurrence_end: data.recurrence_end || null,
         notes: data.notes || '',
-        contract_status: 'pendente',
+
       }]);
 
       if (error) throw error;
