@@ -57,13 +57,13 @@ export default function DashboardView() {
 
   useEffect(() => {
     fetchDashboard();
-    const channel = supabase
-      .channel('schedules_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'schedules' }, () => {
-        fetchDashboard();
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const tables = ['schedules', 'students', 'monthly_payments', 'expenses', 'teachers', 'aulas_experimentais'];
+    const channels = tables.map(table =>
+      supabase.channel('dash_' + table)
+        .on('postgres_changes', { event: '*', schema: 'public', table }, () => fetchDashboard())
+        .subscribe()
+    );
+    return () => { channels.forEach(c => supabase.removeChannel(c)); };
   }, []);
 
   const fetchDashboard = async () => {
