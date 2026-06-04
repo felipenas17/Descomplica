@@ -44,6 +44,7 @@ export default function StudentForm({ onClose, onSubmit, prefill }: StudentFormP
     recurrence_start: new Date().toISOString().split('T')[0],
     recurrence_end: '',
     notes: prefill?.notes || '',
+    weekly_frequency: '',
     address: '',
     address_complement: '',
     city: '',
@@ -323,39 +324,24 @@ export default function StudentForm({ onClose, onSubmit, prefill }: StudentFormP
               </div>
             </div>
 
-            {/* Dias da Semana com horário individual */}
+            {/* Frequência semanal */}
             <div className="mb-4">
-              <label className={labelClass}>Dias da Semana e Horários</label>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {DAYS_OF_WEEK.map(day => (
-                  <button type="button" key={day}
-                    onClick={() => toggleDay(day)}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${selectedDays.includes(day) ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-                    {day.slice(0, 3)}
+              <label className={labelClass}>Frequência Semanal</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: '1', label: '1x por semana' },
+                  { value: '2', label: '2x por semana' },
+                  { value: '3', label: '3x por semana' },
+                  { value: '4', label: '4x por semana' },
+                  { value: '5', label: '5x por semana' },
+                ].map(opt => (
+                  <button type="button" key={opt.value}
+                    onClick={() => update('weekly_frequency', opt.value)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${formData.weekly_frequency === opt.value ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                    {opt.label}
                   </button>
                 ))}
               </div>
-              {selectedDays.length > 0 && (
-                <div className="space-y-2">
-                  {selectedDays.map(day => (
-                    <div key={day} className="flex items-center gap-3 bg-purple-50 rounded-xl px-4 py-2">
-                      <span className="text-xs font-black text-purple-700 w-12">{day.slice(0, 3)}</span>
-                      <div className="flex items-center gap-2 flex-1">
-                        <Clock size={14} className="text-purple-400" />
-                        <input type="time"
-                          value={daySchedules[day]?.start || '08:00'}
-                          onChange={e => setDaySchedules(ds => ({ ...ds, [day]: { ...ds[day], start: e.target.value } }))}
-                          className="bg-white border border-purple-200 rounded-lg py-1 px-2 text-xs focus:outline-none focus:ring-2 focus:ring-purple-300" />
-                        <span className="text-xs text-gray-400">até</span>
-                        <input type="time"
-                          value={daySchedules[day]?.end || '09:00'}
-                          onChange={e => setDaySchedules(ds => ({ ...ds, [day]: { ...ds[day], end: e.target.value } }))}
-                          className="bg-white border border-purple-200 rounded-lg py-1 px-2 text-xs focus:outline-none focus:ring-2 focus:ring-purple-300" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* Valor Mensal */}
