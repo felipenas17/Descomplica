@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { X, User, Mail, Hash, Phone, Calendar, School, Users, Clock, BookOpen, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 
@@ -16,39 +16,6 @@ const DAYS_OF_WEEK = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado
 export default function StudentForm({ onClose, onSubmit, prefill, isEditing }: StudentFormProps) {
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
 
-  useEffect(() => {
-    if (prefill && isEditing) {
-      setFormData(prev => ({
-        ...prev,
-        name: prefill.name || '',
-        email: prefill.email || '',
-        phone: prefill.phone || '',
-        registration: prefill.registration || '',
-        enrollment_type: prefill.enrollment_type || 'nova',
-        monthly_value: prefill.monthly_value || '',
-        parent_name: prefill.parent_name || '',
-        parent_phone: prefill.parent_phone || '',
-        parent_email: prefill.parent_email || '',
-        parent_cpf: prefill.parent_cpf || '',
-        parent_rg: prefill.parent_rg || '',
-        parent_profession: prefill.parent_profession || '',
-        age: prefill.age || '',
-        birth_date: prefill.birth_date || '',
-        sex: prefill.sex || '',
-        school: prefill.school || '',
-        grade: prefill.grade || '',
-        segment: prefill.segment || '',
-        school_shift: prefill.school_shift || '',
-        special_needs: prefill.special_needs || [],
-        has_allergy: prefill.has_allergy || '',
-        allergy_details: prefill.allergy_details || '',
-        lesson_type: prefill.lesson_type || 'individual',
-        lesson_duration: prefill.lesson_duration || '60',
-        notes: prefill.notes || '',
-        weekly_frequency: prefill.weekly_frequency || '',
-      }));
-    }
-  }, [prefill, isEditing]);
   const [daySchedules, setDaySchedules] = useState<Record<string, { start: string; end: string }>>({});
   const [showExtra, setShowExtra] = useState(false);
   const [formData, setFormData] = useState({
