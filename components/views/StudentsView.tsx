@@ -405,6 +405,7 @@ export default function StudentsView() {
                   { label: 'Escola', value: painelAluno.school },
                   { label: 'Turma', value: painelAluno.class_name },
                   { label: 'N° Matrícula', value: painelAluno.registration_number },
+                  { label: 'Frequência Semanal', value: (() => { try { const f = painelAluno.day_schedules ? JSON.parse(painelAluno.day_schedules).frequencia : null; return f ? f + 'x por semana' : null; } catch { return null; } })() },
                 ].map(item => item.value ? (
                   <div key={item.label}>
                     <p className="text-[10px] text-gray-400 font-bold">{item.label}</p>
