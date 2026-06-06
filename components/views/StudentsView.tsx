@@ -353,7 +353,10 @@ export default function StudentsView() {
                     </span>
                   )}
                 </div>
-                <p className="text-secondary font-bold text-xs uppercase tracking-widest mt-2">{student.phone || 'Sem Telefone'}</p>
+                <div className="mt-2">
+                  {student.parent_name && <p className="text-gray-500 text-xs font-bold">{student.parent_name}</p>}
+                  <p className="text-secondary font-bold text-xs uppercase tracking-widest">{student.parent_phone || student.phone || 'Sem Telefone'}</p>
+                </div>
               </div>
 
               <div className="mt-8 pt-8 border-t border-primary/5 space-y-4">
