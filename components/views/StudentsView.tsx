@@ -244,13 +244,17 @@ export default function StudentsView() {
             grade: editingStudent.grade || '',
             segment: editingStudent.segment || '',
             school_shift: editingStudent.school_shift || '',
-            special_needs: editingStudent.special_needs || [],
+            special_needs: Array.isArray(editingStudent.special_needs) 
+              ? editingStudent.special_needs 
+              : typeof editingStudent.special_needs === 'string' && editingStudent.special_needs 
+                ? editingStudent.special_needs.split(', ').filter(Boolean)
+                : [],
             has_allergy: editingStudent.has_allergy || '',
             allergy_details: editingStudent.allergy_details || '',
             lesson_type: editingStudent.lesson_type || 'individual',
             lesson_duration: editingStudent.lesson_duration || '60',
             notes: editingStudent.notes || '',
-            weekly_frequency: editingStudent.day_schedules ? JSON.parse(editingStudent.day_schedules || '{}').frequencia || '' : '',
+            weekly_frequency: (() => { try { return editingStudent.day_schedules ? JSON.parse(editingStudent.day_schedules).frequencia || '' : ''; } catch { return ''; } })(),
           }}
           isEditing={true}
         />
