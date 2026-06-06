@@ -107,6 +107,12 @@ export default function StudentsView() {
         lesson_duration: data.lesson_duration || '60',
         notes: data.notes || '',
         day_schedules: data.weekly_frequency ? JSON.stringify({ frequencia: data.weekly_frequency }) : null,
+        address: data.address || '',
+        address_complement: data.address_complement || '',
+        neighborhood: data.neighborhood || '',
+        city: data.city || '',
+        cep: data.cep || '',
+        how_found: data.how_found || '',
       }).eq('id', editingStudent.id);
       if (error) throw error;
       toast.success('Aluno atualizado!', { id: loadingToast });
@@ -255,6 +261,12 @@ export default function StudentsView() {
             lesson_duration: editingStudent.lesson_duration || '60',
             notes: editingStudent.notes || '',
             weekly_frequency: (() => { try { return editingStudent.day_schedules ? JSON.parse(editingStudent.day_schedules).frequencia || '' : ''; } catch { return ''; } })(),
+            address: editingStudent.address || '',
+            address_complement: editingStudent.address_complement || '',
+            neighborhood: editingStudent.neighborhood || '',
+            city: editingStudent.city || '',
+            cep: editingStudent.cep || '',
+            how_found: editingStudent.how_found || '',
           }}
           isEditing={true}
         />
