@@ -75,7 +75,7 @@ export default function StudentForm({ onClose, onSubmit, prefill, isEditing }: S
     const studentData = {
       ...formData,
       days_of_week: selectedDays.join(', '),
-      day_schedules: JSON.stringify(daySchedules),
+      day_schedules: formData.weekly_frequency ? JSON.stringify({ frequencia: formData.weekly_frequency }) : (Object.keys(daySchedules).length > 0 ? JSON.stringify(daySchedules) : null),
       monthly_value: parseFloat(formData.monthly_value) || 0,
       special_needs: Array.isArray(formData.special_needs) ? formData.special_needs.join(', ') : formData.special_needs,
     };
