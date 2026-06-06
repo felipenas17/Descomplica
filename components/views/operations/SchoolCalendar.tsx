@@ -57,7 +57,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     subject: '', room: '', teacher_id: '', student_name: '', student_id: '', notes: '', recorrente: false, recurrence_end: ''
   });
   const [saving, setSaving] = useState(false);
-  const [teachers, setTeachers] = useState<{id: string, name: string}[]>([]);
+  const [teachers, setTeachers] = useState<{id: string, name: string, color?: string}[]>([]);
   const [showSubstModal, setShowSubstModal] = useState(false);
   const [showExpModal, setShowExpModal] = useState(false);
   const [showDecisaoModal, setShowDecisaoModal] = useState(false);
@@ -182,7 +182,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
 
   const fetchTeachersAndStudents = async () => {
     const [teachersRes, studentsRes] = await Promise.all([
-      supabase.from('teachers').select('id, name').order('name'),
+      supabase.from('teachers').select('id, name, color').order('name'),
       supabase.from('students').select('id, name').order('name'),
     ]);
     setTeachers(teachersRes.data || []);
@@ -355,14 +355,21 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     return lessons.filter(l => l.date === dateStr);
   };
 
+  const getTeacherColor = (teacherId: string) => {
+    const teacher = teachers.find(t => t.id === teacherId);
+    return teacher?.color || null;
+  };
+
   const getLessonColor = (lesson: any, idx: number) => {
-    if ((lesson as any).is_experimental) return { bg: 'bg-amber-100', border: 'border-amber-500', text: 'text-amber-700' };
-    if (lesson.status === 'concluido') return { bg: 'bg-green-100', border: 'border-green-500', text: 'text-green-700' };
-    if (lesson.status === 'aguardando_confirmacao') return { bg: 'bg-yellow-100', border: 'border-yellow-500', text: 'text-yellow-700' };
-    if (lesson.status === 'cancelado') return { bg: 'bg-red-100', border: 'border-red-500', text: 'text-red-700' };
-    if (lesson.status === 'reposicao_marcada') return { bg: 'bg-blue-100', border: 'border-blue-500', text: 'text-blue-700' };
-    if (lesson.status === 'em_andamento') return { bg: 'bg-orange-100', border: 'border-orange-500', text: 'text-orange-700' };
-    return COLORS[idx % COLORS.length];
+    if ((lesson as any).is_experimental) return { bg: 'bg-amber-100', border: 'border-amber-500', text: 'text-amber-700', hex: null };
+    if (lesson.status === 'concluido') return { bg: 'bg-green-100', border: 'border-green-500', text: 'text-green-700', hex: null };
+    if (lesson.status === 'aguardando_confirmacao') return { bg: 'bg-yellow-100', border: 'border-yellow-500', text: 'text-yellow-700', hex: null };
+    if (lesson.status === 'cancelado') return { bg: 'bg-red-100', border: 'border-red-500', text: 'text-red-700', hex: null };
+    if (lesson.status === 'reposicao_marcada') return { bg: 'bg-blue-100', border: 'border-blue-500', text: 'text-blue-700', hex: null };
+    if (lesson.status === 'em_andamento') return { bg: 'bg-orange-100', border: 'border-orange-500', text: 'text-orange-700', hex: null };
+    const hex = getTeacherColor(lesson.teacher_id);
+    if (hex) return { bg: '', border: '', text: '', hex };
+    return { ...COLORS[idx % COLORS.length], hex: null };
   };
 
   const getLessonTop = (timeStart: string) => {
@@ -554,7 +561,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                         const height = getLessonHeight(lesson.time_start || '08:00', lesson.time_end || '09:00');
                         return (
                           <div key={lesson.id}
-                            style={{ top: `${top}px`, height: `${height}px` }}
+                            style={{ top: `${top}px`, height: `${height}px`, ...(color.hex ? { backgroundColor: color.hex + '33', borderLeftColor: color.hex, borderLeftWidth: '4px' } : {}) }}
                             onClick={() => {
                               if ((lesson as any).is_experimental) {
                                 setExpSelecionada(lesson);
@@ -564,8 +571,8 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                               } else {
                                 setSelectedLesson(lesson); setEditingLesson({...lesson});
                               }
-                            }} className={`absolute left-1 right-1 ${color.bg} border-l-4 ${color.border} rounded-xl p-1.5 z-10 overflow-hidden cursor-pointer hover:shadow-md transition-all`}>
-                            <p className={`text-[9px] font-black uppercase ${color.text}`}>{(lesson as any).is_experimental ? 'EXPERIMENTAL' : lesson.subject}</p>
+                            }} className={`absolute left-1 right-1 ${color.hex ? '' : color.bg} ${color.hex ? '' : 'border-l-4'} ${color.hex ? '' : color.border} rounded-xl p-1.5 z-10 overflow-hidden cursor-pointer hover:shadow-md transition-all`}>
+                            <p className={`text-[9px] font-black uppercase ${color.hex ? '' : color.text}`} style={color.hex ? { color: color.hex } : {}}>{(lesson as any).is_experimental ? 'EXPERIMENTAL' : lesson.subject}</p>
                             <p className="text-[8px] text-gray-500 truncate">{(lesson as any).time_start || (lesson as any).start_time} - {(lesson as any).time_end || (lesson as any).end_time}</p>
                             <p className="text-[8px] text-gray-500 truncate">👤 {lesson.student_name}</p>
                             <p className="text-[8px] text-gray-500 truncate">🎓 {lesson.teacher_name}</p>
