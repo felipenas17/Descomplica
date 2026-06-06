@@ -522,15 +522,15 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
         {/* WEEK VIEW */}
         {view === 'week' && (
           <div className="flex flex-col">
-            <div className="grid grid-cols-8 border-b border-gray-100 bg-white sticky top-0 z-10">
-              <div className="p-3 border-r border-gray-100 text-[10px] font-black text-gray-300 text-center">HR</div>
+            <div className="flex border-b border-gray-100 bg-white sticky top-0 z-10">
+              <div className="p-3 border-r border-gray-100 text-[10px] font-black text-gray-300 text-center flex-shrink-0" style={{ width: "48px" }}>HR</div>
               {weekDays.map((day) => {
                 const isToday = day.toDateString() === new Date().toDateString();
                 const dayLessons = getLessonsForDate(day);
                 const dateStr = day.toISOString().split('T')[0];
                 const feriado = getFeriadoNaData(dateStr);
                 return (
-                  <div key={day.toISOString()} className={`p-3 text-center border-r border-gray-100 last:border-0 ${feriado ? 'bg-red-50' : ''}`}>
+                  <div key={day.toISOString()} className={`flex-1 p-3 text-center border-r border-gray-100 last:border-0 ${feriado ? 'bg-red-50' : ''}`}>
                     <p className="text-[10px] font-black text-gray-400 uppercase">{DAYS_SHORT[day.getDay()]}</p>
                     <p className={`text-lg font-black mt-0.5 ${isToday ? 'w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center mx-auto' : feriado ? 'text-red-500' : 'text-gray-900'}`}>
                       {day.getDate()}
