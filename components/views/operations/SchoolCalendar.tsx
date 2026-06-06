@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const DAYS_SHORT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 7h às 20h
+const HOURS = Array.from({ length: 27 }, (_, i) => 7 + i * 0.5); // 7h às 20h de 30 em 30min
 
 const COLORS = [
   { bg: 'bg-purple-100', border: 'border-purple-500', text: 'text-purple-700' },
@@ -376,7 +376,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
 
   const getLessonTop = (timeStart: string) => {
     const [h, m] = timeStart.split(':').map(Number);
-    return ((h - 7) * 80) + (m / 60 * 80);
+    return ((h - 7) * 40) + (m / 60 * 40);
   };
 
   const getLessonHeight = (timeStart: string, timeEnd: string) => {
@@ -546,7 +546,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                 {/* Hours */}
                 <div className="flex flex-col">
                   {HOURS.map(h => (
-                    <div key={h} className="h-20 border-r border-b border-gray-100 px-2 flex items-start pt-1">
+                    <div key={h} className="h-10 border-r border-b border-gray-100 px-2 flex items-start pt-1">
                       <span className="text-[10px] font-black text-gray-300">{h}:00</span>
                     </div>
                   ))}
@@ -559,7 +559,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                   return (
                     <div key={day.toISOString()} className={`relative border-r border-gray-100 last:border-0 ${isToday ? 'bg-purple-50/30' : ''}`}>
                       {HOURS.map(h => (
-                        <div key={h} className="h-20 border-b border-gray-50 last:border-0" />
+                        <div key={h} className="h-10 border-b border-gray-50 last:border-0" />
                       ))}
                       {dayLessons.map((lesson, idx) => {
                         const color = getLessonColor(lesson, idx);
@@ -578,10 +578,8 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                                 setSelectedLesson(lesson); setEditingLesson({...lesson});
                               }
                             }} className={`absolute left-1 right-1 ${color.hex ? '' : color.bg} ${color.hex ? '' : 'border-l-4'} ${color.hex ? '' : color.border} rounded-xl p-1.5 z-10 overflow-hidden cursor-pointer hover:shadow-md transition-all`}>
-                            <p className={`text-[9px] font-black uppercase ${color.hex ? '' : color.text}`} style={color.hex ? { color: color.hex } : {}}>{(lesson as any).is_experimental ? 'EXPERIMENTAL' : lesson.subject}</p>
-                            <p className="text-[8px] text-gray-500 truncate">{(lesson as any).time_start || (lesson as any).start_time} - {(lesson as any).time_end || (lesson as any).end_time}</p>
-                            <p className="text-[8px] text-gray-500 truncate">👤 {lesson.student_name}</p>
-                            <p className="text-[8px] text-gray-500 truncate">🎓 {lesson.teacher_name}</p>
+                            <p className="text-[9px] font-black truncate" style={color.hex ? { color: color.hex } : {}}>{lesson.teacher_name || 'Prof.'}</p>
+                            <p className="text-[8px] text-gray-600 truncate">{lesson.student_name}</p>
                           </div>
                         );
                       })}
@@ -604,7 +602,11 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
             <div className="overflow-y-auto max-h-[600px]">
               <div className="grid grid-cols-[60px_1fr]">
                 <div className="flex flex-col">
-                  {HOURS.map(h => <div key={h} className="h-20 border-r border-b border-gray-100 px-2 flex items-start pt-1"><span className="text-[10px] font-black text-gray-300">{h}:00</span></div>)}
+                  {HOURS.map(h => {
+                    const hrs = Math.floor(h);
+                    const mins = h % 1 === 0.5 ? '30' : '00';
+                    return <div key={h} className="h-10 border-r border-b border-gray-100 px-2 flex items-start pt-1"><span className="text-[9px] font-black text-gray-300">{hrs}:{mins}</span></div>;
+                  })}
                 </div>
                 <div className="relative">
                   {HOURS.map(h => <div key={h} className="h-20 border-b border-gray-50" />)}
