@@ -812,6 +812,28 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                   className="w-full mt-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
               </div>
             </div>
+              {/* Aula Recorrente */}
+              <div className="p-3 bg-purple-50 rounded-xl">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={newLesson.recorrente || false}
+                    onChange={e => setNewLesson(p => ({ ...p, recorrente: e.target.checked }))}
+                    className="w-4 h-4 accent-purple-600" />
+                  <span className="text-sm font-bold text-purple-700">Aula recorrente (repetir semanalmente)</span>
+                </label>
+                {newLesson.recorrente && (
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Repetir ate</label>
+                      <input type="date" value={newLesson.recurrence_end || ''}
+                        onChange={e => setNewLesson(p => ({ ...p, recurrence_end: e.target.value }))}
+                        className="w-full mt-1 px-3 py-2 bg-white border border-purple-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                    </div>
+                    <div className="flex items-end pb-1">
+                      <p className="text-xs text-purple-600 font-bold">Uma aula por semana no mesmo dia e horario ate a data escolhida.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
 
             <div className="flex gap-3 mt-6">
               <button onClick={() => setShowModal(false)}
