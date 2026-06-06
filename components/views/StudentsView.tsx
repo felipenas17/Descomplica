@@ -36,7 +36,7 @@ export default function StudentsView() {
       const { data, error: supabaseError } = await supabase
         .from('students')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('name', { ascending: true });
       
       if (supabaseError) {
         throw new Error(supabaseError.message || 'Erro ao carregar alunos');
