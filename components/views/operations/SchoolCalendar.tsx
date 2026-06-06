@@ -557,51 +557,43 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                   const dayLessons = getLessonsForDate(day);
                   const isToday = day.toDateString() === new Date().toDateString();
                   return (
-                    <div key={day.toISOString()} className={`relative border-r border-gray-100 last:border-0 ${isToday ? 'bg-purple-50/30' : ''}`}>
-                      {HOURS.map(h => (
-                        <div key={h} className="h-10 border-b border-gray-50 last:border-0" />
-                      ))}
-                      {(() => {
-                        // Calcula colunas para evitar sobreposição
-                        const cols: number[] = dayLessons.map(() => 0);
-                        for (let i = 0; i < dayLessons.length; i++) {
-                          const topI = getLessonTop(dayLessons[i].time_start || '08:00');
-                          const botI = topI + getLessonHeight(dayLessons[i].time_start || '08:00', dayLessons[i].time_end || '09:00');
-                          const usedCols: number[] = [];
-                          for (let j = 0; j < i; j++) {
-                            const topJ = getLessonTop(dayLessons[j].time_start || '08:00');
-                            const botJ = topJ + getLessonHeight(dayLessons[j].time_start || '08:00', dayLessons[j].time_end || '09:00');
-                            if (topI < botJ && botI > topJ) usedCols.push(cols[j]);
-                          }
-                          cols[i] = 0;
-                          while (usedCols.includes(cols[i])) cols[i]++;
-                        }
-                        const maxCol = Math.max(...cols, 0) + 1;
-                        return dayLessons.map((lesson, idx) => {
-                          const color = getLessonColor(lesson, idx);
-                          const top = getLessonTop(lesson.time_start || '08:00');
-                          const height = getLessonHeight(lesson.time_start || '08:00', lesson.time_end || '09:00');
-                          const colW = 100 / maxCol;
-                          const left = cols[idx] * colW;
-                          return (
-                            <div key={lesson.id}
-                              style={{ top: `${top}px`, height: `${height}px`, left: `${left}%`, width: `${colW}%`, ...(color.hex ? { backgroundColor: color.hex + '33', borderLeftColor: color.hex, borderLeftWidth: '4px' } : {}) }}
-                              onClick={() => {
-                                if ((lesson as any).is_experimental) {
-                                  setExpSelecionada(lesson);
-                                  const fb = (lesson as any).feedback_professor;
-                                  try { setAnamneseData(fb ? JSON.parse(fb) : null); } catch { setAnamneseData(null); }
-                                  setShowDecisaoModal(true);
-                                } else {
-                                  setSelectedLesson(lesson); setEditingLesson({...lesson});
-                                }
-                              }} className={`absolute ${color.hex ? '' : color.bg} ${color.hex ? '' : 'border-l-4'} ${color.hex ? '' : color.border} rounded-xl p-1 z-10 overflow-hidden cursor-pointer hover:shadow-md transition-all`}>
-                              <p className="text-[9px] font-black truncate" style={color.hex ? { color: color.hex } : {}}>{lesson.teacher_name || 'Prof.'}</p>
-                              <p className="text-[8px] text-gray-600 truncate">{lesson.student_name}</p>
-                            </div>
-                          );
+                    <div key={day.toISOString()} className={`border-r border-gray-100 last:border-0 ${isToday ? 'bg-purple-50/30' : ''}`}>
+                      {HOURS.map((h, hidx) => {
+                        const hrs = Math.floor(h);
+                        const mins = h % 1 >= 0.4 ? 30 : 0;
+                        const slotStart = hrs * 60 + mins;
+                        const slotEnd = slotStart + 30;
+                        const slotLessons = dayLessons.filter(l => {
+                          const [lh, lm] = (l.time_start || '08:00').split(':').map(Number);
+                          const lStart = lh * 60 + lm;
+                          return lStart >= slotStart && lStart < slotEnd;
                         });
-                      })()}
+                        return (
+                          <div key={hidx} className="min-h-10 border-b border-gray-50 last:border-0 p-0.5">
+                            {slotLessons.map((lesson, idx) => {
+                              const color = getLessonColor(lesson, idx);
+                              return (
+                                <div key={lesson.id}
+                                  style={color.hex ? { backgroundColor: color.hex + '22', borderLeftColor: color.hex, borderLeftWidth: '3px' } : {}}
+                                  onClick={() => {
+                                    if ((lesson as any).is_experimental) {
+                                      setExpSelecionada(lesson);
+                                      const fb = (lesson as any).feedback_professor;
+                                      try { setAnamneseData(fb ? JSON.parse(fb) : null); } catch { setAnamneseData(null); }
+                                      setShowDecisaoModal(true);
+                                    } else {
+                                      setSelectedLesson(lesson); setEditingLesson({...lesson});
+                                    }
+                                  }}
+                                  className={`${color.hex ? '' : color.bg + ' border-l-4 ' + color.border} rounded p-1 mb-0.5 cursor-pointer hover:opacity-80 transition-all`}>
+                                  <p className="text-[9px] font-black truncate leading-tight" style={color.hex ? { color: color.hex } : {}}>{lesson.teacher_name || 'Prof.'}</p>
+                                  <p className="text-[8px] text-gray-600 truncate leading-tight">{lesson.student_name}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })}
