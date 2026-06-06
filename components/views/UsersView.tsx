@@ -176,20 +176,18 @@ export default function UsersView() {
       setUsers(prev => [newStaffMember, ...prev]);
       setLastCreated(staffData);
       
-      // 2. Perform database and API calls in the background/catchably
-      if (isSupabaseConfigured) {
-        // We try to insert, but don't AWAIT here if we want immediate UI success
-        // actually we should probably try to be safe
-        console.log('Tentando salvar no Supabase...');
-        supabase.from('profiles').insert([{
-          full_name: newName,
-          email: newEmail,
-          role: newRole,
-          needs_password_change: true
-        }]).then(({ error }) => {
-          if (error) console.error('Supabase error (ignored for demo):', error);
-          else console.log('Supabase insert success');
-        });
+      // 2. Cria usuário no Auth e perfil via API admin
+      const res = await fetch('/api/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newEmail, password: generatedPassword, name: newName, role: newRole }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        setUsers(prev => prev.filter(u => u.id !== tempId));
+        setIsSaving(false);
+        alert('Erro ao criar usuário: ' + (result.error || 'Erro desconhecido'));
+        return;
       }
 
       // Send credentials via API (don't block the UI)
