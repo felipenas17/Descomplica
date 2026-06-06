@@ -14,6 +14,7 @@ export default function StudentsView() {
   const [showForm, setShowForm] = React.useState(false);
   const [prefillData, setPrefillData] = React.useState<any>(null);
   const [editingStudent, setEditingStudent] = React.useState<any>(null);
+  const [showEditForm, setShowEditForm] = React.useState(false);
   const [painelAluno, setPainelAluno] = React.useState<any>(null);
   const [historyStudent, setHistoryStudent] = React.useState<any>(null);
   const [historyData, setHistoryData] = React.useState<any>({ schedules: [], payments: [], feedbacks: [] });
@@ -73,6 +74,49 @@ export default function StudentsView() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [fetchStudents]);
+
+  const handleEditStudent = async (data: any) => {
+    if (!editingStudent) return;
+    const loadingToast = toast.loading('Salvando alteracoes...');
+    try {
+      const { error } = await supabase.from('students').update({
+        name: data.name,
+        email: data.email || '',
+        phone: data.phone || '',
+        registration_number: data.registration || '',
+        status: 'Ativo',
+        enrollment_type: data.enrollment_type || 'nova',
+        monthly_value: data.monthly_value ? parseFloat(data.monthly_value) : null,
+        parent_name: data.parent_name || '',
+        parent_phone: data.parent_phone || '',
+        parent_email: data.parent_email || '',
+        parent_cpf: data.parent_cpf || '',
+        parent_rg: data.parent_rg || '',
+        parent_profession: data.parent_profession || '',
+        age: data.age || null,
+        birth_date: data.birth_date || null,
+        sex: data.sex || '',
+        school: data.school || '',
+        grade: data.grade || '',
+        segment: data.segment || '',
+        school_shift: data.school_shift || '',
+        special_needs: data.special_needs || [],
+        has_allergy: data.has_allergy || '',
+        allergy_details: data.allergy_details || '',
+        lesson_type: data.lesson_type || 'individual',
+        lesson_duration: data.lesson_duration || '60',
+        notes: data.notes || '',
+        day_schedules: data.weekly_frequency ? JSON.stringify({ frequencia: data.weekly_frequency }) : null,
+      }).eq('id', editingStudent.id);
+      if (error) throw error;
+      toast.success('Aluno atualizado!', { id: loadingToast });
+      setShowEditForm(false);
+      setEditingStudent(null);
+      fetchStudents();
+    } catch (err: any) {
+      toast.error('Erro: ' + err.message, { id: loadingToast });
+    }
+  };
 
   const handleAddStudent = async (data: any) => {
     const loadingToast = toast.loading('Processando matrícula...');
@@ -176,78 +220,40 @@ export default function StudentsView() {
       )}
 
       {/* Modal Editar Aluno */}
-      {editingStudent && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-black text-gray-900">Editar Aluno</h2>
-              <button onClick={() => setEditingStudent(null)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400">✕</button>
-            </div>
-            <div className="space-y-4">
-              {[
-                { label: 'Nome', field: 'name', type: 'text' },
-                { label: 'Email', field: 'email', type: 'email' },
-                { label: 'Telefone', field: 'phone', type: 'text' },
-                { label: 'Nome do Responsável', field: 'parent_name', type: 'text' },
-                { label: 'Telefone do Responsável', field: 'parent_phone', type: 'text' },
-                { label: 'CPF do Responsável', field: 'parent_cpf', type: 'text' },
-                { label: 'Turma', field: 'class_name', type: 'text' },
-                { label: 'Série/Ano', field: 'grade', type: 'text' },
-                { label: 'Escola', field: 'school', type: 'text' },
-                { label: 'Valor Mensalidade (R$)', field: 'monthly_value', type: 'number' },
-                { label: 'Endereço', field: 'address', type: 'text' },
-                { label: 'Dias da Semana', field: 'days_of_week', type: 'text' },
-                { label: 'Horário', field: 'preferred_time', type: 'text' },
-              ].map(({ label, field, type }) => (
-                <div key={field}>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">{label}</label>
-                  <input type={type} value={editingStudent[field] || ''}
-                    onChange={e => setEditingStudent((prev: any) => ({ ...prev, [field]: e.target.value }))}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-300" />
-                </div>
-              ))}
-              <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Observações</label>
-                <textarea value={editingStudent.notes || ''}
-                  onChange={e => setEditingStudent((prev: any) => ({ ...prev, notes: e.target.value }))}
-                  rows={3} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
-              </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => setEditingStudent(null)}
-                className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all">
-                Cancelar
-              </button>
-              <button onClick={async () => {
-                const { error } = await supabase.from('students').update({
-                  name: editingStudent.name,
-                  email: editingStudent.email,
-                  phone: editingStudent.phone,
-                  parent_name: editingStudent.parent_name,
-                  parent_phone: editingStudent.parent_phone,
-                  parent_cpf: editingStudent.parent_cpf,
-                  class_name: editingStudent.class_name,
-                  grade: editingStudent.grade,
-                  school: editingStudent.school,
-                  monthly_value: editingStudent.monthly_value,
-                  address: editingStudent.address,
-                  days_of_week: editingStudent.days_of_week,
-                  preferred_time: editingStudent.preferred_time,
-                  notes: editingStudent.notes,
-                }).eq('id', editingStudent.id);
-                if (!error) {
-                  setEditingStudent(null);
-                  fetchStudents();
-                } else {
-                  alert('Erro ao salvar: ' + error.message);
-                }
-              }}
-                className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold transition-all">
-                Salvar
-              </button>
-            </div>
-          </div>
-        </div>
+      {showEditForm && editingStudent && (
+        <StudentForm
+          onClose={() => { setShowEditForm(false); setEditingStudent(null); }}
+          onSubmit={handleEditStudent}
+          prefill={{
+            name: editingStudent.name || '',
+            email: editingStudent.email || '',
+            phone: editingStudent.phone || '',
+            registration: editingStudent.registration_number || '',
+            enrollment_type: editingStudent.enrollment_type || 'nova',
+            monthly_value: editingStudent.monthly_value || '',
+            parent_name: editingStudent.parent_name || '',
+            parent_phone: editingStudent.parent_phone || '',
+            parent_email: editingStudent.parent_email || '',
+            parent_cpf: editingStudent.parent_cpf || '',
+            parent_rg: editingStudent.parent_rg || '',
+            parent_profession: editingStudent.parent_profession || '',
+            age: editingStudent.age || '',
+            birth_date: editingStudent.birth_date || '',
+            sex: editingStudent.sex || '',
+            school: editingStudent.school || '',
+            grade: editingStudent.grade || '',
+            segment: editingStudent.segment || '',
+            school_shift: editingStudent.school_shift || '',
+            special_needs: editingStudent.special_needs || [],
+            has_allergy: editingStudent.has_allergy || '',
+            allergy_details: editingStudent.allergy_details || '',
+            lesson_type: editingStudent.lesson_type || 'individual',
+            lesson_duration: editingStudent.lesson_duration || '60',
+            notes: editingStudent.notes || '',
+            weekly_frequency: editingStudent.day_schedules ? JSON.parse(editingStudent.day_schedules || '{}').frequencia || '' : '',
+          }}
+          isEditing={true}
+        />
       )}
       
       <section className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -301,7 +307,7 @@ export default function StudentsView() {
                     <History size={18} />
                   </button>
                   <button 
-                    onClick={() => setEditingStudent(student)}
+                    onClick={() => { setEditingStudent(student); setShowEditForm(true); }}
                     className="p-2 text-gray-300 hover:text-blue-500 transition-colors"
                     title="Editar Aluno"
                   >

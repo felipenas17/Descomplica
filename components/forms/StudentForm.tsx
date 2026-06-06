@@ -8,11 +8,12 @@ interface StudentFormProps {
   onClose: () => void;
   onSubmit: (data: any) => void;
   prefill?: any;
+  isEditing?: boolean;
 }
 
 const DAYS_OF_WEEK = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
-export default function StudentForm({ onClose, onSubmit, prefill }: StudentFormProps) {
+export default function StudentForm({ onClose, onSubmit, prefill, isEditing }: StudentFormProps) {
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [daySchedules, setDaySchedules] = useState<Record<string, { start: string; end: string }>>({});
   const [showExtra, setShowExtra] = useState(false);
