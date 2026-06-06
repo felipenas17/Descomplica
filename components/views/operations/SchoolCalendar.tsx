@@ -543,62 +543,66 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
             </div>
 
             <div className="overflow-y-auto max-h-[600px]">
-              <div className="grid grid-cols-8">
-                {/* Hours */}
-                <div className="flex flex-col">
-                  {HOURS.map(h => (
-                    <div key={h} className="h-10 border-r border-b border-gray-100 px-2 flex items-start pt-1">
-                      <span className="text-[10px] font-black text-gray-300">{Math.floor(h)}:{h % 1 >= 0.4 ? "30" : "00"}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Days */}
-                {weekDays.map((day) => {
-                  const dayLessons = getLessonsForDate(day);
-                  const isToday = day.toDateString() === new Date().toDateString();
-                  return (
-                    <div key={day.toISOString()} className={`border-r border-gray-100 last:border-0 ${isToday ? 'bg-purple-50/30' : ''}`}>
-                      {HOURS.map((h, hidx) => {
-                        const hrs = Math.floor(h);
-                        const mins = h % 1 >= 0.4 ? 30 : 0;
-                        const slotStart = hrs * 60 + mins;
-                        const slotEnd = slotStart + 30;
-                        const slotLessons = dayLessons.filter(l => {
-                          const [lh, lm] = (l.time_start || (l as any).start_time || '08:00').split(':').map(Number);
-                          const lStart = lh * 60 + lm;
-                          return lStart >= slotStart && lStart < slotEnd;
-                        });
-                        return (
-                          <div key={hidx} className="border-b border-gray-50 last:border-0 p-0.5" style={{ minHeight: "40px" }}>
-                            {slotLessons.map((lesson, idx) => {
-                              const color = getLessonColor(lesson, idx);
-                              return (
-                                <div key={lesson.id}
-                                  style={{ ...(color.hex ? { backgroundColor: color.hex + '22', borderLeftColor: color.hex, borderLeftWidth: '3px' } : {}), minHeight: "36px" }}
-                                  onClick={() => {
-                                    if ((lesson as any).is_experimental) {
-                                      setExpSelecionada(lesson);
-                                      const fb = (lesson as any).feedback_professor;
-                                      try { setAnamneseData(fb ? JSON.parse(fb) : null); } catch { setAnamneseData(null); }
-                                      setShowDecisaoModal(true);
-                                    } else {
-                                      setViewingLesson(lesson);
-                                    }
-                                  }}
-                                  className={`${color.hex ? '' : color.bg + ' border-l-4 ' + color.border} rounded p-1 mb-0.5 cursor-pointer hover:opacity-80 transition-all`}>
-                                  <p className="text-[9px] font-black truncate leading-tight" style={color.hex ? { color: color.hex } : {}}>{lesson.teacher_name || 'Prof.'}</p>
-                                  <p className="text-[8px] text-gray-600 truncate leading-tight">{lesson.student_name}</p>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
+              <table className="w-full border-collapse table-fixed">
+                <colgroup>
+                  <col style={{ width: '48px' }} />
+                  {weekDays.map((d) => <col key={d.toISOString()} />)}
+                </colgroup>
+                <tbody>
+                  {HOURS.map((h) => {
+                    const hrs = Math.floor(h);
+                    const mins = h % 1 >= 0.4 ? 30 : 0;
+                    const slotStart = hrs * 60 + mins;
+                    const slotEnd = slotStart + 30;
+                    const slotsByDay = weekDays.map(day => {
+                      const dayLessons = getLessonsForDate(day);
+                      return dayLessons.filter(l => {
+                        const [lh, lm] = (l.time_start || (l as any).start_time || '08:00').split(':').map(Number);
+                        const lStart = lh * 60 + lm;
+                        return lStart >= slotStart && lStart < slotEnd;
+                      });
+                    });
+                    const maxLessons = Math.max(...slotsByDay.map(s => s.length), 0);
+                    const rowHeight = Math.max(maxLessons * 40, 40);
+                    return (
+                      <tr key={h} style={{ height: `${rowHeight}px` }}>
+                        <td className="border-r border-b border-gray-100 px-2 align-top pt-1" style={{ minWidth: '48px' }}>
+                          <span className="text-[9px] font-black text-gray-300">{hrs}:{mins === 0 ? '00' : '30'}</span>
+                        </td>
+                        {weekDays.map((day, dayIdx) => {
+                          const isToday = day.toDateString() === new Date().toDateString();
+                          const slotLessons = slotsByDay[dayIdx];
+                          return (
+                            <td key={day.toISOString()} className={`border-r border-b border-gray-50 last:border-r-0 p-0.5 align-top ${isToday ? 'bg-purple-50/30' : ''}`}>
+                              {slotLessons.map((lesson, idx) => {
+                                const color = getLessonColor(lesson, idx);
+                                return (
+                                  <div key={lesson.id}
+                                    style={{ ...(color.hex ? { backgroundColor: color.hex + '22', borderLeftColor: color.hex, borderLeftWidth: '3px' } : {}), minHeight: '36px' }}
+                                    onClick={() => {
+                                      if ((lesson as any).is_experimental) {
+                                        setExpSelecionada(lesson);
+                                        const fb = (lesson as any).feedback_professor;
+                                        try { setAnamneseData(fb ? JSON.parse(fb) : null); } catch { setAnamneseData(null); }
+                                        setShowDecisaoModal(true);
+                                      } else {
+                                        setViewingLesson(lesson);
+                                      }
+                                    }}
+                                    className={`${color.hex ? '' : color.bg + ' border-l-4 ' + color.border} rounded p-1 mb-0.5 cursor-pointer hover:opacity-80 transition-all`}>
+                                    <p className="text-[9px] font-black truncate leading-tight" style={color.hex ? { color: color.hex } : {}}>{lesson.teacher_name || 'Prof.'}</p>
+                                    <p className="text-[8px] text-gray-600 truncate leading-tight">{lesson.student_name}</p>
+                                  </div>
+                                );
+                              })}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
