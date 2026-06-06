@@ -176,6 +176,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
   const [dragLesson, setDragLesson] = useState<Lesson | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [editingLesson, setEditingLesson] = useState<any>(null);
+  const [viewingLesson, setViewingLesson] = useState<Lesson | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [teacherAvailability, setTeacherAvailability] = useState<any>(null);
   const [teacherBusySlots, setTeacherBusySlots] = useState<any[]>([]);
@@ -564,7 +565,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                         const slotStart = hrs * 60 + mins;
                         const slotEnd = slotStart + 30;
                         const slotLessons = dayLessons.filter(l => {
-                          const [lh, lm] = (l.time_start || l.start_time || '08:00').split(':').map(Number);
+                          const [lh, lm] = (l.time_start || (l as any).start_time || '08:00').split(':').map(Number);
                           const lStart = lh * 60 + lm;
                           return lStart >= slotStart && lStart < slotEnd;
                         });
@@ -574,7 +575,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                               const color = getLessonColor(lesson, idx);
                               return (
                                 <div key={lesson.id}
-                                  style={color.hex ? { backgroundColor: color.hex + '22', borderLeftColor: color.hex, borderLeftWidth: '3px' } : {}}
+                                  style={{ ...(color.hex ? { backgroundColor: color.hex + '22', borderLeftColor: color.hex, borderLeftWidth: '3px' } : {}), minHeight: "36px" }}
                                   onClick={() => {
                                     if ((lesson as any).is_experimental) {
                                       setExpSelecionada(lesson);
@@ -582,10 +583,10 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                                       try { setAnamneseData(fb ? JSON.parse(fb) : null); } catch { setAnamneseData(null); }
                                       setShowDecisaoModal(true);
                                     } else {
-                                      setSelectedLesson(lesson); setEditingLesson({...lesson});
+                                      setViewingLesson(lesson);
                                     }
                                   }}
-                                  className={`${color.hex ? '' : color.bg + ' border-l-4 ' + color.border} rounded p-1 mb-0.5 cursor-pointer hover:opacity-80 transition-all`} style={{ minHeight: "36px" }}>
+                                  className={`${color.hex ? '' : color.bg + ' border-l-4 ' + color.border} rounded p-1 mb-0.5 cursor-pointer hover:opacity-80 transition-all`}>
                                   <p className="text-[9px] font-black truncate leading-tight" style={color.hex ? { color: color.hex } : {}}>{lesson.teacher_name || 'Prof.'}</p>
                                   <p className="text-[8px] text-gray-600 truncate leading-tight">{lesson.student_name}</p>
                                 </div>
@@ -1160,6 +1161,45 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                 {savingSubst ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
                 {savingSubst ? 'Substituindo...' : 'Confirmar Substituicao'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Visualizar Aula */}
+      {viewingLesson && !selectedLesson && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="text-lg font-black text-gray-900">Detalhes da Aula</h2>
+              <button onClick={() => setViewingLesson(null)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"><X size={18} /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              {[
+                { label: 'Professor', value: viewingLesson.teacher_name },
+                { label: 'Aluno', value: viewingLesson.student_name },
+                { label: 'Data', value: viewingLesson.date ? new Date(viewingLesson.date + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }) : '-' },
+                { label: 'Horario', value: (viewingLesson.time_start || (viewingLesson as any).start_time || '') + ' - ' + (viewingLesson.time_end || (viewingLesson as any).end_time || '') },
+                { label: 'Sala', value: (viewingLesson as any).room },
+                { label: 'Status', value: viewingLesson.status },
+                { label: 'Observacoes', value: (viewingLesson as any).notes },
+              ].filter(i => i.value).map(item => (
+                <div key={item.label} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
+                  <span className="text-xs font-black text-gray-400 uppercase">{item.label}</span>
+                  <span className="text-sm font-bold text-gray-900 text-right max-w-[60%]">{item.value}</span>
+                </div>
+              ))}
+            </div>
+            <div className="p-5 border-t border-gray-100 flex gap-3">
+              <button onClick={() => setViewingLesson(null)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all">Fechar</button>
+              <button onClick={async () => {
+                if (!confirm('Excluir esta aula?')) return;
+                await supabase.from('schedules').delete().eq('id', viewingLesson.id);
+                setViewingLesson(null);
+                fetchLessons();
+              }} className="px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold transition-all">Excluir</button>
+              <button onClick={() => { setSelectedLesson(viewingLesson); setEditingLesson({...viewingLesson}); setViewingLesson(null); }}
+                className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold transition-all">Editar</button>
             </div>
           </div>
         </div>
