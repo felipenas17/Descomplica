@@ -1209,6 +1209,12 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
             </div>
             <div className="p-6 border-t border-gray-100 flex gap-3">
               <button onClick={() => { setSelectedLesson(null); setEditingLesson(null); }} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all">Cancelar</button>
+              <button onClick={async () => {
+                if (!confirm('Excluir esta aula?')) return;
+                await supabase.from('schedules').delete().eq('id', selectedLesson!.id);
+                setSelectedLesson(null); setEditingLesson(null);
+                fetchLessons();
+              }} className="px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold transition-all">Excluir</button>
               <button onClick={() => setShowSubstModal(true)} className="px-4 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-bold transition-all">Substituir</button>
               <button onClick={saveEdit} disabled={savingEdit} className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all">{savingEdit ? "Salvando..." : "Salvar"}</button>
             </div>
