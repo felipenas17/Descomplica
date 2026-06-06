@@ -564,7 +564,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                         const slotStart = hrs * 60 + mins;
                         const slotEnd = slotStart + 30;
                         const slotLessons = dayLessons.filter(l => {
-                          const [lh, lm] = (l.time_start || '08:00').split(':').map(Number);
+                          const [lh, lm] = (l.time_start || l.start_time || '08:00').split(':').map(Number);
                           const lStart = lh * 60 + lm;
                           return lStart >= slotStart && lStart < slotEnd;
                         });
