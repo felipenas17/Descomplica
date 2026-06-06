@@ -547,7 +547,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                 <div className="flex flex-col">
                   {HOURS.map(h => (
                     <div key={h} className="h-10 border-r border-b border-gray-100 px-2 flex items-start pt-1">
-                      <span className="text-[10px] font-black text-gray-300">{h}:00</span>
+                      <span className="text-[10px] font-black text-gray-300">{Math.floor(h)}:{h % 1 >= 0.4 ? "30" : "00"}</span>
                     </div>
                   ))}
                 </div>
