@@ -36,6 +36,7 @@ export default function StudentForm({ onClose, onSubmit, prefill }: StudentFormP
     segment: '',
     school_shift: '',
     special_needs: [] as string[],
+    special_needs_outros: '',
     has_allergy: '',
     allergy_details: '',
     lesson_type: 'individual',
@@ -259,7 +260,7 @@ export default function StudentForm({ onClose, onSubmit, prefill }: StudentFormP
             <div className="mt-4">
               <label className={labelClass}>O aluno possui alguma condição especial?</label>
               <div className="flex flex-wrap gap-2 mt-1">
-                {['Deficiência física','Deficiência intelectual','Deficiência auditiva','Deficiência visual','TEA (Autismo)','Dislexia','TDAH','Nenhuma'].map(cond => (
+                {['Deficiência física','Deficiência intelectual','Deficiência auditiva','Deficiência visual','TEA (Autismo)','Dislexia','TDAH','Anomalia congenita','Encefalopatia','Em investigação','Outros','Nenhuma'].map(cond => (
                   <button type="button" key={cond}
                     onClick={() => {
                       const curr = Array.isArray(formData.special_needs) ? formData.special_needs : [];
@@ -271,6 +272,15 @@ export default function StudentForm({ onClose, onSubmit, prefill }: StudentFormP
                   </button>
                 ))}
               </div>
+              {Array.isArray(formData.special_needs) && formData.special_needs.includes('Outros') && (
+                <input
+                  type="text"
+                  placeholder="Descreva a condição..."
+                  value={formData.special_needs_outros || ''}
+                  onChange={e => setFormData(p => ({ ...p, special_needs_outros: e.target.value }))}
+                  className="mt-2 w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
+                />
+              )}
             </div>
 
             {/* Alergia */}
