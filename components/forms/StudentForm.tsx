@@ -21,7 +21,7 @@ export default function StudentForm({ onClose, onSubmit, prefill, isEditing }: S
   const [formData, setFormData] = useState({
     name: prefill?.name || '',
     email: prefill?.email || '',
-    registration: '',
+    registration: prefill?.registration || '',
     enrollment_type: prefill?.enrollment_type || 'nova',
     phone: prefill?.phone || '',
     parent_name: prefill?.parent_name || '',
@@ -180,7 +180,7 @@ export default function StudentForm({ onClose, onSubmit, prefill, isEditing }: S
                 <label className={labelClass}>Nº Matrícula *</label>
                 <div className="relative">
                   <Hash size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
-                  <input value={formData.registration} onChange={e => update('registration', e.target.value)} required className={inputClass} placeholder="Ex: #4502" />
+                  <input value={formData.registration} onChange={e => !isEditing && update('registration', e.target.value)} required readOnly={isEditing} className={inputClass + (isEditing ? ' opacity-60 cursor-not-allowed bg-gray-100' : '')} placeholder="Ex: #4502" />
                 </div>
               </div>
               <div>
