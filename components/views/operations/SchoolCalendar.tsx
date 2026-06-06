@@ -569,7 +569,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                           return lStart >= slotStart && lStart < slotEnd;
                         });
                         return (
-                          <div key={hidx} className="min-h-10 border-b border-gray-50 last:border-0 p-0.5">
+                          <div key={hidx} className="border-b border-gray-50 last:border-0 p-0.5" style={{ minHeight: slotLessons.length > 0 ? "auto" : "40px" }}>
                             {slotLessons.map((lesson, idx) => {
                               const color = getLessonColor(lesson, idx);
                               return (
