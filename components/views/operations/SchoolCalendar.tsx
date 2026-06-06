@@ -60,6 +60,8 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
   const [teachers, setTeachers] = useState<{id: string, name: string, color?: string}[]>([]);
   const [showSubstModal, setShowSubstModal] = useState(false);
   const [showExpModal, setShowExpModal] = useState(false);
+  const [lessonType, setLessonType] = useState<'individual' | 'dupla' | 'grupo'>('individual');
+  const [extraStudents, setExtraStudents] = useState<{id: string, name: string}[]>([{ id: '', name: '' }]);
   const [showDecisaoModal, setShowDecisaoModal] = useState(false);
   const [expSelecionada, setExpSelecionada] = useState<any>(null);
   const [anamneseData, setAnamneseData] = useState<any>(null);
@@ -438,6 +440,8 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
               time_start: newLesson.time_start, time_end: newLesson.time_end,
               start_time: newLesson.time_start, end_time: newLesson.time_end,
               subject: newLesson.subject || 'A definir',
+        lesson_type: lessonType,
+        extra_students: lessonType !== 'individual' ? JSON.stringify(extraStudents.filter(e => e.id).slice(1)) : null,
               teacher_id: newLesson.teacher_id || null,
               teacher_name: teachers.find(t => t.id === newLesson.teacher_id)?.name || '',
               student_id: newLesson.student_id || null,
@@ -454,6 +458,8 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
         }
       }
       setNewLesson({ date: new Date().toISOString().split('T')[0], time_start: '08:00', time_end: '09:00', subject: '', room: '', teacher_id: '', student_id: '', student_name: '', notes: '', recorrente: false, recurrence_end: '' });
+      setLessonType('individual');
+      setExtraStudents([{ id: '', name: '' }]);
       fetchLessons();
     } catch (e: any) {
       toast.error('Erro ao salvar: ' + e.message); console.error('SAVE ERROR FULL:', JSON.stringify(e), e?.code, e?.details, e?.hint);
@@ -760,20 +766,41 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
               </div>
 
               <div>
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Aluno</label>
-                <select
-                  value={newLesson.student_id}
-                  onChange={e => {
-                    const student = students.find(s => s.id === e.target.value);
-                    setNewLesson(p => ({ ...p, student_id: e.target.value, student_name: student?.name || '' }));
-                  }}
-                  className="w-full mt-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
-                >
-                  <option value="">Selecionar aluno...</option>
-                  {students.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Tipo de Aula</label>
+                <div className="flex gap-2 mt-1">
+                  {(['individual', 'dupla', 'grupo'] as const).map(tipo => (
+                    <button key={tipo} type="button" onClick={() => {
+                      setLessonType(tipo);
+                      if (tipo === 'individual') setExtraStudents([{ id: '', name: '' }]);
+                      if (tipo === 'dupla') setExtraStudents([{ id: '', name: '' }, { id: '', name: '' }]);
+                      if (tipo === 'grupo') setExtraStudents([{ id: '', name: '' }, { id: '', name: '' }, { id: '', name: '' }, { id: '', name: '' }, { id: '', name: '' }, { id: '', name: '' }, { id: '', name: '' }, { id: '', name: '' }]);
+                    }}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold capitalize transition-all ${lessonType === tipo ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                      {tipo === 'individual' ? 'Individual' : tipo === 'dupla' ? 'Dupla' : 'Grupo'}
+                    </button>
                   ))}
-                </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">
+                  {lessonType === 'individual' ? 'Aluno' : lessonType === 'dupla' ? 'Alunos (2)' : 'Alunos (ate 8)'}
+                </label>
+                <div className="space-y-2 mt-1">
+                  {extraStudents.map((es, idx) => (
+                    <select key={idx} value={es.id}
+                      onChange={e => {
+                        const student = students.find(s => s.id === e.target.value);
+                        const updated = [...extraStudents];
+                        updated[idx] = { id: e.target.value, name: student?.name || '' };
+                        setExtraStudents(updated);
+                        if (idx === 0) setNewLesson(p => ({ ...p, student_id: e.target.value, student_name: student?.name || '' }));
+                      }}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
+                      <option value="">Aluno {idx + 1}...</option>
+                      {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  ))}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
