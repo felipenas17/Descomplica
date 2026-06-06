@@ -569,7 +569,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                           return lStart >= slotStart && lStart < slotEnd;
                         });
                         return (
-                          <div key={hidx} className="border-b border-gray-50 last:border-0 p-0.5" style={{ minHeight: slotLessons.length > 0 ? "auto" : "40px" }}>
+                          <div key={hidx} className="border-b border-gray-50 last:border-0 p-0.5" style={{ minHeight: "40px" }}>
                             {slotLessons.map((lesson, idx) => {
                               const color = getLessonColor(lesson, idx);
                               return (
@@ -585,7 +585,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                                       setSelectedLesson(lesson); setEditingLesson({...lesson});
                                     }
                                   }}
-                                  className={`${color.hex ? '' : color.bg + ' border-l-4 ' + color.border} rounded p-1 mb-0.5 cursor-pointer hover:opacity-80 transition-all`}>
+                                  className={`${color.hex ? '' : color.bg + ' border-l-4 ' + color.border} rounded p-1 mb-0.5 cursor-pointer hover:opacity-80 transition-all`} style={{ minHeight: "36px" }}>
                                   <p className="text-[9px] font-black truncate leading-tight" style={color.hex ? { color: color.hex } : {}}>{lesson.teacher_name || 'Prof.'}</p>
                                   <p className="text-[8px] text-gray-600 truncate leading-tight">{lesson.student_name}</p>
                                 </div>
