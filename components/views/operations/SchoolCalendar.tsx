@@ -433,6 +433,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
         const dayOfWeek = start.getDay();
         const recurrentes = [];
         const cur = new Date(start);
+        const recGroupId = crypto.randomUUID();
         cur.setDate(cur.getDate() + 7);
         while (cur <= end) {
           if (cur.getDay() === dayOfWeek) {
@@ -448,7 +449,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
               student_id: newLesson.student_id || null,
               student_name: newLesson.student_name || '',
               room: newLesson.room || '',
-              status: 'confirmado', notes: 'Aula recorrente',
+              status: 'confirmado', notes: 'Aula recorrente', recurrence_group: recGroupId,
               created_at: new Date().toISOString(),
             });
           }
@@ -1197,8 +1198,18 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
             <div className="p-5 border-t border-gray-100 flex gap-3">
               <button onClick={() => setViewingLesson(null)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all">Fechar</button>
               <button onClick={async () => {
-                if (!confirm('Excluir esta aula?')) return;
-                await supabase.from('schedules').delete().eq('id', viewingLesson.id);
+                const recGroup = (viewingLesson as any).recurrence_group;
+                if (recGroup) {
+                  const opcao = window.confirm('Esta aula é recorrente.\n\nOK = Excluir TODAS as recorrentes\nCancelar = Excluir só esta');
+                  if (opcao) {
+                    await supabase.from('schedules').delete().eq('recurrence_group', recGroup);
+                  } else {
+                    await supabase.from('schedules').delete().eq('id', viewingLesson.id);
+                  }
+                } else {
+                  if (!confirm('Excluir esta aula?')) return;
+                  await supabase.from('schedules').delete().eq('id', viewingLesson.id);
+                }
                 setViewingLesson(null);
                 fetchLessons();
               }} className="px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold transition-all">Excluir</button>
