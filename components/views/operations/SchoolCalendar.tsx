@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const DAYS_SHORT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-const HOURS = Array.from({ length: 27 }, (_, i) => 7 + i * 0.5); // 7h às 20h de 30 em 30min
+const HOURS = Array.from({ length: 21 }, (_, i) => 9 + i * 0.5); // 9h às 19h de 30 em 30min
 
 const COLORS = [
   { bg: 'bg-purple-100', border: 'border-purple-500', text: 'text-purple-700' },
