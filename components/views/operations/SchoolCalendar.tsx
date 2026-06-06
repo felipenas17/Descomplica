@@ -41,6 +41,8 @@ interface NewLesson {
   student_name: string;
   student_id: string;
   notes: string;
+  recorrente?: boolean;
+  recurrence_end?: string;
 }
 
 export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNavigate?: (view: any) => void }) {
@@ -52,7 +54,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
   const [newLesson, setNewLesson] = useState<NewLesson>({
     date: new Date().toISOString().split('T')[0],
     time_start: '08:00', time_end: '09:00',
-    subject: '', room: '', teacher_id: '', student_name: '', student_id: '', notes: ''
+    subject: '', room: '', teacher_id: '', student_name: '', student_id: '', notes: '', recorrente: false, recurrence_end: ''
   });
   const [saving, setSaving] = useState(false);
   const [teachers, setTeachers] = useState<{id: string, name: string}[]>([]);
@@ -377,7 +379,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
 
   const saveLesson = async () => {
     console.log('saveLesson chamado', newLesson);
-    if (!newLesson.subject || !newLesson.date) {
+    if (!newLesson.date) {
       toast.error('Preencha pelo menos a matéria e a data!');
       return;
     }
@@ -414,7 +416,37 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
 
       toast.success('Aula incluída com sucesso! ✅');
       setShowModal(false);
-      setNewLesson({ date: new Date().toISOString().split('T')[0], time_start: '08:00', time_end: '09:00', subject: '', room: '', teacher_id: '', student_id: '', student_name: '', notes: '' });
+      // Gera aulas recorrentes se marcado
+      if (newLesson.recorrente && newLesson.recurrence_end) {
+        const start = new Date(newLesson.date + 'T00:00:00');
+        const end = new Date(newLesson.recurrence_end + 'T00:00:00');
+        const dayOfWeek = start.getDay();
+        const recurrentes = [];
+        const cur = new Date(start);
+        cur.setDate(cur.getDate() + 7);
+        while (cur <= end) {
+          if (cur.getDay() === dayOfWeek) {
+            recurrentes.push({
+              date: cur.toISOString().split('T')[0],
+              time_start: newLesson.time_start, time_end: newLesson.time_end,
+              start_time: newLesson.time_start, end_time: newLesson.time_end,
+              subject: newLesson.subject || 'A definir',
+              teacher_id: newLesson.teacher_id || null,
+              teacher_name: teachers.find(t => t.id === newLesson.teacher_id)?.name || '',
+              student_id: newLesson.student_id || null,
+              student_name: newLesson.student_name || '',
+              room: newLesson.room || '',
+              status: 'confirmado', notes: 'Aula recorrente',
+              created_at: new Date().toISOString(),
+            });
+          }
+          cur.setDate(cur.getDate() + 1);
+        }
+        if (recurrentes.length > 0) {
+          await supabase.from('schedules').insert(recurrentes);
+        }
+      }
+      setNewLesson({ date: new Date().toISOString().split('T')[0], time_start: '08:00', time_end: '09:00', subject: '', room: '', teacher_id: '', student_id: '', student_name: '', notes: '', recorrente: false, recurrence_end: '' });
       fetchLessons();
     } catch (e: any) {
       toast.error('Erro ao salvar: ' + e.message); console.error('SAVE ERROR FULL:', JSON.stringify(e), e?.code, e?.details, e?.hint);
@@ -661,12 +693,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Matéria *</label>
-                <input value={newLesson.subject} onChange={e => setNewLesson(p => ({ ...p, subject: e.target.value }))}
-                  placeholder="Ex: Matemática, Inglês..."
-                  className="w-full mt-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
-              </div>
+
 
               <div>
                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Professor</label>
