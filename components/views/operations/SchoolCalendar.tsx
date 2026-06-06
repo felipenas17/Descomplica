@@ -561,28 +561,47 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                       {HOURS.map(h => (
                         <div key={h} className="h-10 border-b border-gray-50 last:border-0" />
                       ))}
-                      {dayLessons.map((lesson, idx) => {
-                        const color = getLessonColor(lesson, idx);
-                        const top = getLessonTop(lesson.time_start || '08:00');
-                        const height = getLessonHeight(lesson.time_start || '08:00', lesson.time_end || '09:00');
-                        return (
-                          <div key={lesson.id}
-                            style={{ top: `${top}px`, height: `${height}px`, ...(color.hex ? { backgroundColor: color.hex + '33', borderLeftColor: color.hex, borderLeftWidth: '4px' } : {}) }}
-                            onClick={() => {
-                              if ((lesson as any).is_experimental) {
-                                setExpSelecionada(lesson);
-                                const fb = (lesson as any).feedback_professor;
-                                try { setAnamneseData(fb ? JSON.parse(fb) : null); } catch { setAnamneseData(null); }
-                                setShowDecisaoModal(true);
-                              } else {
-                                setSelectedLesson(lesson); setEditingLesson({...lesson});
-                              }
-                            }} className={`absolute left-1 right-1 ${color.hex ? '' : color.bg} ${color.hex ? '' : 'border-l-4'} ${color.hex ? '' : color.border} rounded-xl p-1.5 z-10 overflow-hidden cursor-pointer hover:shadow-md transition-all`}>
-                            <p className="text-[9px] font-black truncate" style={color.hex ? { color: color.hex } : {}}>{lesson.teacher_name || 'Prof.'}</p>
-                            <p className="text-[8px] text-gray-600 truncate">{lesson.student_name}</p>
-                          </div>
-                        );
-                      })}
+                      {(() => {
+                        // Calcula colunas para evitar sobreposição
+                        const cols: number[] = dayLessons.map(() => 0);
+                        for (let i = 0; i < dayLessons.length; i++) {
+                          const topI = getLessonTop(dayLessons[i].time_start || '08:00');
+                          const botI = topI + getLessonHeight(dayLessons[i].time_start || '08:00', dayLessons[i].time_end || '09:00');
+                          const usedCols: number[] = [];
+                          for (let j = 0; j < i; j++) {
+                            const topJ = getLessonTop(dayLessons[j].time_start || '08:00');
+                            const botJ = topJ + getLessonHeight(dayLessons[j].time_start || '08:00', dayLessons[j].time_end || '09:00');
+                            if (topI < botJ && botI > topJ) usedCols.push(cols[j]);
+                          }
+                          cols[i] = 0;
+                          while (usedCols.includes(cols[i])) cols[i]++;
+                        }
+                        const maxCol = Math.max(...cols, 0) + 1;
+                        return dayLessons.map((lesson, idx) => {
+                          const color = getLessonColor(lesson, idx);
+                          const top = getLessonTop(lesson.time_start || '08:00');
+                          const height = getLessonHeight(lesson.time_start || '08:00', lesson.time_end || '09:00');
+                          const colW = 100 / maxCol;
+                          const left = cols[idx] * colW;
+                          return (
+                            <div key={lesson.id}
+                              style={{ top: `${top}px`, height: `${height}px`, left: `${left}%`, width: `${colW}%`, ...(color.hex ? { backgroundColor: color.hex + '33', borderLeftColor: color.hex, borderLeftWidth: '4px' } : {}) }}
+                              onClick={() => {
+                                if ((lesson as any).is_experimental) {
+                                  setExpSelecionada(lesson);
+                                  const fb = (lesson as any).feedback_professor;
+                                  try { setAnamneseData(fb ? JSON.parse(fb) : null); } catch { setAnamneseData(null); }
+                                  setShowDecisaoModal(true);
+                                } else {
+                                  setSelectedLesson(lesson); setEditingLesson({...lesson});
+                                }
+                              }} className={`absolute ${color.hex ? '' : color.bg} ${color.hex ? '' : 'border-l-4'} ${color.hex ? '' : color.border} rounded-xl p-1 z-10 overflow-hidden cursor-pointer hover:shadow-md transition-all`}>
+                              <p className="text-[9px] font-black truncate" style={color.hex ? { color: color.hex } : {}}>{lesson.teacher_name || 'Prof.'}</p>
+                              <p className="text-[8px] text-gray-600 truncate">{lesson.student_name}</p>
+                            </div>
+                          );
+                        });
+                      })()}
                     </div>
                   );
                 })}
@@ -604,7 +623,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                 <div className="flex flex-col">
                   {HOURS.map(h => {
                     const hrs = Math.floor(h);
-                    const mins = h % 1 === 0.5 ? '30' : '00';
+                    const mins = h % 1 >= 0.4 ? '30' : '00';
                     return <div key={h} className="h-10 border-r border-b border-gray-100 px-2 flex items-start pt-1"><span className="text-[9px] font-black text-gray-300">{hrs}:{mins}</span></div>;
                   })}
                 </div>
