@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { X, User, Mail, Hash, Phone, Calendar, School, Users, Clock, BookOpen, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 
@@ -15,6 +15,40 @@ const DAYS_OF_WEEK = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado
 
 export default function StudentForm({ onClose, onSubmit, prefill, isEditing }: StudentFormProps) {
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (prefill && isEditing) {
+      setFormData(prev => ({
+        ...prev,
+        name: prefill.name || '',
+        email: prefill.email || '',
+        phone: prefill.phone || '',
+        registration: prefill.registration || '',
+        enrollment_type: prefill.enrollment_type || 'nova',
+        monthly_value: prefill.monthly_value || '',
+        parent_name: prefill.parent_name || '',
+        parent_phone: prefill.parent_phone || '',
+        parent_email: prefill.parent_email || '',
+        parent_cpf: prefill.parent_cpf || '',
+        parent_rg: prefill.parent_rg || '',
+        parent_profession: prefill.parent_profession || '',
+        age: prefill.age || '',
+        birth_date: prefill.birth_date || '',
+        sex: prefill.sex || '',
+        school: prefill.school || '',
+        grade: prefill.grade || '',
+        segment: prefill.segment || '',
+        school_shift: prefill.school_shift || '',
+        special_needs: prefill.special_needs || [],
+        has_allergy: prefill.has_allergy || '',
+        allergy_details: prefill.allergy_details || '',
+        lesson_type: prefill.lesson_type || 'individual',
+        lesson_duration: prefill.lesson_duration || '60',
+        notes: prefill.notes || '',
+        weekly_frequency: prefill.weekly_frequency || '',
+      }));
+    }
+  }, [prefill, isEditing]);
   const [daySchedules, setDaySchedules] = useState<Record<string, { start: string; end: string }>>({});
   const [showExtra, setShowExtra] = useState(false);
   const [formData, setFormData] = useState({
@@ -130,8 +164,8 @@ export default function StudentForm({ onClose, onSubmit, prefill, isEditing }: S
 
         <div className="sticky top-0 bg-white rounded-t-3xl p-6 border-b border-gray-100 flex justify-between items-center z-10">
           <div>
-            <h2 className="text-2xl font-black text-purple-600">Matrícula de Aluno</h2>
-            <p className="text-gray-400 text-sm mt-0.5">Inscreva um novo aluno no sistema.</p>
+            <h2 className="text-2xl font-black text-purple-600">{isEditing ? 'Editar Aluno' : 'Matrícula de Aluno'}</h2>
+            <p className="text-gray-400 text-sm mt-0.5">{isEditing ? 'Edite os dados do aluno.' : 'Inscreva um novo aluno no sistema.'}</p>
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-xl hover:bg-red-50 hover:text-red-500 flex items-center justify-center transition-colors">
             <X size={20} />
@@ -546,7 +580,7 @@ export default function StudentForm({ onClose, onSubmit, prefill, isEditing }: S
             </button>
             <button type="submit"
               className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3.5 rounded-2xl font-bold text-sm shadow-lg shadow-purple-200 hover:scale-[1.02] active:scale-95 transition-all">
-              Efetivar Matrícula
+              {isEditing ? 'Salvar Alterações' : 'Efetivar Matrícula'}
             </button>
           </div>
         </form>
