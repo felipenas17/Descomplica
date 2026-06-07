@@ -60,19 +60,24 @@ export default function AdminAgendaView({ user }: { user?: any }) {
     try {
       const { error } = await supabase.from('admin_agenda').insert({ ...form, user_id: user?.id, created_at: new Date().toISOString() });
       if (error) throw error;
-      // Notifica professor(es) se selecionado
+      // Notifica professor(es) se selecionado — usa profile_id correto
       if (form.teacher_id === 'todos') {
         for (const t of teachers) {
+          const { data: prof } = await supabase.from('profiles').select('id').eq('email', t.email).single();
+          const notifId = prof?.id || t.id;
           await supabase.from('notifications').insert({
-            user_id: t.id,
+            user_id: notifId,
             title: '📅 Reunião agendada: ' + form.title,
             message: 'Você tem um compromisso agendado para ' + new Date(form.date + 'T00:00:00').toLocaleDateString('pt-BR') + ' às ' + form.start_time + '.',
             type: 'info', read: false, created_at: new Date().toISOString(),
           });
         }
       } else if (form.teacher_id) {
+        const teacher = teachers.find(t => t.id === form.teacher_id);
+        const { data: prof } = await supabase.from('profiles').select('id').eq('email', teacher?.email || '').single();
+        const notifId = prof?.id || form.teacher_id;
         await supabase.from('notifications').insert({
-          user_id: form.teacher_id,
+          user_id: notifId,
           title: '📅 Reunião agendada: ' + form.title,
           message: 'Você tem um compromisso agendado para ' + new Date(form.date + 'T00:00:00').toLocaleDateString('pt-BR') + ' às ' + form.start_time + '.',
           type: 'info', read: false, created_at: new Date().toISOString(),
