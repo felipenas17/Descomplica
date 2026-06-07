@@ -262,7 +262,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     }
   };
 
-  useEffect(() => { fetchLessons(); fetchTeachersAndStudents(); }, [currentDate, view, isAdmin]);
+  useEffect(() => { fetchLessons(currentDate); fetchTeachersAndStudents(); }, [currentDate, view, isAdmin]);
 
   const fetchLessons = async () => {
     setLoading(true);
