@@ -44,7 +44,7 @@ export default function NotificationsView({ user }: { user?: any }) {
     toast.error('Aula recusada! O professor foi notificado.');
     window.location.reload();
   };
-  const { notifications, markAsRead, markAllAsRead, deleteNotification, unreadCount } = useNotifications(user?.id);
+  const { notifications, markAsRead, markAllAsRead, deleteNotification, unreadCount } = useNotifications(user?.profile_id || user?.id);
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
