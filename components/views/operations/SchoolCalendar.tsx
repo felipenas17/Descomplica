@@ -334,7 +334,9 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
 
   const weekDays = useMemo(() => {
     const start = new Date(currentDate);
-    start.setDate(start.getDate() - start.getDay());
+    const dayOfWeek = start.getDay();
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    start.setDate(start.getDate() + diff);
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
