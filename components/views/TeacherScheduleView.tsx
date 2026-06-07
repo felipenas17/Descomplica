@@ -70,10 +70,8 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
         const endLocal = end.getFullYear() + '-' + String(end.getMonth()+1).padStart(2,'0') + '-' + String(end.getDate()).padStart(2,'0');
         query = query.gte('date', startLocal).lte('date', endLocal);
       } else {
-        const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
         const startLocal = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
-        const endLocal = end.getFullYear() + '-' + String(end.getMonth()+1).padStart(2,'0') + '-' + String(end.getDate()).padStart(2,'0');
-        query = query.gte('date', startLocal).lte('date', endLocal);
+        query = query.gte('date', startLocal);
       }
       const { data, error } = await query;
       console.log('AULAS FETCH:', data?.length, 'USER ID:', user?.id, 'ERROR:', error);

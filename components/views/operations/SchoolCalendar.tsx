@@ -398,7 +398,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
       return;
     }
     setSaving(true);
-    const mainRecGroupId = newLesson.recorrente && newLesson.recurrence_end ? crypto.randomUUID() : null;
+    const recGroupId = (newLesson.recorrente && newLesson.recurrence_end) ? crypto.randomUUID() : null;
     try {
       const { error } = await supabase.from('schedules').insert({
         date: newLesson.date,
@@ -412,7 +412,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
         teacher_name: teachers.find(t => t.id === newLesson.teacher_id)?.name || user?.name || 'Admin',
         notes: newLesson.notes,
         status: 'confirmado',
-        recurrence_group: mainRecGroupId,
+        recurrence_group: recGroupId,
       });
       if (error) throw error;
 
@@ -420,8 +420,15 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
       const teacherId = newLesson.teacher_id || user?.id || null;
       if (teacherId) {
         const teacherName = teachers.find(t => t.id === teacherId)?.name || 'Professor';
+        const teacherEmail = teachers.find(t => t.id === teacherId)?.email || '';
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', teacherEmail)
+          .single();
+        const notifUserId = profileData?.id || teacherId;
         await supabase.from('notifications').insert({
-          user_id: teacherId,
+          user_id: notifUserId,
           title: 'Nova aula agendada! 📅',
           message: `Você tem uma nova aula de ${newLesson.subject} marcada para ${newLesson.date} das ${newLesson.time_start} às ${newLesson.time_end}${newLesson.room ? ' na sala ' + newLesson.room : ''}.`,
           type: 'info',
@@ -439,7 +446,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
         const dayOfWeek = start.getDay();
         const recurrentes = [];
         const cur = new Date(start);
-        const recGroupId = mainRecGroupId || crypto.randomUUID();
+        // recGroupId já definido acima — mesmo UUID da aula principal
         cur.setDate(cur.getDate() + 7);
         while (cur <= end) {
           if (cur.getDay() === dayOfWeek) {
