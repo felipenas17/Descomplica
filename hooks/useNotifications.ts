@@ -15,6 +15,7 @@ export interface AppNotification {
 export function useNotifications(userId?: string) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const channelRef = useRef<any>(null);
+  const intervalRef = useRef<any>(null);
 
   const fetchNotifications = useCallback(async () => {
     if (!userId) return;
@@ -33,29 +34,46 @@ export function useNotifications(userId?: string) {
 
     fetchNotifications();
 
-    try {
-      const channel = supabase
-        .channel('notif_' + userId)
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-          filter: 'user_id=eq.' + userId,
-        }, () => {
-          fetchNotifications();
-        })
-        .subscribe();
-
-      channelRef.current = channel;
-    } catch (e) {
-      // fallback polling se realtime falhar
-      const interval = setInterval(fetchNotifications, 15000);
-      return () => clearInterval(interval);
+    // Remove canal anterior se existir
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
     }
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    const channel = supabase
+      .channel('notif_' + userId)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'notifications',
+        filter: 'user_id=eq.' + userId,
+      }, () => {
+        fetchNotifications();
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[Realtime] Notificações ativas para', userId);
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[Realtime] Falhou, ativando polling a cada 10s');
+          intervalRef.current = setInterval(fetchNotifications, 10000);
+        }
+      });
+
+    channelRef.current = channel;
 
     return () => {
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
   }, [userId, fetchNotifications]);
