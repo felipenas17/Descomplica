@@ -151,12 +151,14 @@ export default function AbsencesView() {
       filterStatus === 'aguardando' ? s.status === 'aguardando_confirmacao' :
       filterStatus === 'falta' ? s.attendance_status === 'falta' || s.attendance_status === 'Ausente' :
       filterStatus === 'justificada' ? s.attendance_status === 'justificada' || s.attendance_status === 'Justificada' :
-      filterStatus === 'reposicao' ? (s.reposicao_pendente === true || s.status === 'reposicao_marcada') : true;
+      filterStatus === 'reposicao' ? (s.reposicao_pendente === true || s.status === 'reposicao_marcada' || s.status === 'reposicao_concluida') :
+      s.status !== 'reposicao_concluida';
     return matchSearch && matchTeacher && matchDate && matchDateRange && matchStatus;
   });
 
   const total = schedules.length;
   const concluidas = schedules.filter(s => s.status === 'concluido' && s.admin_confirmed).length;
+  const reposicoesConcluidas = schedules.filter(s => s.status === 'reposicao_concluida').length;
   const aguardando = schedules.filter(s => s.status === 'aguardando_confirmacao').length;
   const faltas = schedules.filter(s => s.attendance_status === 'falta' || s.attendance_status === 'Ausente').length;
   const justificadas = schedules.filter(s => s.attendance_status === 'justificada' || s.attendance_status === 'Justificada').length;
@@ -166,6 +168,7 @@ export default function AbsencesView() {
     if (s.status === 'concluido' && s.admin_confirmed) return { label: 'Concluida', color: 'bg-green-100 text-green-700' };
     if (s.status === 'aguardando_confirmacao') return { label: 'Aguard. Confirmacao', color: 'bg-orange-100 text-orange-700' };
     if (s.status === 'reposicao_marcada') return { label: 'Reposicao Marcada', color: 'bg-blue-100 text-blue-700' };
+    if (s.status === 'reposicao_concluida') return { label: 'Reposicao Concluida', color: 'bg-green-100 text-green-600' };
     if (s.status === 'concluido') return { label: 'Concluida', color: 'bg-green-100 text-green-700' };
     if (s.status === 'cancelado') return { label: 'Cancelada', color: 'bg-red-100 text-red-700' };
     return { label: 'Agendada', color: 'bg-blue-100 text-blue-700' };
