@@ -262,7 +262,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     }
   };
 
-  useEffect(() => { fetchLessons(currentDate); fetchTeachersAndStudents(); }, [currentDate, view, isAdmin]);
+  useEffect(() => { fetchLessons(); fetchTeachersAndStudents(); }, [currentDate, view, isAdmin]);
 
   const fetchLessons = async () => {
     setLoading(true);
@@ -270,8 +270,21 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
       let query = supabase.from('schedules').select('*').order('date').order('time_start');
       if (!isAdmin && user?.id) query = query.eq('teacher_id', user.id);
 
-      const start = getViewStart();
-      const end = getViewEnd();
+      const refDate = new Date(currentDate);
+      let start: string | null = null;
+      let end: string | null = null;
+      if (view === 'day') { start = end = refDate.toISOString().split('T')[0]; }
+      else if (view === 'week') {
+        const s = new Date(refDate); s.setDate(s.getDate() - s.getDay());
+        const e = new Date(refDate); e.setDate(e.getDate() - e.getDay() + 6);
+        start = s.toISOString().split('T')[0]; end = e.toISOString().split('T')[0];
+      } else if (view === 'month') {
+        start = new Date(refDate.getFullYear(), refDate.getMonth(), 1).toISOString().split('T')[0];
+        end = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0).toISOString().split('T')[0];
+      } else if (view === 'year') {
+        start = new Date(refDate.getFullYear(), 0, 1).toISOString().split('T')[0];
+        end = new Date(refDate.getFullYear(), 11, 31).toISOString().split('T')[0];
+      }
       if (start && end) {
         query = query.gte('date', start).lte('date', end);
       }
