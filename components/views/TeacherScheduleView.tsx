@@ -12,6 +12,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   confirmado:        { label: 'CONFIRMADO',       color: 'bg-green-100 text-green-600' },
   agendado:          { label: 'AGENDADO',         color: 'bg-blue-100 text-blue-600' },
   reposicao_marcada: { label: 'REPOSICAO MARCADA', color: 'bg-purple-100 text-purple-600' },
+  reposicao_concluida: { label: 'REPOSIÇÃO CONCLUÍDA', color: 'bg-green-100 text-green-600' },
   cancelado:     { label: 'CANCELADO',     color: 'bg-red-100 text-red-600' },
   concluido:     { label: 'CONCLUÍDO',     color: 'bg-gray-100 text-gray-500' },
   aguardando_confirmacao: { label: 'AGUARD. CONFIRMAÇÃO', color: 'bg-orange-100 text-orange-600' },
