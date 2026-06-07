@@ -296,7 +296,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
       }));
 
       setLessons([...(data || []), ...expLessons]);
-    } catch (e) { setLessons([]); } finally { setLoading(false); }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
   const getViewStart = () => {
