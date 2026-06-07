@@ -45,7 +45,6 @@ export default function NotificationsView({ user }: { user?: any }) {
     window.location.reload();
   };
   const notifId = user?.profile_id || user?.id;
-  console.log('[NotificationsView] user.id:', user?.id, 'user.profile_id:', user?.profile_id, 'usando:', notifId);
   const { notifications, markAsRead, markAllAsRead, deleteNotification, unreadCount } = useNotifications(notifId);
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
   const [searchTerm, setSearchTerm] = useState('');

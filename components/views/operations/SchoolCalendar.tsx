@@ -108,8 +108,11 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
       if (!error) {
         // Notifica professor
         if (expForm.professor_id) {
+          const expProfEmail = teachers.find(t => t.id === expForm.professor_id)?.email || '';
+          const { data: expProfProfile } = await supabase.from('profiles').select('id').eq('email', expProfEmail).single();
+          const expNotifId = expProfProfile?.id || expForm.professor_id;
           await supabase.from('notifications').insert({
-            user_id: expForm.professor_id,
+            user_id: expNotifId,
             title: 'Aula experimental agendada!',
             message: 'Voce tem uma aula experimental com ' + expForm.nome + ' em ' + new Date(expForm.data + 'T00:00:00').toLocaleDateString('pt-BR') + ' as ' + expForm.hora_inicio + '.',
             type: 'info', read: false, created_at: new Date().toISOString(),
@@ -145,16 +148,22 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
         notes: (selectedLesson.notes || '') + ' | Substituido: ' + (selectedLesson.teacher_name) + ' por ' + novoProf?.name,
       }).eq('id', selectedLesson.id);
       // Notifica professor substituto
+      const substEmail = teachers.find(t => t.id === substData.professor_id)?.email || '';
+      const { data: substProfile } = await supabase.from('profiles').select('id').eq('email', substEmail).single();
+      const substNotifId = substProfile?.id || substData.professor_id;
       await supabase.from('notifications').insert({
-        user_id: substData.professor_id,
+        user_id: substNotifId,
         title: 'Voce foi designado para uma aula!',
         message: 'Voce substituira ' + selectedLesson.teacher_name + ' na aula de ' + selectedLesson.subject + ' com ' + selectedLesson.student_name + ' em ' + new Date(selectedLesson.date + 'T00:00:00').toLocaleDateString('pt-BR') + '.',
         type: 'info', read: false, created_at: new Date().toISOString(),
       });
       // Notifica professor original
       if (selectedLesson.teacher_id) {
+        const origEmail = teachers.find(t => t.id === selectedLesson.teacher_id)?.email || '';
+        const { data: origProfile } = await supabase.from('profiles').select('id').eq('email', origEmail).single();
+        const origNotifId = origProfile?.id || selectedLesson.teacher_id;
         await supabase.from('notifications').insert({
-          user_id: selectedLesson.teacher_id,
+          user_id: origNotifId,
           title: 'Sua aula foi redistribuida',
           message: 'A aula de ' + selectedLesson.subject + ' com ' + selectedLesson.student_name + ' em ' + new Date(selectedLesson.date + 'T00:00:00').toLocaleDateString('pt-BR') + ' foi atribuida a ' + novoProf?.name + '.',
           type: 'warning', read: false, created_at: new Date().toISOString(),

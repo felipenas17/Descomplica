@@ -156,7 +156,13 @@ export default function StudentsView() {
         lesson_type: data.lesson_type || 'individual',
         lesson_duration: data.lesson_duration || '60',
         notes: data.notes || '',
-
+        day_schedules: data.weekly_frequency ? JSON.stringify({ frequencia: data.weekly_frequency }) : null,
+        address: data.address || '',
+        address_complement: data.address_complement || '',
+        neighborhood: data.neighborhood || '',
+        city: data.city || '',
+        cep: data.cep || '',
+        how_found: data.how_found || '',
       }]);
 
       if (error) throw error;

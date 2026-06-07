@@ -31,6 +31,11 @@ export default function FeedbacksView() {
   const [filterSent, setFilterSent] = useState('todos');
   const [teachers, setTeachers] = useState<any[]>([]);
 
+  const fetchTeachers = React.useCallback(async () => {
+    const { data } = await supabase.from('teachers').select('id, name').order('name');
+    setTeachers(data || []);
+  }, []);
+
   const fetchFeedbacks = React.useCallback(async () => {
     if (!isSupabaseConfigured) {
       console.log('Supabase not configured (feedbacks).');
@@ -65,6 +70,7 @@ export default function FeedbacksView() {
       }
     };
     load();
+    fetchTeachers();
     const channel = supabase
       .channel('feedbacks_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'feedbacks' }, () => {

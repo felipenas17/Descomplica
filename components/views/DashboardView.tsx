@@ -44,8 +44,18 @@ export default function DashboardView() {
     try { await gerarRelatorioPDF(); } catch(e) { console.error(e); }
     setGerandoPDF(false);
   };
-  const [meta, setMeta] = useState(5000);
+  const [meta, setMeta] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dashboard_meta');
+      return saved ? parseInt(saved) : 5000;
+    }
+    return 5000;
+  });
   const [editMeta, setEditMeta] = useState(false);
+  const saveMeta = (value: number) => {
+    setMeta(value);
+    if (typeof window !== 'undefined') localStorage.setItem('dashboard_meta', String(value));
+  };
   const [data, setData] = useState<any>({
     totalAlunos: 0, totalProfessores: 0, alunosNovos: 0, alunosRenovacao: 0, expMatriculadas: 0, expNaoConvertidas: 0, expTotal: 0, expPorMes: [],
     receitaMes: 0, recebidoMes: 0, despesasMes: 0, lucroMes: 0,
@@ -228,7 +238,7 @@ export default function DashboardView() {
           </button>
         </div>
         {editMeta && (
-          <input type="number" value={meta} onChange={e => setMeta(Number(e.target.value))}
+          <input type="number" value={meta} onChange={e => saveMeta(Number(e.target.value))}
             style={{ width: '100%', background: '#0f1117', border: `1px solid ${D_BORDER}`, borderRadius: 10, padding: '8px 12px', fontSize: 14, color: D_TEXT, marginBottom: 12, outline: 'none', boxSizing: 'border-box' }} />
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: D_MUTED, marginBottom: 8 }}>
