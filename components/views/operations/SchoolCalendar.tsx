@@ -338,8 +338,9 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     const d = new Date(currentDate);
     if (view === 'day') return d.toISOString().split('T')[0];
     if (view === 'week') {
-      d.setDate(d.getDate() - d.getDay() + 6);
-      return d.toISOString().split('T')[0];
+      const dow = d.getDay();
+      d.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1) + 6);
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     }
     if (view === 'month') return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
     if (view === 'year') return new Date(d.getFullYear(), 11, 31).toISOString().split('T')[0];
@@ -359,12 +360,12 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
 
   const weekDays = useMemo(() => {
     const start = new Date(currentDate);
-    const dayOfWeek = start.getDay();
+    const dayOfWeek = start.getDay(); // 0=dom, 1=seg, ..., 6=sab
+    // Semana começa na segunda: se domingo, volta 6 dias; senão volta (dayOfWeek-1)
     const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     start.setDate(start.getDate() + diff);
     return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
-      return d;
+      return new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
     });
   }, [currentDate]);
 
