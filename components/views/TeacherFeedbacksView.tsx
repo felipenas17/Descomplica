@@ -170,7 +170,7 @@ export default function TeacherFeedbacksView({ user }: { user?: any }) {
         <div className="p-4 space-y-3">
           {loading ? (
             <div className="flex justify-center py-8"><div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" /></div>
-          )}
+          ) : null}
           {activeTab === 'pending' && (
             <div className="flex gap-2 mb-4">
               {([['semana','Esta Semana'],['mes','Este Mês'],['todos','Todos']] as const).map(([val, label]) => (
@@ -181,7 +181,7 @@ export default function TeacherFeedbacksView({ user }: { user?: any }) {
               ))}
             </div>
           )}
-          {true ? activeTab === 'pending' ? (
+          {activeTab === 'pending' ? (
             pendingLessons.length === 0 ? (
               <div className="text-center py-12">
                 <CheckCircle size={40} className="text-green-200 mx-auto mb-3" />
