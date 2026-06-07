@@ -384,7 +384,9 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const d = String(date.getDate()).padStart(2, '0');
     const dateStr = y + '-' + m + '-' + d;
-    return lessons.filter(l => l.date === dateStr);
+    const result = lessons.filter(l => l.date === dateStr);
+    if (dateStr === '2026-06-14') console.log('[getLessons] date:', dateStr, 'lessons total:', lessons.length, 'found:', result.length, 'sample:', lessons.slice(0,3).map(l=>l.date));
+    return result;
   };
 
   const getTeacherColor = (teacherId: string) => {
