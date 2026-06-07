@@ -76,6 +76,7 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
         query = query.gte('date', startLocal).lte('date', endLocal);
       }
       const { data, error } = await query;
+      console.log('AULAS FETCH:', data?.length, 'USER ID:', user?.id, 'ERROR:', error);
       if (error) throw error;
 
       // Busca aulas experimentais do professor
