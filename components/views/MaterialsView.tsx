@@ -97,8 +97,8 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
 
   const handleUpload = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: profile } = await supabase.from('profiles').select('name').eq('id', user?.id).single();
-    const uploaderName = profile?.name || user?.email || 'Professor';
+    const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user?.id).single();
+    const uploaderName = profile?.full_name || user?.email || 'Professor';
     if (!uploadFile || !uploadForm.title || !uploadForm.type || !uploadForm.subject || !uploadForm.grade) {
       alert('Preencha todos os campos e selecione um arquivo.');
       return;
