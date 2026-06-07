@@ -350,7 +350,12 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
   const navigate = (dir: 1 | -1) => {
     const d = new Date(currentDate);
     if (view === 'day') d.setDate(d.getDate() + dir);
-    else if (view === 'week') d.setDate(d.getDate() + dir * 7);
+    else if (view === 'week') {
+      // Vai para a segunda da semana atual, depois avança/volta 7 dias
+      const dow = d.getDay();
+      const toMonday = dow === 0 ? -6 : 1 - dow;
+      d.setDate(d.getDate() + toMonday + dir * 7);
+    }
     else if (view === 'month') d.setMonth(d.getMonth() + dir);
     else if (view === 'year') d.setFullYear(d.getFullYear() + dir);
     setCurrentDate(new Date(d));
