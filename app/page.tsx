@@ -48,7 +48,7 @@ function getDayFromDate(dateStr: string) {
 
 export default function Home() {
   const [isMounted, setIsMounted] = useState(false);
-  const [user, setUser] = useState<{ role: 'admin' | 'professor', name: string, email?: string, id?: string, needs_password_change?: boolean } | null>(null);
+  const [user, setUser] = useState<{ role: 'admin' | 'professor', name: string, email?: string, id?: string, profile_id?: string, needs_password_change?: boolean } | null>(null);
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showPasswordChange, setShowPasswordChange] = useState(false);
