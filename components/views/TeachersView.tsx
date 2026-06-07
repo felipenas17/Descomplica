@@ -146,6 +146,15 @@ export default function TeachersView() {
     finally { setSavingEdit(false); }
   };
 
+  const uploadAvatar = async (file: File, teacherId: string) => {
+    const ext = file.name.split('.').pop();
+    const path = 'teachers/' + teacherId + '.' + ext;
+    const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+    if (error) { toast.error('Erro no upload: ' + error.message); return null; }
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+    return data.publicUrl;
+  };
+
   const fetchTeachers = React.useCallback(async () => {
     if (!isSupabaseConfigured) {
       setError('Supabase não configurado. Verifique as chaves API.');
@@ -483,6 +492,32 @@ export default function TeachersView() {
               </button>
             </div>
             <div className="p-6 space-y-6">
+              {/* Foto */}
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-2xl overflow-hidden bg-purple-100 flex items-center justify-center shrink-0">
+                  {editingTeacher.avatar && !editingTeacher.avatar.includes('picsum') ? (
+                    <img src={editingTeacher.avatar} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-2xl font-black text-purple-600">{editingTeacher.name?.[0]?.toUpperCase()}</span>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Foto da Professora</p>
+                  <label className="cursor-pointer px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-xl text-xs font-bold transition-all">
+                    Alterar foto
+                    <input type="file" accept="image/*" className="hidden" onChange={async e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const url = await uploadAvatar(file, editingTeacher.id);
+                      if (url) {
+                        setEditingTeacher((t: any) => ({ ...t, avatar: url }));
+                        await supabase.from('teachers').update({ avatar: url }).eq('id', editingTeacher.id);
+                        toast.success('Foto atualizada!');
+                      }
+                    }} />
+                  </label>
+                </div>
+              </div>
               {/* Dados básicos */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
