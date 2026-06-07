@@ -29,18 +29,12 @@ export default function TeacherAvailability() {
   useEffect(() => {
     const fetch = async () => {
       setLoading(true);
-      const weekStart = new Date();
-      const day = weekStart.getDay();
-      const diff = day === 0 ? -6 : 1 - day;
-      weekStart.setDate(weekStart.getDate() + diff);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 6);
-      const startStr = weekStart.toISOString().split('T')[0];
-      const endStr = weekEnd.toISOString().split('T')[0];
+      // Busca todos os agendamentos futuros para cruzar por dia da semana
+      const hoje = new Date().toISOString().split('T')[0];
 
       const [{ data: tData }, { data: sData }] = await Promise.all([
         supabase.from('teachers').select('id,name,color,availability,availability_schedule').order('name'),
-        supabase.from('schedules').select('teacher_id,date,start_time,end_time').gte('date', startStr).lte('date', endStr),
+        supabase.from('schedules').select('teacher_id,date,start_time,end_time').gte('date', hoje),
       ]);
       setTeachers(tData || []);
       setSchedules(sData || []);
