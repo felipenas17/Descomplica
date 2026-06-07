@@ -318,7 +318,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
         feedback_professor: e.feedback_professor,
       }));
 
-      setLessons([...(data || []), ...expLessons]);
+      if ((data || []).length > 0 || expLessons.length > 0) setLessons([...(data || []), ...expLessons]);
     } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
