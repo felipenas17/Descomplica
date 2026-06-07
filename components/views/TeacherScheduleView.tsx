@@ -99,10 +99,7 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
         exp_status: e.status,
         telefone: e.telefone,
       }));
-      setLessons(prev => {
-        const normais = prev.filter((l: any) => !l.is_experimental);
-        return [...normais, ...expLessons];
-      });
+      setLessons([...(data || []), ...expLessons]);
 
       // Busca compromissos do admin que envolvem este professor
       const [{ data: compMeu }, { data: compTodos }] = await Promise.all([
