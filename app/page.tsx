@@ -72,8 +72,18 @@ export default function Home() {
           .single();
         
         if (profile) {
+          // Busca teacher_id se for professor
+          let teacherId = profile.id;
+          if (profile.role === 'professor') {
+            const { data: teacherData } = await supabase
+              .from('teachers')
+              .select('id')
+              .eq('email', profile.email)
+              .single();
+            if (teacherData) teacherId = teacherData.id;
+          }
           setUser({
-            id: profile.id,
+            id: teacherId,
             email: profile.email,
             role: profile.role,
             name: profile.full_name || 'Usuário',
