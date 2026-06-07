@@ -385,7 +385,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     const d = String(date.getDate()).padStart(2, '0');
     const dateStr = y + '-' + m + '-' + d;
     const result = lessons.filter(l => l.date === dateStr);
-    if (dateStr === '2026-06-14') console.log('[getLessons] date:', dateStr, 'lessons total:', lessons.length, 'found:', result.length, 'sample:', lessons.slice(0,3).map(l=>l.date));
+    if (dateStr === '2026-06-14') console.log('[getLessons] date:', dateStr, 'lessons total:', lessons.length, 'found:', result.length, 'sample dates:', JSON.stringify(lessons.slice(0,5).map(l=>l.date)));
     return result;
   };
 
