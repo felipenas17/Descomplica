@@ -80,23 +80,6 @@ export default function FeedbacksView() {
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-    const saveEditFeedback = async () => {
-    if (!editingFeedback) return;
-    setSavingEdit(true);
-    try {
-      await supabase.from('feedbacks').update({
-        attendance: editingFeedback.attendance,
-        discipline: editingFeedback.discipline,
-        content: editingFeedback.content,
-        resources: editingFeedback.resources,
-        observations: editingFeedback.observations,
-      }).eq('id', editingFeedback.id);
-      setSelectedFeedback({ ...selectedFeedback, ...editingFeedback });
-      setEditingFeedback(null);
-      fetchFeedbacks();
-    } catch(e: any) { alert('Erro: ' + e.message); }
-    setSavingEdit(false);
-  };
 
   const sendWhatsApp = async (feedback: any) => {
     // Busca telefone do pai pelo nome do aluno
