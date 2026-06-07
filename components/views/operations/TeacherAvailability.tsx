@@ -36,7 +36,6 @@ export default function TeacherAvailability() {
         supabase.from('teachers').select('id,name,color,availability,availability_schedule').order('name'),
         supabase.from('schedules').select('teacher_id,date,start_time,end_time').gte('date', hoje).limit(5000),
       ]);
-      console.log('[AVAIL] teachers:', tData?.length, 'schedules:', sData?.length, 'sample:', sData?.slice(0,3).map((s:any)=>s.date+' '+s.start_time));
       setTeachers(tData || []);
       setSchedules(sData || []);
       setLoading(false);
