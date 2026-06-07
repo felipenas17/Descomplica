@@ -149,6 +149,7 @@ export default function Login({ onLogin }: LoginProps) {
           }
           onLogin({
             id: loginId,
+            profile_id: profile.id,
             email: profile.email,
             role: profile.role,
             name: profile.full_name || 'Usuário',
