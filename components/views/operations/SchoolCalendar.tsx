@@ -265,7 +265,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
   useEffect(() => { fetchLessons(); fetchTeachersAndStudents(); }, [currentDate, view, isAdmin]);
 
   const fetchLessons = async () => {
-    setLoading(true);
+    if (lessons.length === 0) setLoading(true);
     try {
       let query = supabase.from('schedules').select('*').order('date').order('time_start');
       if (!isAdmin && user?.id) query = query.eq('teacher_id', user.id);
