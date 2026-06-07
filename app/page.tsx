@@ -141,6 +141,7 @@ export default function Home() {
           }
           setUser({
             id: teacherIdFallback,
+            profile_id: supabaseUser.id,
             email: supabaseUser.email,
             role: (supabaseUser.user_metadata?.role as any) || 'admin',
             name: supabaseUser.user_metadata?.full_name || 'Usuário',
