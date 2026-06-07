@@ -113,7 +113,7 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
     const { error: dbError } = await supabase.from('materials').insert({
       title: uploadForm.title, type: uploadForm.type, subject: uploadForm.subject,
       grade: uploadForm.grade, file_url: urlData.publicUrl,
-      approval_status: status, uploaded_by_role: userRole, uploaded_by_id: userId, uploader_name: uploaderName,
+      approval_status: status, uploaded_by_role: userRole, uploaded_by_id: userId, uploaded_by: user?.id || userId, uploader_name: uploaderName,
     });
     if (dbError) { alert('Erro ao salvar material.'); }
     else {
