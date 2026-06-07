@@ -11,6 +11,7 @@ import DailyTimeline from './DailyTimeline';
 import ClassroomStatus from './ClassroomStatus';
 import TeacherSchedule from './TeacherSchedule';
 import SchoolCalendar from './SchoolCalendar';
+import TeacherAvailability from './TeacherAvailability';
 
 export default function OperationsView({ onNavigate }: { onNavigate?: (view: any) => void }) {
   const [loading, setLoading] = useState(true);
@@ -100,6 +101,7 @@ export default function OperationsView({ onNavigate }: { onNavigate?: (view: any
         <div className="lg:col-span-3"><TeacherSchedule teachers={teachers} /></div>
       </div>
       <SchoolCalendar onNavigate={onNavigate} />
+      <TeacherAvailability />
     </div>
   );
 }
