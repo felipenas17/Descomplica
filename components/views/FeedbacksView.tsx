@@ -24,6 +24,8 @@ export default function FeedbacksView() {
   const [loading, setLoading] = useState(true);
   const [filterStr, setFilterStr] = useState('');
   const [selectedFeedback, setSelectedFeedback] = useState<any>(null);
+  const [editingFeedback, setEditingFeedback] = useState<any>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
   const [filterPerformance, setFilterPerformance] = useState('Todos');
   const [filterTeacher, setFilterTeacher] = useState('');
   const [filterDateFrom, setFilterDateFrom] = useState('');
@@ -78,7 +80,25 @@ export default function FeedbacksView() {
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-    const sendWhatsApp = async (feedback: any) => {
+    const saveEditFeedback = async () => {
+    if (!editingFeedback) return;
+    setSavingEdit(true);
+    try {
+      await supabase.from('feedbacks').update({
+        attendance: editingFeedback.attendance,
+        discipline: editingFeedback.discipline,
+        content: editingFeedback.content,
+        resources: editingFeedback.resources,
+        observations: editingFeedback.observations,
+      }).eq('id', editingFeedback.id);
+      setSelectedFeedback({ ...selectedFeedback, ...editingFeedback });
+      setEditingFeedback(null);
+      fetchFeedbacks();
+    } catch(e: any) { alert('Erro: ' + e.message); }
+    setSavingEdit(false);
+  };
+
+  const sendWhatsApp = async (feedback: any) => {
     // Busca telefone do pai pelo nome do aluno
     const { data } = await supabase
       .from('students')
@@ -95,33 +115,42 @@ export default function FeedbacksView() {
       return;
     }
 
-    const stars = '⭐'.repeat(feedback.rating || 0);
     const msg = encodeURIComponent(
-      `Olá, ${parentName}! 👋
-
-` +
-      `Segue o relatório da aula de *${feedback.subject}* do(a) *${feedback.student_name}*:
-
-` +
-      `📊 *Desempenho:* ${feedback.performance}
-` +
-      `✅ *Presença:* ${feedback.attendance || 'Presente'}
-` +
-      `⭐ *Nota:* ${stars} (${feedback.rating}/5)
-` +
-      (feedback.observations ? `📝 *Observações:* ${feedback.observations}
-` : '') +
-      (feedback.homework_given ? `📚 *Dever de casa:* ${feedback.homework_description || 'Sim'}
-` : '') +
-      `
-_Professora Descomplica — ${new Date().toLocaleDateString('pt-BR')}_`
+      '📚 *Relatório de Aula — Descomplica*\n\n' +
+      'Olá, ' + parentName + '! 👋\n\n' +
+      '👤 *Aluno(a):* ' + feedback.student_name + '\n' +
+      '👩‍🏫 *Professor(a):* ' + feedback.teacher_name + '\n' +
+      '📅 *Data:* ' + (feedback.class_date ? new Date(feedback.class_date + 'T00:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')) + '\n\n' +
+      '✅ *Presença:* ' + (feedback.attendance || 'Presente') + '\n' +
+      '📖 *Disciplina:* ' + (feedback.discipline || feedback.subject || '') + '\n' +
+      (feedback.content ? '📝 *Conteúdo Abordado:* ' + feedback.content + '\n' : '') +
+      (feedback.resources ? '🛠️ *Recursos Utilizados:* ' + feedback.resources + '\n' : '') +
+      (feedback.observations ? '💬 *Observações:* ' + feedback.observations + '\n' : '') +
+      '\n_Descomplica — ' + new Date().toLocaleDateString('pt-BR') + '_'
     );
-
     window.open('https://wa.me/55' + phone + '?text=' + msg, '_blank');
   };
 
   return () => { isMounted = false; };
   }, [fetchFeedbacks]);
+
+  const saveEditFeedback = async () => {
+    if (!editingFeedback) return;
+    setSavingEdit(true);
+    try {
+      await supabase.from('feedbacks').update({
+        attendance: editingFeedback.attendance,
+        discipline: editingFeedback.discipline,
+        content: editingFeedback.content,
+        resources: editingFeedback.resources,
+        observations: editingFeedback.observations,
+      }).eq('id', editingFeedback.id);
+      setSelectedFeedback({ ...selectedFeedback, ...editingFeedback });
+      setEditingFeedback(null);
+      fetchFeedbacks();
+    } catch(e: any) { alert('Erro: ' + e.message); }
+    setSavingEdit(false);
+  };
 
   const sendWhatsApp = async (feedback: any) => {
     const { data } = await supabase
@@ -136,14 +165,18 @@ _Professora Descomplica — ${new Date().toLocaleDateString('pt-BR')}_`
       alert('Telefone do responsável não cadastrado para este aluno.');
       return;
     }
-    const stars = '⭐'.repeat(feedback.rating || 0);
     const msg = encodeURIComponent(
+      '📚 *Relatório de Aula — Descomplica*\n\n' +
       'Olá, ' + parentName + '! 👋\n\n' +
-      'Segue o relatório da aula de *' + feedback.subject + '* do(a) *' + feedback.student_name + '*:\n\n' +
-      '📊 *Desempenho:* ' + feedback.performance + '\n' +
-      '⭐ *Nota:* ' + stars + ' (' + feedback.rating + '/5)\n' +
-      (feedback.observations ? '📝 *Observações:* ' + feedback.observations + '\n' : '') +
-      '\n_Professora Descomplica — ' + new Date().toLocaleDateString('pt-BR') + '_'
+      '👤 *Aluno(a):* ' + feedback.student_name + '\n' +
+      '👩‍🏫 *Professor(a):* ' + feedback.teacher_name + '\n' +
+      '📅 *Data:* ' + (feedback.class_date ? new Date(feedback.class_date + 'T00:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')) + '\n\n' +
+      '✅ *Presença:* ' + (feedback.attendance || 'Presente') + '\n' +
+      '📖 *Disciplina:* ' + (feedback.discipline || feedback.subject || '') + '\n' +
+      (feedback.content ? '📝 *Conteúdo Abordado:* ' + feedback.content + '\n' : '') +
+      (feedback.resources ? '🛠️ *Recursos Utilizados:* ' + feedback.resources + '\n' : '') +
+      (feedback.observations ? '💬 *Observações:* ' + feedback.observations + '\n' : '') +
+      '\n_Descomplica — ' + new Date().toLocaleDateString('pt-BR') + '_'
     );
     window.open('https://wa.me/55' + phone + '?text=' + msg, '_blank');
   };
@@ -394,7 +427,13 @@ _Professora Descomplica — ${new Date().toLocaleDateString('pt-BR')}_`
                   </div>
                 </div>
 
-                <div className="flex gap-3 mt-6">
+                <div className="flex gap-3 mt-6 flex-wrap">
+                  <button
+                    onClick={() => setEditingFeedback({...selectedFeedback})}
+                    className="px-6 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl font-black transition-all"
+                  >
+                    ✏️ Editar
+                  </button>
                   <button
                     onClick={() => sendWhatsApp(selectedFeedback)}
                     className="flex-1 py-5 bg-green-500 hover:bg-green-600 text-white rounded-2xl font-black shadow-xl shadow-green-200 transition-all flex items-center justify-center gap-2"
@@ -414,6 +453,61 @@ _Professora Descomplica — ${new Date().toLocaleDateString('pt-BR')}_`
           </div>
         )}
       </AnimatePresence>
+
+      {/* Modal de Edição */}
+      {editingFeedback && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-lg font-black text-gray-900">✏️ Editar Feedback</h2>
+              <p className="text-xs text-gray-400 mt-1">{editingFeedback.student_name} — {editingFeedback.teacher_name}</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-xs font-black text-gray-400 uppercase tracking-wider block mb-2">Presença</label>
+                <div className="flex gap-2">
+                  {['Presente','Ausente','Justificada'].map(a => (
+                    <button key={a} onClick={() => setEditingFeedback((f: any) => ({...f, attendance: a}))}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${editingFeedback.attendance === a ? 'bg-purple-600 text-white border-purple-600' : 'border-gray-200 text-gray-600 hover:border-purple-300'}`}>
+                      {a}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-black text-gray-400 uppercase tracking-wider block mb-2">Disciplina</label>
+                <input type="text" value={editingFeedback.discipline || ''} onChange={e => setEditingFeedback((f: any) => ({...f, discipline: e.target.value}))}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              </div>
+              <div>
+                <label className="text-xs font-black text-gray-400 uppercase tracking-wider block mb-2">Conteúdo Abordado</label>
+                <textarea rows={2} value={editingFeedback.content || ''} onChange={e => setEditingFeedback((f: any) => ({...f, content: e.target.value}))}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              </div>
+              <div>
+                <label className="text-xs font-black text-gray-400 uppercase tracking-wider block mb-2">Recursos Utilizados</label>
+                <input type="text" value={editingFeedback.resources || ''} onChange={e => setEditingFeedback((f: any) => ({...f, resources: e.target.value}))}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              </div>
+              <div>
+                <label className="text-xs font-black text-gray-400 uppercase tracking-wider block mb-2">Observações</label>
+                <textarea rows={3} value={editingFeedback.observations || ''} onChange={e => setEditingFeedback((f: any) => ({...f, observations: e.target.value}))}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-100 flex gap-3">
+              <button onClick={() => setEditingFeedback(null)}
+                className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all">
+                Cancelar
+              </button>
+              <button onClick={saveEditFeedback} disabled={savingEdit}
+                className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all">
+                {savingEdit ? 'Salvando...' : 'Salvar Alterações'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
