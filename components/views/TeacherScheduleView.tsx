@@ -337,7 +337,7 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
               const status = isExp ? { bg: 'bg-amber-50', border: 'border-amber-400', badge: 'bg-amber-100 text-amber-800', label: 'EXPERIMENTAL' } : (STATUS_CONFIG[lesson.status || 'agendado'] || STATUS_CONFIG.agendado);
               const podeIniciar = !isExp && (lesson.status === 'confirmado' || lesson.status === 'agendado' || lesson.status === 'reposicao_marcada');
               const emAndamento = !isExp && lesson.status === 'em_andamento';
-              const concluida = !isExp && lesson.status === 'concluido';
+              const concluida = !isExp && (lesson.status === 'concluido' || lesson.status === 'reposicao_concluida');
               return (
                 <div key={lesson.id} className={`flex gap-4 p-4 rounded-xl border transition-all ${emAndamento ? 'border-yellow-200 bg-yellow-50/40' : 'border-gray-100 hover:border-purple-100 hover:bg-purple-50/20'}`}>
                   <div className={`w-1 rounded-full shrink-0 ${emAndamento ? 'bg-yellow-400' : concluida ? 'bg-gray-300' : 'bg-purple-400'}`} />
