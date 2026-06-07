@@ -97,7 +97,8 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
 
   const handleUpload = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user?.id).single();
+    const authUserId = user?.id; // auth.uid() real — usado nas FKs
+    const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', authUserId).single();
     const uploaderName = profile?.full_name || user?.email || 'Professor';
     if (!uploadFile || !uploadForm.title || !uploadForm.type || !uploadForm.subject || !uploadForm.grade) {
       alert('Preencha todos os campos e selecione um arquivo.');
@@ -113,7 +114,7 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
     const { error: dbError } = await supabase.from('materials').insert({
       title: uploadForm.title, type: uploadForm.type, subject: uploadForm.subject,
       grade: uploadForm.grade, file_url: urlData.publicUrl,
-      approval_status: status, uploaded_by_role: userRole, uploaded_by_id: userId, uploaded_by: user?.id || userId, uploader_name: uploaderName,
+      approval_status: status, uploaded_by_role: userRole, uploaded_by_id: authUserId, uploaded_by: authUserId, uploader_name: uploaderName,
     });
     if (dbError) { alert('Erro ao salvar material.'); }
     else {
