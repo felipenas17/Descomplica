@@ -18,6 +18,7 @@ export default function TeacherFeedbacksView({ user }: { user?: any }) {
   const [sentFeedbacks, setSentFeedbacks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'pending' | 'sent'>('pending');
+  const [filterPeriod, setFilterPeriod] = useState<'semana' | 'mes' | 'todos'>('semana');
   const [feedbackLesson, setFeedbackLesson] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackForm>({
@@ -28,18 +29,26 @@ export default function TeacherFeedbacksView({ user }: { user?: any }) {
     notes: ''
   });
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [filterPeriod]);
 
   const fetchData = async () => {
     setLoading(true);
     if (!user?.id) return;
 
-    // Busca aulas sem feedback (aguardando ou concluídas)
+    // Apenas aulas que já aconteceram no período
+    const hoje = new Date();
+    const hojeStr = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0') + '-' + String(hoje.getDate()).padStart(2,'0');
+    const inicio = new Date();
+    if (filterPeriod === 'semana') inicio.setDate(hoje.getDate() - 7);
+    else if (filterPeriod === 'mes') inicio.setDate(1);
+    else inicio.setFullYear(2020);
+    const inicioStr = inicio.getFullYear() + '-' + String(inicio.getMonth()+1).padStart(2,'0') + '-' + String(inicio.getDate()).padStart(2,'0');
     const { data: lessons } = await supabase
       .from('schedules')
       .select('*')
       .eq('teacher_id', user.id)
-      .in('status', ['aguardando_confirmacao', 'concluido', 'confirmado', 'em_andamento'])
+      .lte('date', hojeStr)
+      .gte('date', inicioStr)
       .order('date', { ascending: false });
 
     // Busca feedbacks já enviados
@@ -161,7 +170,18 @@ export default function TeacherFeedbacksView({ user }: { user?: any }) {
         <div className="p-4 space-y-3">
           {loading ? (
             <div className="flex justify-center py-8"><div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" /></div>
-          ) : activeTab === 'pending' ? (
+          )}
+          {activeTab === 'pending' && (
+            <div className="flex gap-2 mb-4">
+              {([['semana','Esta Semana'],['mes','Este Mês'],['todos','Todos']] as const).map(([val, label]) => (
+                <button key={val} onClick={() => setFilterPeriod(val)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filterPeriod === val ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+          {true ? activeTab === 'pending' ? (
             pendingLessons.length === 0 ? (
               <div className="text-center py-12">
                 <CheckCircle size={40} className="text-green-200 mx-auto mb-3" />
