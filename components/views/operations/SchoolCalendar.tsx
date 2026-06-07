@@ -398,6 +398,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
       return;
     }
     setSaving(true);
+    const mainRecGroupId = newLesson.recorrente && newLesson.recurrence_end ? crypto.randomUUID() : null;
     try {
       const { error } = await supabase.from('schedules').insert({
         date: newLesson.date,
@@ -411,6 +412,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
         teacher_name: teachers.find(t => t.id === newLesson.teacher_id)?.name || user?.name || 'Admin',
         notes: newLesson.notes,
         status: 'confirmado',
+        recurrence_group: mainRecGroupId,
       });
       if (error) throw error;
 
@@ -437,7 +439,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
         const dayOfWeek = start.getDay();
         const recurrentes = [];
         const cur = new Date(start);
-        const recGroupId = crypto.randomUUID();
+        const recGroupId = mainRecGroupId || crypto.randomUUID();
         cur.setDate(cur.getDate() + 7);
         while (cur <= end) {
           if (cur.getDay() === dayOfWeek) {
