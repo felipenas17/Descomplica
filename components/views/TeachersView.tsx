@@ -255,8 +255,12 @@ export default function TeachersView() {
                 <X size={16} />
               </button>
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-white text-2xl font-black">
-                  {viewingTeacher.name?.[0]?.toUpperCase()}
+                <div className="w-16 h-16 rounded-2xl overflow-hidden bg-white/20 flex items-center justify-center text-white text-2xl font-black">
+                  {viewingTeacher.avatar && !viewingTeacher.avatar.includes('picsum') ? (
+                    <img src={viewingTeacher.avatar} alt={viewingTeacher.name} className="w-full h-full object-cover" />
+                  ) : (
+                    viewingTeacher.name?.[0]?.toUpperCase()
+                  )}
                 </div>
                 <div>
                   <h2 className="text-xl font-black text-white">{viewingTeacher.name}</h2>
@@ -689,7 +693,11 @@ export default function TeachersView() {
             <div className="p-8">
               <div className="flex justify-between items-start mb-6">
                   <div className="relative">
-                  <Avatar name={teacher.name} size={80} className="w-20 h-20 rounded-2xl group-hover:scale-110 transition-transform duration-500" />
+                  {teacher.avatar && !teacher.avatar.includes('picsum') ? (
+                    <img src={teacher.avatar} alt={teacher.name} className="w-20 h-20 rounded-2xl object-cover group-hover:scale-110 transition-transform duration-500" />
+                  ) : (
+                    <Avatar name={teacher.name} size={80} className="w-20 h-20 rounded-2xl group-hover:scale-110 transition-transform duration-500" />
+                  )}
                   <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-secondary rounded-full border-4 border-white flex items-center justify-center text-black z-10">
                     <UserCheck size={14} />
                   </div>
