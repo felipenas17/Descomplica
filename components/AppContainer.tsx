@@ -371,7 +371,7 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
     const interval = setInterval(fetchPendentes, 30000);
     return () => clearInterval(interval);
   }, []);
-  const { unreadCount } = useNotifications(user?.id);
+  const { unreadCount } = useNotifications(user?.profile_id || user?.id);
   const [unreadMessages, setUnreadMessages] = React.useState(0);
 
   React.useEffect(() => {

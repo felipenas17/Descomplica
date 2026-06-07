@@ -27,6 +27,9 @@ interface FeedbackForm {
 }
 
 export default function TeacherScheduleView({ user }: { user?: any }) {
+  // user.id = teacher_id (para buscar aulas)
+  // user.profile_id = auth UUID (para notificações)
+  const notifUserId = user?.profile_id || user?.id;
   const [lessons, setLessons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<'hoje' | 'semana' | 'mes'>('semana');

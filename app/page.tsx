@@ -84,6 +84,7 @@ export default function Home() {
           }
           setUser({
             id: teacherId,
+            profile_id: profile.id,
             email: profile.email,
             role: profile.role,
             name: profile.full_name || 'Usuário',
