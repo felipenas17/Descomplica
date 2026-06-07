@@ -133,8 +133,13 @@ export default function Home() {
           }
 
         } else {
+          let teacherIdFallback = supabaseUser.id;
+          if ((supabaseUser.user_metadata?.role as any) === 'professor') {
+            const { data: tData } = await supabase.from('teachers').select('id').eq('email', supabaseUser.email).single();
+            if (tData) teacherIdFallback = tData.id;
+          }
           setUser({
-            id: supabaseUser.id,
+            id: teacherIdFallback,
             email: supabaseUser.email,
             role: (supabaseUser.user_metadata?.role as any) || 'admin',
             name: supabaseUser.user_metadata?.full_name || 'Usuário',

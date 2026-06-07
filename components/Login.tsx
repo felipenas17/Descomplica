@@ -141,8 +141,13 @@ export default function Login({ onLogin }: LoginProps) {
           });
         } else {
           console.log('[Login] Perfil carregado:', profile.role);
+          let loginId = profile.id;
+          if (profile.role === 'professor') {
+            const { data: tData } = await supabase.from('teachers').select('id').eq('email', profile.email).single();
+            if (tData) loginId = tData.id;
+          }
           onLogin({
-            id: profile.id,
+            id: loginId,
             email: profile.email,
             role: profile.role,
             name: profile.full_name || 'Usuário',
