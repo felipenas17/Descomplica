@@ -32,17 +32,47 @@ export default function NotificationsView({ user }: { user?: any }) {
     window.location.reload();
   };
 
-  const rejectClass = async (notification: any) => {
-    if (!notification.schedule_id) return;
-    // Volta status para confirmado
-    await supabase.from('schedules').update({ 
-      status: 'confirmado',
-      attendance_status: null,
-      admin_confirmed: false
-    }).eq('id', notification.schedule_id);
-    await supabase.from('notifications').update({ read: true }).eq('id', notification.id);
-    toast.error('Aula recusada! O professor foi notificado.');
-    window.location.reload();
+  const [rejectingNotif, setRejectingNotif] = useState<any>(null);
+  const [rejectMotivo, setRejectMotivo] = useState('');
+  const [savingReject, setSavingReject] = useState(false);
+
+  const rejectClass = (notification: any) => {
+    setRejectingNotif(notification);
+    setRejectMotivo('');
+  };
+
+  const confirmReject = async () => {
+    if (!rejectingNotif?.schedule_id) return;
+    setSavingReject(true);
+    try {
+      // Busca dados da aula
+      const { data: scheduleData } = await supabase.from('schedules').select('*').eq('id', rejectingNotif.schedule_id).single();
+      // Volta status para confirmado
+      await supabase.from('schedules').update({ 
+        status: 'confirmado',
+        attendance_status: null,
+      }).eq('id', rejectingNotif.schedule_id);
+      // Busca profile_id da professora
+      const { data: profProfile } = await supabase.from('profiles').select('id').eq('email', 
+        (await supabase.from('teachers').select('email').eq('id', scheduleData?.teacher_id).single()).data?.email || ''
+      ).single();
+      const notifId = profProfile?.id || scheduleData?.teacher_id;
+      // Notifica professora com motivo
+      await supabase.from('notifications').insert({
+        user_id: notifId,
+        title: '⚠️ Aula devolvida para correção',
+        message: 'O administrador devolveu a aula de ' + (scheduleData?.subject || 'Aula') + ' com ' + (scheduleData?.student_name || '') + '. Motivo: ' + rejectMotivo + '. Por favor, corrija e reenvie.',
+        type: 'warning',
+        read: false,
+        created_at: new Date().toISOString(),
+      });
+      await supabase.from('notifications').update({ read: true }).eq('id', rejectingNotif.id);
+      toast.error('Aula devolvida! A professora foi notificada.');
+      setRejectingNotif(null);
+      setRejectMotivo('');
+      window.location.reload();
+    } catch(e: any) { toast.error('Erro: ' + e.message); }
+    setSavingReject(false);
   };
   const notifId = user?.profile_id || user?.id;
   const { notifications, markAsRead, markAllAsRead, deleteNotification, unreadCount } = useNotifications(notifId);
@@ -164,5 +194,36 @@ export default function NotificationsView({ user }: { user?: any }) {
         </AnimatePresence>
       </div>
     </div>
+
+      {/* Modal motivo recusa */}
+      {rejectingNotif && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md">
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-lg font-black text-gray-900">Motivo da devolução</h2>
+              <p className="text-xs text-gray-400 mt-1">A professora será notificada com este motivo</p>
+            </div>
+            <div className="p-6">
+              <textarea
+                rows={4}
+                value={rejectMotivo}
+                onChange={e => setRejectMotivo(e.target.value)}
+                placeholder="Ex: O aluno compareceu sim. Por favor, marque como presente e reenvie o feedback."
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-300"
+              />
+            </div>
+            <div className="p-6 border-t border-gray-100 flex gap-3">
+              <button onClick={() => setRejectingNotif(null)}
+                className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all">
+                Cancelar
+              </button>
+              <button onClick={confirmReject} disabled={savingReject || !rejectMotivo.trim()}
+                className="flex-1 py-3 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all">
+                {savingReject ? 'Enviando...' : 'Devolver para professora'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
   );
 }

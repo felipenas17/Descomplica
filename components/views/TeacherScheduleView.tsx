@@ -376,7 +376,7 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${lesson.attendance_status === 'justificada' ? 'bg-yellow-500 text-white' : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'}`}>
                           📋 Justificada
                         </button>
-                        {lesson.attendance_status && (
+                        {lesson.attendance_status === 'presente' && (
                           <button onClick={() => openFeedback(lesson)}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-all">
                             Finalizar & Enviar →
