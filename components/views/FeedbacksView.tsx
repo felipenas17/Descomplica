@@ -469,8 +469,18 @@ export default function FeedbacksView() {
               </div>
               <div>
                 <label className="text-xs font-black text-gray-400 uppercase tracking-wider block mb-2">Recursos Utilizados</label>
-                <input type="text" value={editingFeedback.resources || ''} onChange={e => setEditingFeedback((f: any) => ({...f, resources: e.target.value}))}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                <div className="flex flex-wrap gap-2">
+                  {['Apostila','Caderno','Recursos Digitais','Exercícios','Livro','Quadro','Matriz','Jogos Pedagógicos'].map(r => (
+                    <button key={r} onClick={() => {
+                      const current = editingFeedback.resources ? editingFeedback.resources.split(', ').filter(Boolean) : [];
+                      const updated = current.includes(r) ? current.filter((x: string) => x !== r) : [...current, r];
+                      setEditingFeedback((f: any) => ({...f, resources: updated.join(', ')}));
+                    }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${editingFeedback.resources?.includes(r) ? 'bg-purple-600 text-white border-purple-600' : 'border-gray-200 text-gray-600 hover:border-purple-300'}`}>
+                      {r}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
                 <label className="text-xs font-black text-gray-400 uppercase tracking-wider block mb-2">Observações</label>
