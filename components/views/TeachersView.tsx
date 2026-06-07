@@ -134,7 +134,7 @@ export default function TeachersView() {
         neighborhood: editingTeacher.neighborhood || null,
         city: editingTeacher.city || null,
         cep: editingTeacher.cep || null,
-        availability: selectedDaysEdit.length > 0 ? ('{' + selectedDaysEdit.join(',') + '}') : null,
+        availability: selectedDaysEdit.length > 0 ? selectedDaysEdit.join(', ') : null,
         availability_schedule: JSON.stringify(daySchedulesEdit),
       }).eq('id', editingTeacher.id);
       console.error('Update error full:', JSON.stringify(error), error?.message, error?.details, error?.hint, error?.code);
