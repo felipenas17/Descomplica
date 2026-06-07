@@ -262,7 +262,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     }
   };
 
-  useEffect(() => { fetchLessons(); fetchTeachersAndStudents(); }, [currentDate, view]);
+  useEffect(() => { fetchLessons(); fetchTeachersAndStudents(); }, [currentDate, view, isAdmin]);
 
   const fetchLessons = async () => {
     setLoading(true);
@@ -338,7 +338,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     else if (view === 'week') d.setDate(d.getDate() + dir * 7);
     else if (view === 'month') d.setMonth(d.getMonth() + dir);
     else if (view === 'year') d.setFullYear(d.getFullYear() + dir);
-    setCurrentDate(d);
+    setCurrentDate(new Date(d));
   };
 
   const weekDays = useMemo(() => {
