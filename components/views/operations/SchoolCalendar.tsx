@@ -290,6 +290,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
       }
 
       const { data, error } = await query;
+      console.log('[CAL] resultado:', data?.length, 'start:', start, 'end:', end);
       if (error) throw error;
 
       // Busca aulas experimentais
