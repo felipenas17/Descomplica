@@ -144,7 +144,8 @@ export default function Login({ onLogin }: LoginProps) {
           let loginId = profile.id;
           if (profile.role === 'professor') {
             const { data: tData } = await supabase.from('teachers').select('id').eq('email', profile.email).single();
-            if (tData) loginId = tData.id;
+            if (tData) { loginId = tData.id; console.log('[Login] teacher_id:', tData.id); }
+            else { console.log('[Login] teacher nao encontrado para email:', profile.email); }
           }
           onLogin({
             id: loginId,
