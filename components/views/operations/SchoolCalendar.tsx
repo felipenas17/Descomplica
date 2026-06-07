@@ -355,6 +355,8 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     setCurrentDate(new Date(d));
   };
 
+  const toLocalDateStr = (d: Date) => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+
   const weekDays = useMemo(() => {
     const start = new Date(currentDate);
     const dayOfWeek = start.getDay();
@@ -564,7 +566,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
               {weekDays.map((day) => {
                 const isToday = day.toDateString() === new Date().toDateString();
                 const dayLessons = getLessonsForDate(day);
-                const dateStr = day.toISOString().split('T')[0];
+                const dateStr = toLocalDateStr(day);
                 const feriado = getFeriadoNaData(dateStr);
                 return (
                   <div key={day.toISOString()} className={`flex-1 p-3 text-center border-r border-gray-100 last:border-0 ${feriado ? 'bg-red-50' : ''}`}>
@@ -583,7 +585,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
               <table className="w-full border-collapse table-fixed">
                 <colgroup>
                   <col style={{ width: '48px' }} />
-                  {weekDays.map((d) => <col key={d.toISOString()} />)}
+                  {weekDays.map((d) => <col key={toLocalDateStr(d)} />)}
                 </colgroup>
                 <tbody>
                   {HOURS.map((h) => {
