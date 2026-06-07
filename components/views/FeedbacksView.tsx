@@ -99,16 +99,16 @@ export default function FeedbacksView() {
     }
 
     const msg = encodeURIComponent(
-      '📚 *Relatório de Aula — Descomplica*\n\n' +
-      'Olá, ' + parentName + '! 👋\n\n' +
-      '👤 *Aluno(a):* ' + feedback.student_name + '\n' +
-      '👩‍🏫 *Professor(a):* ' + feedback.teacher_name + '\n' +
-      '📅 *Data:* ' + (feedback.class_date ? new Date(feedback.class_date + 'T00:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')) + '\n\n' +
-      '✅ *Presença:* ' + (feedback.attendance || 'Presente') + '\n' +
-      '📖 *Disciplina:* ' + (feedback.discipline || feedback.subject || '') + '\n' +
-      (feedback.content ? '📝 *Conteúdo Abordado:* ' + feedback.content + '\n' : '') +
-      (feedback.resources ? '🛠️ *Recursos Utilizados:* ' + feedback.resources + '\n' : '') +
-      (feedback.observations ? '💬 *Observações:* ' + feedback.observations + '\n' : '') +
+      '*Relatorio de Aula — Descomplica*\n\n' +
+      'Ola, ' + parentName + '!\n\n' +
+      '*Aluno(a):* ' + feedback.student_name + '\n' +
+      '*Professor(a):* ' + feedback.teacher_name + '\n' +
+      '*Data:* ' + (feedback.class_date ? new Date(feedback.class_date + 'T00:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')) + '\n\n' +
+      '*Presenca:* ' + (feedback.attendance || 'Presente') + '\n' +
+      '*Disciplina:* ' + (feedback.discipline || feedback.subject || '') + '\n' +
+      (feedback.content ? '*Conteudo Abordado:* ' + feedback.content + '\n' : '') +
+      (feedback.resources ? '*Recursos Utilizados:* ' + feedback.resources + '\n' : '') +
+      (feedback.observations ? '*Observacoes:* ' + feedback.observations + '\n' : '') +
       '\n_Descomplica — ' + new Date().toLocaleDateString('pt-BR') + '_'
     );
     window.open('https://wa.me/55' + phone + '?text=' + msg, '_blank');
@@ -149,16 +149,16 @@ export default function FeedbacksView() {
       return;
     }
     const msg = encodeURIComponent(
-      '📚 *Relatório de Aula — Descomplica*\n\n' +
-      'Olá, ' + parentName + '! 👋\n\n' +
-      '👤 *Aluno(a):* ' + feedback.student_name + '\n' +
-      '👩‍🏫 *Professor(a):* ' + feedback.teacher_name + '\n' +
-      '📅 *Data:* ' + (feedback.class_date ? new Date(feedback.class_date + 'T00:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')) + '\n\n' +
-      '✅ *Presença:* ' + (feedback.attendance || 'Presente') + '\n' +
-      '📖 *Disciplina:* ' + (feedback.discipline || feedback.subject || '') + '\n' +
-      (feedback.content ? '📝 *Conteúdo Abordado:* ' + feedback.content + '\n' : '') +
-      (feedback.resources ? '🛠️ *Recursos Utilizados:* ' + feedback.resources + '\n' : '') +
-      (feedback.observations ? '💬 *Observações:* ' + feedback.observations + '\n' : '') +
+      '*Relatorio de Aula — Descomplica*\n\n' +
+      'Ola, ' + parentName + '!\n\n' +
+      '*Aluno(a):* ' + feedback.student_name + '\n' +
+      '*Professor(a):* ' + feedback.teacher_name + '\n' +
+      '*Data:* ' + (feedback.class_date ? new Date(feedback.class_date + 'T00:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')) + '\n\n' +
+      '*Presenca:* ' + (feedback.attendance || 'Presente') + '\n' +
+      '*Disciplina:* ' + (feedback.discipline || feedback.subject || '') + '\n' +
+      (feedback.content ? '*Conteudo Abordado:* ' + feedback.content + '\n' : '') +
+      (feedback.resources ? '*Recursos Utilizados:* ' + feedback.resources + '\n' : '') +
+      (feedback.observations ? '*Observacoes:* ' + feedback.observations + '\n' : '') +
       '\n_Descomplica — ' + new Date().toLocaleDateString('pt-BR') + '_'
     );
     window.open('https://wa.me/55' + phone + '?text=' + msg, '_blank');
