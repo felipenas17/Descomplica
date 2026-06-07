@@ -61,8 +61,10 @@ export default function TeacherAvailability() {
       const dayNum = DAY_MAP[day];
       const busySlots = schedules.filter(s => {
         if (s.teacher_id !== teacher.id) return false;
-        const d = new Date(s.date + 'T00:00:00');
-        return d.getDay() === dayNum;
+        // Calcula dia da semana sem fuso: pega direto da string YYYY-MM-DD
+        const [y, m, d] = s.date.split('-').map(Number);
+        const dateLocal = new Date(y, m - 1, d);
+        return dateLocal.getDay() === dayNum;
       }).map(s => ({
         start: strToMinutes(s.start_time || '00:00'),
         end: strToMinutes(s.end_time || '00:00'),
