@@ -57,17 +57,23 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
   const fetchLessons = async () => {
     setLoading(true);
     try {
-      const today = new Date(); today.setHours(0,0,0,0);
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       let query = supabase.from('schedules').select('*').order('date', { ascending: true });
       if (user?.id) query = query.eq('teacher_id', user.id);
       if (period === 'hoje') {
-        query = query.eq('date', today.toISOString().split('T')[0]);
+        const todayLocal = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+        query = query.eq('date', todayLocal);
       } else if (period === 'semana') {
         const end = new Date(today); end.setDate(today.getDate() + 7);
-        query = query.gte('date', today.toISOString().split('T')[0]).lte('date', end.toISOString().split('T')[0]);
+        const startLocal = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+        const endLocal = end.getFullYear() + '-' + String(end.getMonth()+1).padStart(2,'0') + '-' + String(end.getDate()).padStart(2,'0');
+        query = query.gte('date', startLocal).lte('date', endLocal);
       } else {
         const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-        query = query.gte('date', today.toISOString().split('T')[0]).lte('date', end.toISOString().split('T')[0]);
+        const startLocal = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+        const endLocal = end.getFullYear() + '-' + String(end.getMonth()+1).padStart(2,'0') + '-' + String(end.getDate()).padStart(2,'0');
+        query = query.gte('date', startLocal).lte('date', endLocal);
       }
       const { data, error } = await query;
       if (error) throw error;
