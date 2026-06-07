@@ -15,7 +15,6 @@ export interface AppNotification {
 export function useNotifications(userId?: string) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const channelRef = useRef<any>(null);
-  const intervalRef = useRef<any>(null);
 
   const fetchNotifications = useCallback(async () => {
     if (!userId) return;
@@ -34,35 +33,20 @@ export function useNotifications(userId?: string) {
 
     fetchNotifications();
 
-    // Remove canal anterior se existir
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
 
+    const channelName = 'notif_' + userId + '_' + Date.now();
     const channel = supabase
-      .channel('notif_' + userId)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'notifications',
-        filter: 'user_id=eq.' + userId,
-      }, () => {
-        fetchNotifications();
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('[Realtime] Notificações ativas para', userId);
-        }
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.warn('[Realtime] Falhou, ativando polling a cada 10s');
-          intervalRef.current = setInterval(fetchNotifications, 10000);
-        }
-      });
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications', filter: 'user_id=eq.' + userId },
+        () => { fetchNotifications(); }
+      )
+      .subscribe();
 
     channelRef.current = channel;
 
@@ -71,12 +55,8 @@ export function useNotifications(userId?: string) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
     };
-  }, [userId, fetchNotifications]);
+  }, [userId]);
 
   const markAsRead = useCallback(async (id: string) => {
     await supabase.from('notifications').update({ read: true }).eq('id', id);
