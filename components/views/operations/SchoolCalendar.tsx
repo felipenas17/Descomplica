@@ -338,8 +338,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     start.setDate(start.getDate() + diff);
     return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
+      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
       return d;
     });
   }, [currentDate]);
@@ -356,7 +355,10 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
   }, [currentDate]);
 
   const getLessonsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const dateStr = y + '-' + m + '-' + d;
     return lessons.filter(l => l.date === dateStr);
   };
 
