@@ -273,17 +273,19 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
       const refDate = new Date(currentDate);
       let start: string | null = null;
       let end: string | null = null;
-      if (view === 'day') { start = end = refDate.toISOString().split('T')[0]; }
+      const ld = (d: Date) => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      if (view === 'day') { start = end = ld(refDate); }
       else if (view === 'week') {
-        const s = new Date(refDate); s.setDate(s.getDate() - s.getDay());
-        const e = new Date(refDate); e.setDate(e.getDate() - e.getDay() + 6);
-        start = s.toISOString().split('T')[0]; end = e.toISOString().split('T')[0];
+        const dow = refDate.getDay();
+        const s = new Date(refDate); s.setDate(s.getDate() - (dow === 0 ? 6 : dow - 1));
+        const e = new Date(s); e.setDate(s.getDate() + 6);
+        start = ld(s); end = ld(e);
       } else if (view === 'month') {
-        start = new Date(refDate.getFullYear(), refDate.getMonth(), 1).toISOString().split('T')[0];
-        end = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0).toISOString().split('T')[0];
+        start = ld(new Date(refDate.getFullYear(), refDate.getMonth(), 1));
+        end = ld(new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0));
       } else if (view === 'year') {
-        start = new Date(refDate.getFullYear(), 0, 1).toISOString().split('T')[0];
-        end = new Date(refDate.getFullYear(), 11, 31).toISOString().split('T')[0];
+        start = ld(new Date(refDate.getFullYear(), 0, 1));
+        end = ld(new Date(refDate.getFullYear(), 11, 31));
       }
       if (start && end) {
         query = query.gte('date', start).lte('date', end);
