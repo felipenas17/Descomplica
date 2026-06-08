@@ -11,6 +11,7 @@ interface LoginProps {
     role: 'admin' | 'professor', 
     name: string, 
     id?: string, 
+    profile_id?: string,
     email?: string, 
     needs_password_change?: boolean 
   }) => void;

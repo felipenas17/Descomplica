@@ -194,7 +194,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
 
   const fetchTeachersAndStudents = async () => {
     const [teachersRes, studentsRes] = await Promise.all([
-      supabase.from('teachers').select('id, name, color').order('name'),
+      supabase.from('teachers').select('id, name, color, email').order('name'),
       supabase.from('students').select('id, name').order('name'),
     ]);
     setTeachers(teachersRes.data || []);
@@ -321,31 +321,6 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
 
       if ((data || []).length > 0 || expLessons.length > 0) setLessons([...(data || []), ...expLessons]);
     } catch (e) { console.error(e); } finally { setLoading(false); }
-  };
-
-  const getViewStart = () => {
-    const d = new Date(currentDate);
-    if (view === 'day') return d.toISOString().split('T')[0];
-    if (view === 'week') {
-      d.setDate(d.getDate() - d.getDay());
-      return d.toISOString().split('T')[0];
-    }
-    if (view === 'month') return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
-    if (view === 'year') return new Date(d.getFullYear(), 0, 1).toISOString().split('T')[0];
-    return null;
-  };
-
-  const getViewEnd = () => {
-    const d = new Date(currentDate);
-    if (view === 'day') return d.toISOString().split('T')[0];
-    if (view === 'week') {
-      const dow = d.getDay();
-      d.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1) + 6);
-      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-    }
-    if (view === 'month') return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
-    if (view === 'year') return new Date(d.getFullYear(), 11, 31).toISOString().split('T')[0];
-    return null;
   };
 
   const navigate = (dir: 1 | -1) => {
