@@ -114,19 +114,21 @@ export default function FeedbacksView() {
       return;
     }
     const msg = encodeURIComponent(
-      '*Relatorio de Aula — Descomplica*\n\n' +
-      'Ola, ' + parentName + '!\n\n' +
+      '*Relat\u00f3rio de Aula \u2014 Descomplica*\n\n' +
+      'Ol\u00e1, ' + parentName + '!\n\n' +
       '*Aluno(a):* ' + feedback.student_name + '\n' +
       '*Professor(a):* ' + feedback.teacher_name + '\n' +
       '*Data:* ' + (feedback.class_date ? new Date(feedback.class_date + 'T00:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')) + '\n\n' +
-      '*Presenca:* ' + (feedback.attendance || 'Presente') + '\n' +
+      '*Presen\u00e7a:* ' + (feedback.attendance || 'Presente') + '\n' +
       '*Disciplina:* ' + (feedback.discipline || feedback.subject || '') + '\n' +
-      (feedback.content ? '*Conteudo Abordado:* ' + feedback.content + '\n' : '') +
+      (feedback.content ? '*Conte\u00fado Abordado:* ' + feedback.content + '\n' : '') +
       (feedback.resources ? '*Recursos Utilizados:* ' + feedback.resources + '\n' : '') +
-      (feedback.observations ? '*Observacoes:* ' + feedback.observations + '\n' : '') +
-      '\n_Descomplica — ' + new Date().toLocaleDateString('pt-BR') + '_'
+      (feedback.observations ? '*Observa\u00e7\u00f5es:* ' + feedback.observations + '\n' : '') +
+      '\n_Descomplica \u2014 ' + new Date().toLocaleDateString('pt-BR') + '_'
     );
     window.open('https://wa.me/55' + phone + '?text=' + msg, '_blank');
+    await supabase.from('feedbacks').update({ sent_to_parent: true, sent_to_parent_at: new Date().toISOString() }).eq('id', feedback.id);
+    fetchFeedbacks();
   };
 
   const filteredFeedbacks = feedbacks.filter(f => {
