@@ -217,6 +217,22 @@ export default function FinanceView() {
       let importadosSaidas = 0;
       let importadosEntradas = 0;
       let erros = 0;
+      // Busca nomes para categorização inteligente
+      const { data: teachersList } = await supabase.from('teachers').select('name');
+      const { data: studentsList } = await supabase.from('students').select('name, parent_name');
+      const tNames = (teachersList || []).map((t: any) => t.name?.toLowerCase()).filter(Boolean);
+      const sNames = (studentsList || []).map((s: any) => s.name?.toLowerCase()).filter(Boolean);
+      const pNames = (studentsList || []).map((s: any) => s.parent_name?.toLowerCase()).filter(Boolean);
+      const categorizar = (desc: string, tipo: string) => {
+        const d = desc.toLowerCase();
+        if (d.includes('aluguel') || d.includes('locacao')) return 'Aluguel';
+        if (d.includes('luz') || d.includes('energia')) return 'Energia';
+        if (d.includes('agua') || d.includes('saneamento')) return 'Agua';
+        if (d.includes('internet') || d.includes('wifi') || d.includes('fibra')) return 'Internet';
+        if (tipo === 'saida' && tNames.some(n => d.includes(n))) return 'Pagamento Professora';
+        if (tipo === 'entrada' && (sNames.some(n => d.includes(n)) || pNames.some(n => d.includes(n)))) return 'Mensalidade';
+        return 'Importado C6';
+      };
 
       for (const row of rows) {
         // Detecta mês e ano de cada transação pela data
@@ -224,10 +240,11 @@ export default function FinanceView() {
         const mes = MONTHS_FULL[dataObj.getMonth()];
         const ano = dataObj.getFullYear();
 
+        const categoria = categorizar(row.descricao, row.tipo);
         if (row.tipo === 'saida') {
           const { error } = await supabase.from('expenses').insert({
             description:   row.descricao,
-            category_name: 'Importado C6',
+            category_name: categoria,
             amount:        row.valor,
             month:         mes,
             year:          ano,
