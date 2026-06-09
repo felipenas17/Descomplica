@@ -40,7 +40,7 @@ export default function OperationsView({ onNavigate }: { onNavigate?: (view: any
         totalToday: schedules.length,
         liveCount: schedules.filter(s => s.status === 'Em andamento').length,
         occupancyRate: 0, activeTeachers: teachersData?.length || 0,
-        presentStudents: 0, absences: 0, pendingRepositions: 0,
+        presentStudents: new Set(schedules.map((s: any) => s.student_name).filter(Boolean)).size, absences: schedules.filter((s: any) => s.attendance_status === 'falta').length, pendingRepositions: schedules.filter((s: any) => s.reposicao_pendente).length,
       });
       setLiveClasses(schedules.filter(s => s.status === 'Em andamento'));
       setTimelineEvents(schedules.map(s => ({
