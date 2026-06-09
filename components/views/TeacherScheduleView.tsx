@@ -287,7 +287,7 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
         </div>
         <div className="flex bg-gray-100 p-1 rounded-xl">
           {(['hoje', 'semana', 'mes'] as const).map(p => (
-            <button key={p} onClick={() => setPeriod(p)}
+            <button key={p} onClick={() => { setPeriod(p); setSelectedDay(null); }}
               className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all ${period === p ? 'bg-white shadow text-purple-600' : 'text-gray-400 hover:text-gray-600'}`}>
               {p === 'hoje' ? 'Hoje' : p === 'semana' ? 'Semana' : 'Mensal'}
             </button>
