@@ -153,6 +153,17 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
 
   const markAttendance = async (lesson: any, status: string) => {
     await supabase.from('schedules').update({ attendance_status: status }).eq('id', lesson.id);
+    if (status === 'falta') {
+      const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'admin');
+      for (const admin of (admins || [])) {
+        await supabase.from('notifications').insert({
+          user_id: admin.id,
+          title: 'Falta registrada',
+          message: (user?.name || 'Professora') + ' marcou falta de ' + (lesson.student_name || 'aluno') + ' na aula de ' + (lesson.subject || 'Aula') + ' em ' + new Date(lesson.date + 'T00:00:00').toLocaleDateString('pt-BR') + '.',
+          type: 'warning', read: false, created_at: new Date().toISOString(),
+        });
+      }
+    }
     fetchLessons();
   };
 

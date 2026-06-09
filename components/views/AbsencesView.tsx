@@ -178,6 +178,7 @@ export default function AbsencesView() {
 
   const getAttendanceLabel = (s: any) => {
     if (s.attendance_status === 'Presente' || s.attendance_status === 'presente') return { label: 'Presente', color: 'text-green-600' };
+    if (s.status === 'falta_confirmada') return { label: 'Falta Confirmada', color: 'bg-red-100 text-red-700' };
     if (s.attendance_status === 'falta' || s.attendance_status === 'Ausente') return { label: 'Falta', color: 'text-red-600' };
     if (s.attendance_status === 'justificada' || s.attendance_status === 'Justificada') return { label: 'Justificada', color: 'text-yellow-600' };
     return null;
@@ -281,10 +282,20 @@ export default function AbsencesView() {
                         <button onClick={() => rejectLesson(s.id)} className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-bold transition-all">Recusar</button>
                       </>
                     )}
-                    {(s.attendance_status === 'falta' || s.attendance_status === 'Ausente') && (
-                      <button onClick={() => markNotified(s.id, false)} className="px-3 py-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg text-xs font-bold transition-all">
-                        Justificar
-                      </button>
+                    {(s.attendance_status === 'falta' || s.attendance_status === 'Ausente') && s.status !== 'falta_confirmada' && (
+                      <>
+                        <button onClick={async () => {
+                          await supabase.from('schedules').update({ status: 'falta_confirmada' }).eq('id', s.id);
+                          await supabase.from('absences').insert({ student_name: s.student_name, student_id: s.student_id, schedule_id: s.id, absence_date: s.date, notified_advance: false, created_at: new Date().toISOString() });
+                          toast.success('Falta confirmada!');
+                          fetchSchedules();
+                        }} className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-bold transition-all">
+                          Confirmar Falta
+                        </button>
+                        <button onClick={() => markNotified(s.id, false)} className="px-3 py-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg text-xs font-bold transition-all">
+                          Justificar
+                        </button>
+                      </>
                     )}
                     {(s.attendance_status === 'justificada' || s.attendance_status === 'Justificada') && !s.reposicao_pendente && s.status !== 'concluido' && s.status !== 'reposicao_concluida' && (
                       <>
