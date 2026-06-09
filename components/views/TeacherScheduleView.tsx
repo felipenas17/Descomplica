@@ -34,6 +34,7 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
   const [lessons, setLessons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<'hoje' | 'semana' | 'mes'>('semana');
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [feedbackLesson, setFeedbackLesson] = useState<any>(null);
   const [savingFeedback, setSavingFeedback] = useState(false);
