@@ -60,7 +60,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
   const [teachers, setTeachers] = useState<{id: string, name: string, color?: string}[]>([]);
   const [showSubstModal, setShowSubstModal] = useState(false);
   const [showExpModal, setShowExpModal] = useState(false);
-  const [lessonType, setLessonType] = useState<'individual' | 'dupla' | 'grupo'>('individual');
+  const [lessonType, setLessonType] = useState<'individual' | 'dupla' | 'grupo' | 'avulsa'>('individual');
   const [extraStudents, setExtraStudents] = useState<{id: string, name: string}[]>([{ id: '', name: '' }]);
   const [showDecisaoModal, setShowDecisaoModal] = useState(false);
   const [expSelecionada, setExpSelecionada] = useState<any>(null);
@@ -819,12 +819,21 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                       {tipo === 'individual' ? 'Individual' : tipo === 'dupla' ? 'Dupla' : 'Grupo'}
                     </button>
                   ))}
+                  <button type="button" onClick={() => { setLessonType('avulsa'); setExtraStudents([{ id: '', name: '' }]); setNewLesson(p => ({ ...p, student_id: '', student_name: '' })); }}
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${lessonType === 'avulsa' ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}>
+                    Avulsa
+                  </button>
                 </div>
               </div>
               <div>
                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">
-                  {lessonType === 'individual' ? 'Aluno' : lessonType === 'dupla' ? 'Alunos (2)' : 'Alunos (ate 8)'}
+                  {lessonType === 'avulsa' ? 'Aluno (avulso)' : lessonType === 'individual' ? 'Aluno' : lessonType === 'dupla' ? 'Alunos (2)' : 'Alunos (ate 8)'}
                 </label>
+                {lessonType === 'avulsa' ? (
+                  <input type="text" placeholder="Digite o nome do aluno..." value={newLesson.student_name}
+                    onChange={e => setNewLesson(p => ({ ...p, student_name: e.target.value, student_id: '' }))}
+                    className="w-full mt-1 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-300" />
+                ) : (
                 <div className="space-y-2 mt-1">
                   {extraStudents.map((es, idx) => (
                     <select key={idx} value={es.id}
@@ -841,6 +850,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                     </select>
                   ))}
                 </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
