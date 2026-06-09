@@ -157,14 +157,23 @@ export default function AbsencesView() {
     return matchSearch && matchTeacher && matchDate && matchDateRange && matchStatus;
   });
 
-  const total = schedules.length;
-  const concluidas = schedules.filter(s => s.status === 'concluido' && s.admin_confirmed).length;
-  const reposicoesConcluidas = schedules.filter(s => s.status === 'reposicao_concluida').length;
-  const aguardando = schedules.filter(s => s.status === 'aguardando_confirmacao').length;
-  const faltas = schedules.filter(s => s.attendance_status === 'falta' || s.attendance_status === 'Ausente').length;
-  const justificadas = schedules.filter(s => s.attendance_status === 'justificada' || s.attendance_status === 'Justificada').length;
-  const reposicoes = schedules.filter(s => s.reposicao_pendente || s.status === 'reposicao_marcada').length;
-  const avulsas = schedules.filter(s => s.lesson_type === 'avulsa').length;
+  const baseKpi = schedules.filter(s => {
+    const matchTeacher = !filterTeacher || s.teacher_id === filterTeacher;
+    const matchDateRange = (!filterDateFrom && !filterDateTo) ||
+      (filterDateFrom && filterDateTo ? s.date >= filterDateFrom && s.date <= filterDateTo :
+        filterDateFrom ? s.date >= filterDateFrom : s.date <= filterDateTo);
+    const matchDate = !filterDate || s.date === filterDate;
+    return matchTeacher && matchDate && matchDateRange && s.status !== 'reposicao_concluida';
+  });
+  const base = baseKpi;
+  const total = base.length;
+  const concluidas = base.filter(s => s.status === 'concluido' && s.admin_confirmed).length;
+  const reposicoesConcluidas = base.filter(s => s.status === 'reposicao_concluida').length;
+  const aguardando = base.filter(s => s.status === 'aguardando_confirmacao').length;
+  const faltas = base.filter(s => s.attendance_status === 'falta' || s.attendance_status === 'Ausente').length;
+  const justificadas = base.filter(s => s.attendance_status === 'justificada' || s.attendance_status === 'Justificada').length;
+  const reposicoes = base.filter(s => s.reposicao_pendente || s.status === 'reposicao_marcada').length;
+  const avulsas = base.filter(s => s.lesson_type === 'avulsa').length;
 
   const getStatusLabel = (s: any) => {
     if (s.status === 'concluido' && s.admin_confirmed) return { label: 'Concluida', color: 'bg-green-100 text-green-700' };
