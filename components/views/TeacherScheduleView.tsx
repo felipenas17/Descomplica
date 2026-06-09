@@ -449,7 +449,7 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
                 <div key={i} title={feriado ? feriado.titulo : undefined}
                   onClick={() => { if (day) { const ds = day.getFullYear() + '-' + String(day.getMonth()+1).padStart(2,'0') + '-' + String(day.getDate()).padStart(2,'0'); setSelectedDay(ds); } }}
                   className={`aspect-square flex flex-col items-center justify-center rounded-lg text-xs font-semibold transition-all relative overflow-hidden cursor-pointer
-                    ${!day ? '' : selectedDay === (day.getFullYear() + '-' + String(day.getMonth()+1).padStart(2,'0') + '-' + String(day.getDate()).padStart(2,'0')) ? 'bg-purple-600 text-white ring-2 ring-purple-300' : isToday ? 'bg-purple-600 text-white' : feriado ? 'bg-red-100 text-red-500' : hasLesson ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+                    ${!day ? '' : selectedDay === (day.getFullYear() + '-' + String(day.getMonth()+1).padStart(2,'0') + '-' + String(day.getDate()).padStart(2,'0')) ? 'bg-purple-600 text-white ring-2 ring-purple-300' : selectedDay && isToday ? 'bg-purple-100 text-purple-600' : isToday ? 'bg-purple-600 text-white' : feriado ? 'bg-red-100 text-red-500' : hasLesson ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
                   {feriado && !isToday && <div className="absolute inset-0 bg-red-200 opacity-30" />}
                   <span className="relative z-10">{day?.getDate()}</span>
                   {hasLesson && !isToday && !feriado && <div className="w-1 h-1 bg-purple-400 rounded-full mt-0.5" />}
