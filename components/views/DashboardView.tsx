@@ -84,7 +84,7 @@ export default function DashboardView() {
       const ano = new Date().getFullYear();
 
       const [studentsRes, teachersRes, schedulesRes, paymentsRes, expensesRes] = await Promise.all([
-        supabase.from('students').select('id, name, monthly_value, birth_date'),
+        supabase.from('students').select('id, name, monthly_value, birth_date, enrollment_type'),
         supabase.from('teachers').select('id, name'),
         supabase.from('schedules').select('*').gte('date', ano + '-01-01'),
         supabase.from('monthly_payments').select('*').eq('year', ano),
