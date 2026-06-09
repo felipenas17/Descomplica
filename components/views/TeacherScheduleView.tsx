@@ -116,7 +116,7 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
   useEffect(() => {
     fetchLessons();
     supabase.from('feriados').select('*').then(({ data }) => setFeriados(data || []));
-  }, [period]);
+  }, [period, selectedDay]);
 
   const salvarAnamnese = async () => {
     if (!anamneseLesson) return;
@@ -315,7 +315,7 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
         {/* Lista de Aulas */}
         <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm">
           <div className="p-5 border-b border-gray-50 flex items-center justify-between">
-            <h2 className="font-bold text-gray-900">{period === 'hoje' ? 'Aulas de Hoje' : period === 'semana' ? 'Aulas desta Semana' : 'Aulas do Mês'}</h2>
+            <h2 className="font-bold text-gray-900">{selectedDay ? 'Aulas de ' + new Date(selectedDay + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }) : period === 'hoje' ? 'Aulas de Hoje' : period === 'semana' ? 'Aulas desta Semana' : 'Aulas do Mês'}</h2>
             <span className="text-xs text-gray-400">{lessons.length} aula{lessons.length !== 1 ? 's' : ''}</span>
           </div>
           <div className="p-5 space-y-3">
@@ -344,13 +344,28 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
                 ))}
               </>);
             })()}
-            {lessons.map(lesson => {
+            {lessons.map((lesson, idx) => {
+              const prevDate = idx > 0 ? lessons[idx-1].date : null;
+              const showDayHeader = period === 'semana' && !selectedDay && lesson.date !== prevDate;
+              const dayHeader = showDayHeader ? (() => {
+                const [y,m,d] = lesson.date.split('-').map(Number);
+                const dt = new Date(y, m-1, d);
+                const dias = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+                return dias[dt.getDay()] + ', ' + String(d).padStart(2,'0') + '/' + String(m).padStart(2,'0');
+              })() : null;
               const isExp = (lesson as any).is_experimental;
               const status = isExp ? { bg: 'bg-amber-50', border: 'border-amber-400', badge: 'bg-amber-100 text-amber-800', label: 'EXPERIMENTAL' } : (STATUS_CONFIG[lesson.status || 'agendado'] || STATUS_CONFIG.agendado);
               const podeIniciar = !isExp && (lesson.status === 'confirmado' || lesson.status === 'agendado' || lesson.status === 'reposicao_marcada');
               const emAndamento = !isExp && lesson.status === 'em_andamento';
               const concluida = !isExp && (lesson.status === 'concluido' || lesson.status === 'reposicao_concluida');
-              return (
+              return (<>
+                {showDayHeader && (
+                  <div className="flex items-center gap-2 pt-3 pb-1">
+                    <div className="w-2 h-2 rounded-full bg-purple-400" />
+                    <p className="text-xs font-black text-purple-600 uppercase tracking-wider">{dayHeader}</p>
+                    <div className="flex-1 h-px bg-purple-100" />
+                  </div>
+                )}
                 <div key={lesson.id} className={`flex gap-4 p-4 rounded-xl border transition-all ${emAndamento ? 'border-yellow-200 bg-yellow-50/40' : 'border-gray-100 hover:border-purple-100 hover:bg-purple-50/20'}`}>
                   <div className={`w-1 rounded-full shrink-0 ${emAndamento ? 'bg-yellow-400' : concluida ? 'bg-gray-300' : 'bg-purple-400'}`} />
                   <div className="flex-1 min-w-0">
@@ -408,7 +423,7 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
                     )}
                   </div>
                 </div>
-              );
+              </>);
             })}
           </div>
         </div>
@@ -431,8 +446,9 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
               const feriado = day ? feriados.find(f => f.data === dateStr || (f.data_fim && f.data <= dateStr && f.data_fim >= dateStr)) : null;
               return (
                 <div key={i} title={feriado ? feriado.titulo : undefined}
-                  className={`aspect-square flex flex-col items-center justify-center rounded-lg text-xs font-semibold transition-all relative overflow-hidden
-                    ${!day ? '' : isToday ? 'bg-purple-600 text-white' : feriado ? 'bg-red-100 text-red-500' : hasLesson ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+                  onClick={() => { if (day) { const ds = day.getFullYear() + '-' + String(day.getMonth()+1).padStart(2,'0') + '-' + String(day.getDate()).padStart(2,'0'); setSelectedDay(ds); } }}
+                  className={`aspect-square flex flex-col items-center justify-center rounded-lg text-xs font-semibold transition-all relative overflow-hidden cursor-pointer
+                    ${!day ? '' : selectedDay === (day.getFullYear() + '-' + String(day.getMonth()+1).padStart(2,'0') + '-' + String(day.getDate()).padStart(2,'0')) ? 'bg-purple-600 text-white ring-2 ring-purple-300' : isToday ? 'bg-purple-600 text-white' : feriado ? 'bg-red-100 text-red-500' : hasLesson ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
                   {feriado && !isToday && <div className="absolute inset-0 bg-red-200 opacity-30" />}
                   <span className="relative z-10">{day?.getDate()}</span>
                   {hasLesson && !isToday && !feriado && <div className="w-1 h-1 bg-purple-400 rounded-full mt-0.5" />}
