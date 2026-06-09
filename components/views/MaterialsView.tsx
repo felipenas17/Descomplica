@@ -121,7 +121,7 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
             await supabase.from('notifications').insert({
               user_id: admin.id,
               title: '📚 Novo material aguardando aprovação',
-              message: 'Professor enviou "' + uploadForm.title + '" para sua avaliação.',
+              message: uploaderName + ' enviou "' + uploadForm.title + '" para sua avaliação.',
               type: 'info',
             });
           }
