@@ -152,6 +152,7 @@ export default function AbsencesView() {
       filterStatus === 'falta' ? s.attendance_status === 'falta' || s.attendance_status === 'Ausente' :
       filterStatus === 'justificada' ? s.attendance_status === 'justificada' || s.attendance_status === 'Justificada' :
       filterStatus === 'reposicao' ? (s.reposicao_pendente === true || s.status === 'reposicao_marcada' || s.status === 'reposicao_concluida') :
+      filterStatus === 'avulsa' ? s.lesson_type === 'avulsa' :
       s.status !== 'reposicao_concluida';
     return matchSearch && matchTeacher && matchDate && matchDateRange && matchStatus;
   });
@@ -163,6 +164,7 @@ export default function AbsencesView() {
   const faltas = schedules.filter(s => s.attendance_status === 'falta' || s.attendance_status === 'Ausente').length;
   const justificadas = schedules.filter(s => s.attendance_status === 'justificada' || s.attendance_status === 'Justificada').length;
   const reposicoes = schedules.filter(s => s.reposicao_pendente || s.status === 'reposicao_marcada').length;
+  const avulsas = schedules.filter(s => s.lesson_type === 'avulsa').length;
 
   const getStatusLabel = (s: any) => {
     if (s.status === 'concluido' && s.admin_confirmed) return { label: 'Concluida', color: 'bg-green-100 text-green-700' };
@@ -192,6 +194,7 @@ export default function AbsencesView() {
           { label: 'Faltas', value: faltas, color: 'text-red-600', bg: 'bg-red-50', filter: 'falta' },
           { label: 'Justificadas', value: justificadas, color: 'text-yellow-600', bg: 'bg-yellow-50', filter: 'justificada' },
           { label: 'Reposicao', value: reposicoes, color: 'text-blue-600', bg: 'bg-blue-50', filter: 'reposicao' },
+          { label: 'Avulsas', value: avulsas, color: 'text-amber-600', bg: 'bg-amber-50', filter: 'avulsa' },
         ].map(kpi => (
           <button key={kpi.label} onClick={() => setFilterStatus(kpi.filter)}
             className={`bg-white rounded-2xl border shadow-sm p-4 text-left transition-all hover:shadow-md ${filterStatus === kpi.filter ? 'border-purple-300 ring-2 ring-purple-100' : 'border-gray-100'}`}>

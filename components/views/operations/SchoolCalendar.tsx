@@ -377,6 +377,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
 
   const getLessonColor = (lesson: any, idx: number) => {
     if ((lesson as any).is_experimental) return { bg: 'bg-amber-100', border: 'border-amber-500', text: 'text-amber-700', hex: null };
+    if (lesson.lesson_type === 'avulsa') return { bg: 'bg-orange-100', border: 'border-orange-400', text: 'text-orange-700', hex: null };
     if (lesson.status === 'concluido') return { bg: 'bg-green-100', border: 'border-green-500', text: 'text-green-700', hex: null };
     if (lesson.status === 'aguardando_confirmacao') return { bg: 'bg-yellow-100', border: 'border-yellow-500', text: 'text-yellow-700', hex: null };
     if (lesson.status === 'cancelado') return { bg: 'bg-red-100', border: 'border-red-500', text: 'text-red-700', hex: null };
@@ -416,6 +417,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
         room: newLesson.room,
         student_name: newLesson.student_name,
         student_id: newLesson.student_id || null,
+        lesson_type: lessonType,
         teacher_id: newLesson.teacher_id || user?.id || null,
         teacher_name: teachers.find(t => t.id === newLesson.teacher_id)?.name || user?.name || 'Admin',
         notes: newLesson.notes,
