@@ -66,7 +66,9 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       let query = supabase.from('schedules').select('*').order('date', { ascending: true });
       if (user?.id) query = query.eq('teacher_id', user.id);
-      if (period === 'hoje') {
+      if (selectedDay) {
+        query = query.eq('date', selectedDay);
+      } else if (period === 'hoje') {
         const todayLocal = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
         query = query.eq('date', todayLocal);
       } else if (period === 'semana') {
