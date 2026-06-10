@@ -85,7 +85,7 @@ export default function DashboardView() {
 
       const [studentsRes, teachersRes, schedulesRes, paymentsRes, expensesRes] = await Promise.all([
         supabase.from('students').select('id, name, monthly_value, birth_date, enrollment_type'),
-        supabase.from('teachers').select('id, name'),
+        supabase.from('teachers').select('id, name, birth_date'),
         supabase.from('schedules').select('*').gte('date', ano + '-01-01'),
         supabase.from('monthly_payments').select('*').eq('year', ano),
         supabase.from('expenses').select('*').eq('year', ano),
@@ -130,13 +130,21 @@ export default function DashboardView() {
       if (students.length < 5) alertas.push({ type: 'info', msg: '💡 Dica: Aulas em grupo aumentam receita sem mais horas trabalhadas' });
 
       // Aniversários
-      const aniversarios = students.filter(s => {
+      const anivAlunos = students.filter(s => {
         if (!s.birth_date) return false;
         const bday = new Date(s.birth_date);
         const hoje2 = new Date();
         const diff = new Date(hoje2.getFullYear(), bday.getMonth(), bday.getDate()).getTime() - hoje2.getTime();
         return diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000;
-      });
+      }).map(s => ({ ...s, tipo: 'aluno' }));
+      const anivProfs = teachers.filter((t: any) => {
+        if (!t.birth_date) return false;
+        const bday = new Date(t.birth_date);
+        const hoje2 = new Date();
+        const diff = new Date(hoje2.getFullYear(), bday.getMonth(), bday.getDate()).getTime() - hoje2.getTime();
+        return diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000;
+      }).map((t: any) => ({ ...t, tipo: 'professora' }));
+      const aniversarios = [...anivProfs, ...anivAlunos];
 
       // Fluxo anual
       const fluxoAnual = MONTHS.map((m, i) => {
@@ -344,7 +352,7 @@ export default function DashboardView() {
                   <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: '#2a1f0d', borderRadius: 10 }}>
                     <span style={{ fontSize: 20 }}>🎂</span>
                     <div>
-                      <div style={{ fontWeight: 600, color: D_TEXT, fontSize: 13 }}>{s.name}</div>
+                      <div style={{ fontWeight: 600, color: D_TEXT, fontSize: 13 }}>{s.name} <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, background: s.tipo === 'professora' ? '#7C3AED' : '#2563EB', color: '#fff', marginLeft: 4 }}>{s.tipo === 'professora' ? 'Professora' : 'Aluno'}</span></div>
                       <div style={{ fontSize: 11, color: D_YELLOW }}>{new Date(s.birth_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</div>
                     </div>
                   </div>
