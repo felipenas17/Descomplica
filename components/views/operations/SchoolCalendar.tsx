@@ -366,7 +366,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const d = String(date.getDate()).padStart(2, '0');
     const dateStr = y + '-' + m + '-' + d;
-    const result = lessons.filter(l => l.date === dateStr);
+    const result = lessons.filter(l => l.date === dateStr && l.attendance_status !== 'justificada' && l.attendance_status !== 'Justificada');
     return result;
   };
 
