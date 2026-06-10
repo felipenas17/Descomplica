@@ -193,6 +193,32 @@ export default function AbsencesView() {
     return null;
   };
 
+  const exportarPDF = () => {
+    const teacherName = filterTeacher ? teachers.find((t: any) => t.id === filterTeacher)?.name || '' : 'Todas';
+    const periodo = (filterDateFrom || '---') + ' a ' + (filterDateTo || '---');
+    const base2 = baseKpi;
+    const duracao = (start: string, end: string) => {
+      const [sh,sm] = (start||'00:00').split(':').map(Number);
+      const [eh,em] = (end||'00:00').split(':').map(Number);
+      return ((eh*60+em)-(sh*60+sm));
+    };
+    const aulas1h = base2.filter((s: any) => duracao(s.start_time,s.end_time)===60).length;
+    const aulas1h30 = base2.filter((s: any) => duracao(s.start_time,s.end_time)===90).length;
+    const aulas2h = base2.filter((s: any) => duracao(s.start_time,s.end_time)===120).length;
+    const totalHoras = base2.reduce((acc: number, s: any) => acc + duracao(s.start_time,s.end_time)/60, 0);
+    const rows = base2.sort((a: any,b: any) => (a.date+a.start_time).localeCompare(b.date+b.start_time)).map((s: any) => {
+      const mins = duracao(s.start_time,s.end_time);
+      const durLabel = mins===60?'1h':mins===90?'1h30':mins===120?'2h':mins+'min';
+      const st = s.status==='concluido'&&s.admin_confirmed?'Concluida':s.attendance_status==='falta'?'Falta':s.attendance_status==='justificada'||s.attendance_status==='Justificada'?'Justificada':s.status==='reposicao_marcada'?'Reposicao':s.lesson_type==='avulsa'?'Avulsa':'Aguardando';
+      const stColor = st==='Concluida'?'#D1FAE5;color:#065F46':st==='Falta'?'#FEE2E2;color:#991B1B':st==='Justificada'?'#FEF3C7;color:#92400E':st==='Reposicao'?'#DBEAFE;color:#1E40AF':'#F3F4F6;color:#374151';
+      const [y,m,d] = (s.date||'').split('-');
+      return '<tr><td>'+(d||'')+'/'+( m||'')+'</td><td>'+(s.start_time||'')+'-'+(s.end_time||'')+'</td><td>'+(s.student_name||'')+'</td><td>'+durLabel+'</td><td><span style="display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:'+stColor+'">'+st+'</span></td></tr>';
+    }).join('');
+    const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Calibri,Arial,sans-serif;color:#1F2937}.hdr{background:#7C3AED;padding:20px 24px;color:#fff}.logo{font-size:18px;font-weight:700}.sub{font-size:13px;opacity:.8;margin-top:2px}.info{display:flex;justify-content:space-between;padding:12px 24px;background:#F8F7FF;border-bottom:1px solid #EDE9FE;font-size:12px}.info div{text-align:center}.info .l{color:#6B7280;margin-bottom:2px}.info .v{font-weight:600}.sec{padding:14px 24px}.sec-t{font-size:12px;font-weight:600;color:#7C3AED;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #EDE9FE}.mg{display:flex;gap:8px;margin-bottom:4px}.mc{flex:1;background:#F9FAFB;border-radius:6px;padding:10px;text-align:center}.mc .v{font-size:20px;font-weight:600;color:#7C3AED}.mc .lb{font-size:10px;color:#6B7280;margin-top:2px}.mc .s{font-size:10px;color:#9CA3AF}.sg{display:flex;gap:6px;flex-wrap:wrap}.sc{display:flex;align-items:center;gap:6px;padding:6px 10px;background:#F9FAFB;border-radius:6px;min-width:100px}.sc .d{width:6px;height:6px;border-radius:50%}.sc .v{font-size:16px;font-weight:600}.sc .lb{font-size:10px;color:#6B7280}table{width:100%;border-collapse:collapse;font-size:11px}th{text-align:left;padding:6px 8px;background:#F9FAFB;color:#6B7280;font-weight:600;border-bottom:1px solid #E5E7EB}td{padding:6px 8px;border-bottom:.5px solid #F3F4F6}.tot{padding:12px 24px;background:#F8F7FF;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #EDE9FE}.tot .lb{font-size:13px;color:#6B7280}.tot .v{font-size:20px;font-weight:600;color:#7C3AED}.ft{padding:10px 24px;background:#F9FAFB;border-top:.5px solid #E5E7EB;display:flex;justify-content:space-between;font-size:10px;color:#9CA3AF}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><div class="hdr"><div class="logo">Descomplica</div><div class="sub">Relat\u00f3rio de aulas \u2014 '+teacherName+'</div></div><div class="info"><div><div class="l">Per\u00edodo</div><div class="v">'+periodo+'</div></div><div><div class="l">Professora</div><div class="v">'+teacherName+'</div></div><div><div class="l">Gerado em</div><div class="v">'+new Date().toLocaleDateString('pt-BR')+'</div></div></div><div class="sec"><div class="sec-t">Aulas por dura\u00e7\u00e3o</div><div class="mg"><div class="mc"><div class="v">'+aulas1h+'</div><div class="lb">Aulas de 1 hora</div><div class="s">'+aulas1h+' horas</div></div><div class="mc"><div class="v">'+aulas1h30+'</div><div class="lb">Aulas de 1h30</div><div class="s">'+(aulas1h30*1.5)+' horas</div></div><div class="mc"><div class="v">'+aulas2h+'</div><div class="lb">Aulas de 2 horas</div><div class="s">'+(aulas2h*2)+' horas</div></div></div></div><div class="sec"><div class="sec-t">Status</div><div class="sg"><div class="sc"><div class="d" style="background:#16A34A"></div><div><div class="v">'+concluidas+'</div><div class="lb">Conclu\u00eddas</div></div></div><div class="sc"><div class="d" style="background:#DC2626"></div><div><div class="v">'+faltas+'</div><div class="lb">Faltas</div></div></div><div class="sc"><div class="d" style="background:#F59E0B"></div><div><div class="v">'+justificadas+'</div><div class="lb">Justificadas</div></div></div><div class="sc"><div class="d" style="background:#2563EB"></div><div><div class="v">'+reposicoes+'</div><div class="lb">Reposi\u00e7\u00f5es</div></div></div><div class="sc"><div class="d" style="background:#F97316"></div><div><div class="v">'+avulsas+'</div><div class="lb">Avulsas</div></div></div></div></div><div class="sec" style="padding-bottom:0"><div class="sec-t">Detalhamento</div><table><thead><tr><th>Data</th><th>Hor\u00e1rio</th><th>Aluno</th><th>Dura\u00e7\u00e3o</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="tot"><div class="lb">Total de horas-aula</div><div class="v">'+Math.round(totalHoras*10)/10+' horas</div></div><div class="ft"><span>Descomplica \u2014 Gest\u00e3o Escolar</span><span>'+new Date().toLocaleDateString('pt-BR')+'</span></div></body></html>';
+    const w = window.open('','_blank');
+    if(w){w.document.write(html);w.document.close();w.onload=()=>w.print();}
+  };
+
   return (
     <div className="space-y-6 pb-12">
       {/* KPIs */}
@@ -243,6 +269,10 @@ export default function AbsencesView() {
           <button onClick={() => { setFilterTeacher(''); setFilterDate(''); setFilterDateFrom(''); setFilterDateTo(''); setFilterStatus('all'); setSearchTerm(''); }}
             className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-sm font-bold transition-all">
             Limpar
+          </button>
+          <button onClick={exportarPDF}
+            className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold transition-all">
+            Exportar PDF
           </button>
         </div>
       </div>
