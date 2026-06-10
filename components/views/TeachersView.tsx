@@ -123,6 +123,7 @@ export default function TeachersView() {
         name: editingTeacher.name,
         email: editingTeacher.email,
         phone: editingTeacher.phone || null,
+        birth_date: editingTeacher.birth_date || null,
         cpf: editingTeacher.cpf || null,
         age: editingTeacher.age || null,
         sex: editingTeacher.sex || null,
@@ -537,6 +538,11 @@ export default function TeachersView() {
                 <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Telefone</label>
                   <input value={editingTeacher.phone || ''} onChange={e => setEditingTeacher((t: any) => ({ ...t, phone: e.target.value }))}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Data de Nascimento</label>
+                  <input type="date" value={editingTeacher.birth_date || ''} onChange={e => setEditingTeacher((t: any) => ({ ...t, birth_date: e.target.value }))}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
                 </div>
                 <div>
