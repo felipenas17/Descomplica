@@ -33,7 +33,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useNotifications } from '@/hooks/useNotifications';
 
 // --- Shared Types ---
-export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials' | 'messages' | 'notifications' | 'absences' | 'contracts' | 'teacher_feedbacks' | 'teacher_evaluations' | 'teacher_contracts' | 'assistant' | 'comunicados' | 'lista_espera';
+export type View = 'dashboard' | 'schedule' | 'finance' | 'teachers' | 'students' | 'agenda' | 'feedbacks' | 'users' | 'materials' | 'messages' | 'notifications' | 'absences' | 'contracts' | 'teacher_feedbacks' | 'teacher_evaluations' | 'teacher_contracts' | 'assistant' | 'comunicados' | 'lista_espera' | 'planning';
 
 interface SearchResult {
   id: string;
@@ -109,6 +109,7 @@ const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, un
       <NavItem icon={FileText} label="Material de Apoio" active={activeView === 'materials'} onClick={() => setView('materials')} />
       {user?.role === 'professor' && (
         <NavItem icon={MessageSquareQuote} label="Meus Feedbacks" active={activeView === 'teacher_feedbacks'} onClick={() => setView('teacher_feedbacks')} />
+        <NavItem icon={FileText} label="Planejamento" active={activeView === 'planning'} onClick={() => setView('planning')} />
       )}
 
     </nav>
@@ -402,6 +403,7 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
     absences: 'Controle de Aulas',
     contracts: 'Contratos',
     teacher_feedbacks: 'Meus Feedbacks',
+    planning: 'Meu Planejamento',
     teacher_evaluations: 'Avaliacao de Professores',
     teacher_contracts: 'Contratos de Professores'
   };
@@ -459,6 +461,7 @@ export function AppContainer({ children, activeView, setView, user, onLogout, on
                     { view: 'materials', icon: '📚', label: 'Material de Apoio' },
                     { view: 'notifications', icon: '🔔', label: 'Notificações' },
                     { view: 'teacher_feedbacks', icon: '💬', label: 'Meus Feedbacks' },
+                    { view: 'planning', icon: '📋', label: 'Planejamento' },
                     { view: 'messages', icon: '✉️', label: 'Mensagens' },
                   ].map(item => (
                     <button key={item.view} onClick={() => { setView(item.view as View); setIsSidebarOpen(false); }}

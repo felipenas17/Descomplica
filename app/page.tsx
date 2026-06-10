@@ -20,6 +20,7 @@ import NotificationsView from '@/components/views/NotificationsView';
 import AbsencesView from '@/components/views/AbsencesView';
 import ContractsView from '@/components/views/ContractsView';
 import TeacherFeedbacksView from '@/components/views/TeacherFeedbacksView';
+import PlanningView from '@/components/views/PlanningView';
 import TeacherEvaluationsView from '@/components/views/TeacherEvaluationsView';
 import TeacherContractsView from '@/components/views/TeacherContractsView';
 import AdminAgendaView from '@/components/views/AdminAgendaView';
@@ -264,6 +265,7 @@ export default function Home() {
             case 'absences': return <AbsencesView />;
             case 'contracts': return <ContractsView />;
             case 'teacher_feedbacks': return <TeacherFeedbacksView user={user} />;
+            case 'planning': return <PlanningView user={user} />;
             case 'teacher_evaluations': return <TeacherEvaluationsView />;
             case 'teacher_contracts': return <TeacherContractsView />;
             case 'messages': return <MessagesView user={user} />;
