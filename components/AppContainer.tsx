@@ -107,10 +107,10 @@ const Sidebar = ({ activeView, setView, user, onLogout, onOpenChangePassword, un
       {user?.role === 'admin' && <NavItem icon={Bell} label="📢 Comunicados" active={activeView === 'comunicados'} onClick={() => setView('comunicados')} />}
       {user?.role === 'admin' && <NavItem icon={Users} label="⏳ Lista de Espera" active={activeView === 'lista_espera'} onClick={() => setView('lista_espera')} />}
       <NavItem icon={FileText} label="Material de Apoio" active={activeView === 'materials'} onClick={() => setView('materials')} />
-      {user?.role === 'professor' && (
+      {user?.role === 'professor' && (<>
         <NavItem icon={MessageSquareQuote} label="Meus Feedbacks" active={activeView === 'teacher_feedbacks'} onClick={() => setView('teacher_feedbacks')} />
         <NavItem icon={FileText} label="Planejamento" active={activeView === 'planning'} onClick={() => setView('planning')} />
-      )}
+      </>)}
 
     </nav>
 
