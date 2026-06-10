@@ -338,7 +338,7 @@ export default function AbsencesView() {
                         </button>
                       </>
                     )}
-                    {(s.attendance_status === 'justificada' || s.attendance_status === 'Justificada') && !s.reposicao_pendente && s.status !== 'concluido' && s.status !== 'reposicao_concluida' && (
+                    {(s.attendance_status === 'justificada' || s.attendance_status === 'Justificada') && !s.reposicao_pendente && s.status !== 'concluido' && s.status !== 'reposicao_concluida' && s.status !== 'reposicao_marcada' && (
                       <>
                         <button onClick={() => markNotified(s.id, true)} className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-bold transition-all">
                           Marcar Falta
