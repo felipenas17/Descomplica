@@ -59,7 +59,7 @@ export default function TeacherFeedbacksView({ user }: { user?: any }) {
       .order('created_at', { ascending: false });
 
     const feedbackScheduleIds = new Set((feedbacks || []).map((f: any) => f.schedule_id));
-    const pending = (lessons || []).filter(l => !feedbackScheduleIds.has(l.id));
+    const pending = (lessons || []).filter(l => !feedbackScheduleIds.has(l.id) && l.attendance_status !== 'justificada' && l.attendance_status !== 'Justificada' && l.attendance_status !== 'falta');
 
     setPendingLessons(pending);
     setSentFeedbacks(feedbacks || []);
