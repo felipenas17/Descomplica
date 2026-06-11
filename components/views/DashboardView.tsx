@@ -56,8 +56,9 @@ export default function DashboardView() {
     setMeta(value);
     if (typeof window !== 'undefined') localStorage.setItem('dashboard_meta', String(value));
   };
+  const [expandedCat, setExpandedCat] = useState<string | null>(null);
   const [data, setData] = useState<any>({
-    totalAlunos: 0, totalProfessores: 0, alunosNovos: 0, alunosRenovacao: 0, expMatriculadas: 0, expNaoConvertidas: 0, expTotal: 0, expPorMes: [], despesasPorCategoria: [],
+    totalAlunos: 0, totalProfessores: 0, alunosNovos: 0, alunosRenovacao: 0, expMatriculadas: 0, expNaoConvertidas: 0, expTotal: 0, expPorMes: [], despesasPorCategoria: [], despesasDetalhe: [],
     receitaMes: 0, recebidoMes: 0, despesasMes: 0, lucroMes: 0,
     ticketMedio: 0, taxaOcupacao: 0, inadimplentes: 0,
     aulasHoje: 0, aulasConcluidas: 0,
@@ -182,7 +183,7 @@ export default function DashboardView() {
           return acc;
         }, {})
       ).map(([cat, total]) => ({ categoria: cat, total })).sort((a: any, b: any) => b.total - a.total);
-      setData({ totalAlunos: students.length, totalProfessores: teachers.length, receitaMes, recebidoMes, despesasMes, lucroMes, ticketMedio, taxaOcupacao, inadimplentes, aulasHoje, aulasConcluidas, proximasAulas, alertas, fluxoAnual, aniversarios, rankingProfessores, taxaRecebimento, alunosNovos, alunosRenovacao, expMatriculadas, expNaoConvertidas, expTotal, expPorMes, despesasPorCategoria });
+      setData({ totalAlunos: students.length, totalProfessores: teachers.length, receitaMes, recebidoMes, despesasMes, lucroMes, ticketMedio, taxaOcupacao, inadimplentes, aulasHoje, aulasConcluidas, proximasAulas, alertas, fluxoAnual, aniversarios, rankingProfessores, taxaRecebimento, alunosNovos, alunosRenovacao, expMatriculadas, expNaoConvertidas, expTotal, expPorMes, despesasPorCategoria, despesasDetalhe: expenses.map((e: any) => ({ description: e.description, amount: e.amount, category_name: e.category_name, due_date: e.due_date })) });
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -360,14 +361,24 @@ export default function DashboardView() {
                     const pct = Math.round((c.total / totalDesp) * 100);
                     const color = catColors[c.categoria] || '#6B7280';
                     return (
-                      <div key={c.categoria}>
+                      <div key={c.categoria} style={{ cursor: 'pointer' }} onClick={() => setExpandedCat(expandedCat === c.categoria ? null : c.categoria)}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 3 }}>
-                          <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{c.categoria}</span>
+                          <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{expandedCat === c.categoria ? '▼' : '▶'} {c.categoria}</span>
                           <span style={{ color: '#9CA3AF' }}>R$ {Math.round(c.total).toLocaleString('pt-BR')} ({pct}%)</span>
                         </div>
                         <div style={{ height: 6, background: '#1a1d27', borderRadius: 3 }}>
                           <div style={{ height: 6, width: pct + '%', background: color, borderRadius: 3 }} />
                         </div>
+                        {expandedCat === c.categoria && (
+                          <div style={{ marginTop: 6, marginBottom: 8, paddingLeft: 12, borderLeft: '2px solid ' + color }}>
+                            {((data as any).despesasDetalhe || []).filter((e: any) => e.category_name === c.categoria).sort((a: any, b: any) => b.amount - a.amount).slice(0, 15).map((e: any, i: number) => (
+                              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, padding: '3px 0', borderBottom: '0.5px solid #1a1d27' }}>
+                                <span style={{ color: '#9CA3AF', maxWidth: '70%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.description}</span>
+                                <span style={{ color: '#e2e8f0', fontWeight: 600 }}>R$ {Math.round(e.amount).toLocaleString('pt-BR')}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
