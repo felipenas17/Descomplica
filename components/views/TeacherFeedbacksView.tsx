@@ -288,7 +288,7 @@ export default function TeacherFeedbacksView({ user }: { user?: any }) {
               <div>
                 <label className="text-xs font-black text-gray-500 uppercase tracking-wider block mb-2">Recursos Utilizados</label>
                 <div className="flex flex-wrap gap-2 mb-2">
-                  {['Apostila','Caderno','Vídeo','Exercícios','Livro','Quadro','Material Digital'].map(r => (
+                  {['Apostila','Caderno','Recursos Digitais','Exercícios','Livro','Quadro','Matriz','Jogos Pedagógicos'].map(r => (
                     <button key={r} onClick={() => {
                       const current = feedback.resources ? feedback.resources.split(', ').filter(Boolean) : [];
                       const updated = current.includes(r) ? current.filter(x => x !== r) : [...current, r];
