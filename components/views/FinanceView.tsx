@@ -166,32 +166,38 @@ export default function FinanceView() {
   });
 
   const parseCSV = (text: string) => {
-    const lines = text.split('\n').filter(l => l.trim());
+    const raw = text.replace(/\r/g, '').replace(/^\xEF\xBB\xBF/, '');
+    const lines = raw.split('\n').filter(l => l.trim());
     const rows: any[] = [];
-    
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(',').map(c => c.trim().replace(/"/g, ''));
-      if (cols.length < 3) continue;
-      
-      // Suporta formatos: Data, Descrição, Valor ou Data, Histórico, Valor, Tipo
-      let data = cols[0];
-      let descricao = cols[1];
-      let valorStr = cols[2] || cols[3] || '0';
-      
-      // Converte data BR (dd/mm/yyyy) para ISO
-      if (data.includes('/')) {
-        const [d, m, y] = data.split('/');
-        data = y + '-' + m.padStart(2,'0') + '-' + d.padStart(2,'0');
+    const headerIdx = lines.findIndex(l => l.toLowerCase().includes('data') && l.toLowerCase().includes('entrada'));
+    if (headerIdx === -1) {
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',').map(c => c.trim().replace(/"/g, ''));
+        if (cols.length < 3) continue;
+        let data = cols[0]; let descricao = cols[1]; let valorStr = cols[2] || '0';
+        if (data.includes('/')) { const [d, m, y] = data.split('/'); data = y + '-' + m.padStart(2,'0') + '-' + d.padStart(2,'0'); }
+        const valor = Math.abs(parseFloat(valorStr.replace(/[R$\s.]/g, '').replace(',', '.'))) || 0;
+        if (valor === 0) continue;
+        const isDebito = valorStr.includes('-') || cols[3]?.toLowerCase().includes('debito');
+        rows.push({ data, descricao, valor, tipo: isDebito ? 'saida' : 'entrada' });
       }
-      
-      // Limpa valor
-      const valor = Math.abs(parseFloat(valorStr.replace(/[R$\s.]/g, '').replace(',', '.'))) || 0;
-      if (valor === 0) continue;
-      
-      // Determina se é entrada ou saída
-      const isDebito = valorStr.includes('-') || cols[3]?.toLowerCase().includes('débito') || cols[3]?.toLowerCase().includes('debito');
-      
-      rows.push({ data, descricao, valor, tipo: isDebito ? 'saida' : 'entrada' });
+      return rows;
+    }
+    for (let i = headerIdx + 1; i < lines.length; i++) {
+      let line = lines[i].replace(/^"|"$/g, '').replace(/""/g, '');
+      const cols = line.split(',').map(c => c.trim().replace(/"/g, ''));
+      if (cols.length < 5) continue;
+      let data = cols[0];
+      const titulo = cols[2] || '';
+      const descricao = titulo + (cols[3] ? ' - ' + cols[3] : '');
+      const entradaStr = cols[4] || '0';
+      const saidaStr = cols[5] || '0';
+      if (data.includes('/')) { const [d, m, y] = data.split('/'); data = y + '-' + m.padStart(2,'0') + '-' + d.padStart(2,'0'); }
+      const entrada = parseFloat(entradaStr.replace(/[R$\s]/g, '').replace(',', '.')) || 0;
+      const saida = parseFloat(saidaStr.replace(/[R$\s]/g, '').replace(',', '.')) || 0;
+      if (entrada === 0 && saida === 0) continue;
+      if (entrada > 0) rows.push({ data, descricao, valor: entrada, tipo: 'entrada' });
+      if (saida > 0) rows.push({ data, descricao, valor: saida, tipo: 'saida' });
     }
     return rows;
   };
