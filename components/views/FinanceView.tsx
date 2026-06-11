@@ -231,11 +231,18 @@ export default function FinanceView() {
       const pNames = (studentsList || []).map((s: any) => s.parent_name?.toLowerCase()).filter(Boolean);
       const categorizar = (desc: string, tipo: string) => {
         const d = desc.toLowerCase();
-        if (d.includes('aluguel') || d.includes('locacao')) return 'Aluguel';
-        if (d.includes('luz') || d.includes('energia')) return 'Energia';
-        if (d.includes('agua') || d.includes('saneamento')) return 'Agua';
+        if (d.includes('torres azevedo') || d.includes('aluguel') || d.includes('locacao')) return 'Aluguel';
+        if (d.includes('enel') || d.includes('luz') || d.includes('energia') || d.includes('cemig')) return 'Energia';
+        if (d.includes('saneamento') || d.includes('rio+ saneamento') || d.includes('agua')) return 'Agua';
         if (d.includes('internet') || d.includes('wifi') || d.includes('fibra')) return 'Internet';
-        if (tipo === 'saida' && tNames.some(n => d.includes(n))) return 'Pagamento Professora';
+        if (d.includes('uber') || d.includes('99*') || d.includes('99app')) return 'Transporte';
+        if (d.includes('netflix') || d.includes('spotify') || d.includes('disney')) return 'Streaming';
+        if (d.includes('cityfarma') || d.includes('farmacia') || d.includes('drogaria')) return 'Farmacia';
+        if (d.includes('atacadao') || d.includes('imperium') || d.includes('hm comercio') || d.includes('supermercado')) return 'Supermercado';
+        if (d.includes('pm rio das ostras') || d.includes('prefeitura')) return 'Imposto/Prefeitura';
+        if (d.includes('jean carlos')) return 'Marketing';
+        if (d.includes('michelle dielli')) return 'Salario';
+        if (tipo === 'saida' && tNames.some(n => d.includes(n))) return 'Salario';
         if (tipo === 'entrada' && (sNames.some(n => d.includes(n)) || pNames.some(n => d.includes(n)))) return 'Mensalidade';
         return 'Importado C6';
       };
