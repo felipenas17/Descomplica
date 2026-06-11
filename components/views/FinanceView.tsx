@@ -226,9 +226,10 @@ export default function FinanceView() {
       // Busca nomes para categorização inteligente
       const { data: teachersList } = await supabase.from('teachers').select('name');
       const { data: studentsList } = await supabase.from('students').select('name, parent_name');
-      const tNames = (teachersList || []).map((t: any) => t.name?.toLowerCase()).filter(Boolean);
-      const sNames = (studentsList || []).map((s: any) => s.name?.toLowerCase()).filter(Boolean);
-      const pNames = (studentsList || []).map((s: any) => s.parent_name?.toLowerCase()).filter(Boolean);
+      const removeAccents = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const tNames = (teachersList || []).map((t: any) => removeAccents(t.name?.toLowerCase() || '')).filter(Boolean);
+      const sNames = (studentsList || []).map((s: any) => removeAccents(s.name?.toLowerCase() || '')).filter(Boolean);
+      const pNames = (studentsList || []).map((s: any) => removeAccents(s.parent_name?.toLowerCase() || '')).filter(Boolean);
       const categorizar = (desc: string, tipo: string) => {
         const d = desc.toLowerCase();
         if (d.includes('torres azevedo') || d.includes('aluguel') || d.includes('locacao')) return 'Aluguel';
@@ -242,8 +243,9 @@ export default function FinanceView() {
         if (d.includes('pm rio das ostras') || d.includes('prefeitura')) return 'Imposto/Prefeitura';
         if (d.includes('jean carlos')) return 'Marketing';
         if (d.includes('michelle dielli')) return 'Salario';
-        if (tipo === 'saida' && tNames.some(n => d.includes(n))) return 'Salario';
-        if (tipo === 'entrada' && (sNames.some(n => d.includes(n)) || pNames.some(n => d.includes(n)))) return 'Mensalidade';
+        const dClean = removeAccents(d);
+        if (tipo === 'saida' && tNames.some(n => dClean.includes(n))) return 'Salario';
+        if (tipo === 'entrada' && (sNames.some(n => dClean.includes(n)) || pNames.some(n => dClean.includes(n)))) return 'Mensalidade';
         return 'Importado C6';
       };
 
