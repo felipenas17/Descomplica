@@ -57,7 +57,7 @@ export default function DashboardView() {
     if (typeof window !== 'undefined') localStorage.setItem('dashboard_meta', String(value));
   };
   const [data, setData] = useState<any>({
-    totalAlunos: 0, totalProfessores: 0, alunosNovos: 0, alunosRenovacao: 0, expMatriculadas: 0, expNaoConvertidas: 0, expTotal: 0, expPorMes: [],
+    totalAlunos: 0, totalProfessores: 0, alunosNovos: 0, alunosRenovacao: 0, expMatriculadas: 0, expNaoConvertidas: 0, expTotal: 0, expPorMes: [], despesasPorCategoria: [],
     receitaMes: 0, recebidoMes: 0, despesasMes: 0, lucroMes: 0,
     ticketMedio: 0, taxaOcupacao: 0, inadimplentes: 0,
     aulasHoje: 0, aulasConcluidas: 0,
@@ -175,7 +175,14 @@ export default function DashboardView() {
         };
       });
 
-      setData({ totalAlunos: students.length, totalProfessores: teachers.length, receitaMes, recebidoMes, despesasMes, lucroMes, ticketMedio, taxaOcupacao, inadimplentes, aulasHoje, aulasConcluidas, proximasAulas, alertas, fluxoAnual, aniversarios, rankingProfessores, taxaRecebimento, alunosNovos, alunosRenovacao, expMatriculadas, expNaoConvertidas, expTotal, expPorMes });
+      const despesasPorCategoria = Object.entries(
+        expenses.reduce((acc: any, e: any) => {
+          const cat = e.category_name || 'Outros';
+          acc[cat] = (acc[cat] || 0) + (e.amount || 0);
+          return acc;
+        }, {})
+      ).map(([cat, total]) => ({ categoria: cat, total })).sort((a: any, b: any) => b.total - a.total);
+      setData({ totalAlunos: students.length, totalProfessores: teachers.length, receitaMes, recebidoMes, despesasMes, lucroMes, ticketMedio, taxaOcupacao, inadimplentes, aulasHoje, aulasConcluidas, proximasAulas, alertas, fluxoAnual, aniversarios, rankingProfessores, taxaRecebimento, alunosNovos, alunosRenovacao, expMatriculadas, expNaoConvertidas, expTotal, expPorMes, despesasPorCategoria });
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -342,6 +349,32 @@ export default function DashboardView() {
             </div>
           </div>
 
+          <div style={cardStyle}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: D_TEXT, marginBottom: 12 }}>📊 Despesas por categoria</div>
+            {(() => {
+              const catColors: Record<string,string> = { 'Salário':'#7C3AED','Aluguel':'#DC2626','Despesas Gerais':'#6B7280','Energia':'#F59E0B','Marketing':'#2563EB','Agua':'#0EA5E9','Supermercado':'#16A34A','Imposto/Prefeitura':'#9333EA','Farmácia':'#EC4899','Transporte':'#F97316','Streaming':'#8B5CF6' };
+              const totalDesp = (data as any).despesasPorCategoria?.reduce((a: number, c: any) => a + c.total, 0) || 1;
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {((data as any).despesasPorCategoria || []).slice(0, 8).map((c: any) => {
+                    const pct = Math.round((c.total / totalDesp) * 100);
+                    const color = catColors[c.categoria] || '#6B7280';
+                    return (
+                      <div key={c.categoria}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 3 }}>
+                          <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{c.categoria}</span>
+                          <span style={{ color: '#9CA3AF' }}>R$ {Math.round(c.total).toLocaleString('pt-BR')} ({pct}%)</span>
+                        </div>
+                        <div style={{ height: 6, background: '#1a1d27', borderRadius: 3 }}>
+                          <div style={{ height: 6, width: pct + '%', background: color, borderRadius: 3 }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
           <div style={cardStyle}>
             <div style={{ fontSize: 14, fontWeight: 700, color: D_TEXT, marginBottom: 12 }}>🎂 Aniversários — próximos 7 dias</div>
             {data.aniversarios.length === 0 ? (
