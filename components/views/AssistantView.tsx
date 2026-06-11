@@ -1,12 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from '@/lib/supabase';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -87,7 +82,6 @@ export default function AssistantView({ user }: AssistantViewProps) {
   };
 
   const confirmarAcao = async (msg: Message) => {
-    console.log('ACAO:', msg.acao, 'DADOS:', JSON.stringify(msg.dados));
     // Suporte a múltiplas ações
     if (msg.acoes_multiplas && msg.acoes_multiplas.length > 0) {
       setLoading(true);
@@ -183,7 +177,6 @@ export default function AssistantView({ user }: AssistantViewProps) {
       }
 
       else if (msg.acao === 'ENVIAR_MENSAGEM') {
-        console.log('DADOS MENSAGEM:', JSON.stringify(msg.dados));
         const { data: userData } = await supabase.auth.getUser();
         const { error } = await supabase.from('messages').insert({
           sender_id:   userData.user?.id,

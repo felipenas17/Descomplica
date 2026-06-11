@@ -30,7 +30,7 @@ export default function TeacherAvailability() {
     const fetch = async () => {
       setLoading(true);
       // Busca todos os agendamentos futuros para cruzar por dia da semana
-      const hoje = new Date().toISOString().split('T')[0];
+      const h = new Date(); const hoje = h.getFullYear() + '-' + String(h.getMonth()+1).padStart(2,'0') + '-' + String(h.getDate()).padStart(2,'0');
 
       const [{ data: tData }, { data: sData }] = await Promise.all([
         supabase.from('teachers').select('id,name,color,availability,availability_schedule').order('name'),

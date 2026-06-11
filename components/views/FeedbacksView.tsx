@@ -40,7 +40,6 @@ export default function FeedbacksView() {
 
   const fetchFeedbacks = React.useCallback(async () => {
     if (!isSupabaseConfigured) {
-      console.log('Supabase not configured (feedbacks).');
       setLoading(false);
       return;
     }

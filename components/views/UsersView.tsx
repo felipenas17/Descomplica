@@ -148,7 +148,6 @@ export default function UsersView() {
 
   const handleAddAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('handleAddAdmin iniciada');
     setIsSaving(true);
     
     // Create the data object for the success modal
@@ -191,7 +190,6 @@ export default function UsersView() {
       }
 
       // Send credentials via API (don't block the UI)
-      console.log('Enviando e-mail...');
       fetch('/api/send-credentials', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -200,13 +198,11 @@ export default function UsersView() {
         if (!res.ok) console.warn('Email API returned non-ok status');
         return res.json();
       }).then(data => {
-        console.log('Email API response:', data);
       }).catch(err => console.error('Failed to send email:', err));
 
       // 3. Close form and transition to success view
       setShowForm(false);
       setShowSuccess(true);
-      console.log('handleAddAdmin finalizada com sucesso (UI)');
       
     } catch (err: any) {
       console.error('Error in handleAddAdmin:', err);

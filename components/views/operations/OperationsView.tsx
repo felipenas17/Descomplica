@@ -30,7 +30,7 @@ export default function OperationsView({ onNavigate }: { onNavigate?: (view: any
   const fetchOperationalData = async () => {
     setLoading(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const t = new Date(); const today = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0');
       const { data: daySchedules } = await supabase.from('schedules').select('*').eq('date', today);
       const { data: roomsData } = await supabase.from('rooms').select('*');
       const { data: teachersData } = await supabase.from('teachers').select('*');

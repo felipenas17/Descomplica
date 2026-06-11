@@ -329,7 +329,7 @@ export default function AbsencesView() {
                           await supabase.from('schedules').update({ status: 'falta_confirmada' }).eq('id', s.id);
                           await supabase.from('absences').insert({ student_name: s.student_name, student_id: s.student_id, schedule_id: s.id, absence_date: s.date, notified_advance: false, created_at: new Date().toISOString() });
                           toast.success('Falta confirmada!');
-                          fetchSchedules();
+                          fetchData();
                         }} className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-bold transition-all">
                           Confirmar Falta
                         </button>

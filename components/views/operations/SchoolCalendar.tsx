@@ -29,6 +29,9 @@ interface Lesson {
   student_name?: string;
   notes?: string;
   status?: string;
+  attendance_status?: string;
+  lesson_type?: string;
+  admin_confirmed?: boolean;
 }
 
 interface NewLesson {
@@ -401,7 +404,6 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
   };
 
   const saveLesson = async () => {
-    console.log('saveLesson chamado', newLesson);
     if (!newLesson.date) {
       toast.error('Preencha pelo menos a matéria e a data!');
       return;
