@@ -100,6 +100,7 @@ export default function FeedbacksView() {
   };
 
   const sendWhatsApp = async (feedback: any) => {
+    const w = window.open('', '_blank');
     const { data } = await supabase
       .from('students')
       .select('parent_name, parent_phone')
@@ -109,6 +110,7 @@ export default function FeedbacksView() {
     const phone = (data?.parent_phone || '').replace(/[^0-9]/g, '');
     const parentName = data?.parent_name || 'Responsável';
     if (!phone) {
+      if (w) w.close();
       alert('Telefone do responsável não cadastrado para este aluno.');
       return;
     }
@@ -126,7 +128,7 @@ export default function FeedbacksView() {
       '\n_Descomplica \u2014 ' + new Date().toLocaleDateString('pt-BR') + '_'
     );
     const waUrl = 'https://wa.me/55' + phone + '?text=' + msg;
-    const a = document.createElement('a'); a.href = waUrl; a.target = '_blank'; a.rel = 'noopener noreferrer'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    if (w) { w.location.href = waUrl; } else { window.location.href = waUrl; }
     await supabase.from('feedbacks').update({ sent_to_parent: true, sent_to_parent_at: new Date().toISOString() }).eq('id', feedback.id);
     fetchFeedbacks();
   };
