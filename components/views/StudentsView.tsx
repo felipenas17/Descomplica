@@ -4,12 +4,14 @@ import React from 'react';
 import { Plus, Trash2, Pencil, Mail, UserCheck, GraduationCap, ShieldCheck, History, X, Calendar, DollarSign, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import StudentListTab from './StudentListTab';
 import { generateStudentReportHTML } from './studentReportHelper';
 import { Avatar } from '@/components/ui/Avatar';
 import StudentForm from '@/components/forms/StudentForm';
 import StudentHistoryModal from '@/components/views/StudentHistoryModal';
 
 export default function StudentsView() {
+  const [studentsTab, setStudentsTab] = React.useState<'cadastro' | 'lista'>('cadastro');
   const [students, setStudents] = React.useState<any[]>([]);
   const [showForm, setShowForm] = React.useState(false);
   const [prefillData, setPrefillData] = React.useState<any>(null);
@@ -72,7 +74,17 @@ export default function StudentsView() {
         fetchStudents();
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    if (studentsTab === 'lista') return (
+    <div className="space-y-6 pb-12">
+      <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
+        <button onClick={() => setStudentsTab('cadastro')} className="px-4 py-2 rounded-lg text-xs font-bold text-gray-400">Cadastro</button>
+        <button className="px-4 py-2 rounded-lg text-xs font-bold bg-white shadow text-purple-600">Lista & Aniversarios</button>
+      </div>
+      <StudentListTab />
+    </div>
+  );
+
+  return () => { supabase.removeChannel(channel); };
   }, [fetchStudents]);
 
   const handleEditStudent = async (data: any) => {
@@ -221,6 +233,10 @@ export default function StudentsView() {
 
   return (
     <div className="space-y-10">
+      <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
+        <button className="px-4 py-2 rounded-lg text-xs font-bold bg-white shadow text-purple-600">Cadastro</button>
+        <button onClick={() => setStudentsTab('lista')} className="px-4 py-2 rounded-lg text-xs font-bold text-gray-400">Lista & Aniversarios</button>
+      </div>
       {showForm && <StudentForm onClose={() => { setShowForm(false); setPrefillData(null); }} onSubmit={handleAddStudent} prefill={prefillData} />}
       {historyStudent && (
         <StudentHistoryModal
