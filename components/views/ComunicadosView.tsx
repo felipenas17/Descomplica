@@ -73,7 +73,7 @@ export default function ComunicadosView({ user }: { user?: any }) {
         form.mensagem + '\n\n' +
         '_Professora Descomplica - ' + new Date().toLocaleDateString('pt-BR') + '_'
       );
-      window.open('https://wa.me/55' + tel + '?text=' + msg, '_blank');
+      (() => { const _a = document.createElement('a'); _a.href = 'https://wa.me/55' + tel + '?text=' + msg; _a.target = '_blank'; _a.rel = 'noopener noreferrer'; document.body.appendChild(_a); _a.click(); document.body.removeChild(_a); })();
       await new Promise(r => setTimeout(r, 800));
     }
 

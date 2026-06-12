@@ -89,7 +89,7 @@ export default function TeachersView() {
         '\n_Professora Descomplica_'
       );
       const tel = viewingTeacher.phone?.replace(/\D/g, '');
-      if (tel) window.open('https://wa.me/55' + tel + '?text=' + msg, '_blank');
+      if (tel) (() => { const _a = document.createElement('a'); _a.href = 'https://wa.me/55' + tel + '?text=' + msg; _a.target = '_blank'; _a.rel = 'noopener noreferrer'; document.body.appendChild(_a); _a.click(); document.body.removeChild(_a); })();
       setShowPayModal(false);
       openTeacherPanel(viewingTeacher);
     }

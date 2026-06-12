@@ -54,7 +54,7 @@ export default function ListaEsperaView({ user, setView }: { user?: any, setView
       'Olá, ' + item.nome + '! 😊\n\nSou da *Professora Descomplica*. Temos uma vaga disponível' +
       (item.materia ? ' para *' + item.materia + '*' : '') + '!\n\nGostaria de agendar uma conversa?\n\n_Professora Descomplica_'
     );
-    window.open('https://wa.me/55' + tel + '?text=' + msg, '_blank');
+    (() => { const _a = document.createElement('a'); _a.href = 'https://wa.me/55' + tel + '?text=' + msg; _a.target = '_blank'; _a.rel = 'noopener noreferrer'; document.body.appendChild(_a); _a.click(); document.body.removeChild(_a); })();
     await supabase.from('lista_espera').update({ ultimo_contato: new Date().toISOString().split('T')[0] }).eq('id', item.id);
     fetchData();
   };

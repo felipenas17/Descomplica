@@ -1139,7 +1139,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                     </button>
                     <button onClick={() => {
                       const tel = expSelecionada.telefone?.replace(/\D/g, '');
-                      if (tel) window.open('https://wa.me/55' + tel, '_blank');
+                      if (tel) (() => { const _a = document.createElement('a'); _a.href = 'https://wa.me/55' + tel; _a.target = '_blank'; _a.rel = 'noopener noreferrer'; document.body.appendChild(_a); _a.click(); document.body.removeChild(_a); })();
                       tomarDecisao('negociando');
                     }}
                       className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-bold transition-all">

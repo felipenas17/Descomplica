@@ -125,7 +125,8 @@ export default function FeedbacksView() {
       (feedback.observations ? '*Observa\u00e7\u00f5es:* ' + feedback.observations + '\n' : '') +
       '\n_Descomplica \u2014 ' + new Date().toLocaleDateString('pt-BR') + '_'
     );
-    window.open('https://wa.me/55' + phone + '?text=' + msg, '_blank');
+    const waUrl = 'https://wa.me/55' + phone + '?text=' + msg;
+    const a = document.createElement('a'); a.href = waUrl; a.target = '_blank'; a.rel = 'noopener noreferrer'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
     await supabase.from('feedbacks').update({ sent_to_parent: true, sent_to_parent_at: new Date().toISOString() }).eq('id', feedback.id);
     fetchFeedbacks();
   };

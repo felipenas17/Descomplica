@@ -217,7 +217,7 @@ export default function AssistantView({ user }: AssistantViewProps) {
               .replace('{nome}', dest.nome || '')
               .replace('{responsavel}', dest.responsavel || '');
             const msgUrl = encodeURIComponent(texto);
-            window.open('https://wa.me/55' + tel + '?text=' + msgUrl, '_blank');
+            (() => { const _a = document.createElement('a'); _a.href = 'https://wa.me/55' + tel + '?text=' + msgUrl; _a.target = '_blank'; _a.rel = 'noopener noreferrer'; document.body.appendChild(_a); _a.click(); document.body.removeChild(_a); })();
             await new Promise(r => setTimeout(r, 1000));
             enviados++;
           }
@@ -232,7 +232,7 @@ export default function AssistantView({ user }: AssistantViewProps) {
           const tel = dest.telefone?.replace(/\D/g, '');
           if (tel) {
             const msgTexto = encodeURIComponent('Olá ' + (dest.responsavel || 'Responsável') + '! 🎉\n' + 'Hoje é aniversário de *' + dest.nome + '*! 🎂🎈\n' + 'A equipe da *Professora Descomplica* deseja um feliz aniversário cheio de conquistas e aprendizados! 🌟\n' + 'Parabéns! 🥳');
-            window.open('https://wa.me/55' + tel + '?text=' + msgTexto, '_blank');
+            (() => { const _a = document.createElement('a'); _a.href = 'https://wa.me/55' + tel + '?text=' + msgTexto; _a.target = '_blank'; _a.rel = 'noopener noreferrer'; document.body.appendChild(_a); _a.click(); document.body.removeChild(_a); })();
             await new Promise(r => setTimeout(r, 1000));
             enviados++;
           }
