@@ -180,22 +180,42 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
     setSavingFeedback(true);
     try {
       // Salva feedback
-      const { error: fbError } = await supabase.from('feedbacks').insert({
-        schedule_id: feedbackLesson.id,
-        teacher_id: user?.id,
-        teacher_name: user?.name || feedbackLesson.teacher_name,
-        student_name: feedbackLesson.student_name || 'Aluno',
-        student_id: feedbackLesson.student_id || null,
-        subject: feedbackLesson.subject || 'Aula',
-        attendance: feedback.attendance,
-        discipline: feedback.discipline,
-        content: feedback.content,
-        resources: feedback.resources,
-        observations: feedback.notes,
-        class_date: feedbackLesson.date || new Date().toISOString().split('T')[0],
-        created_at: new Date().toISOString(),
-      });
-      if (fbError) throw fbError;
+      // Monta lista de alunos (dupla/grupo tem múltiplos)
+      const allStudents: {name: string, id: string | null}[] = [];
+      const extraJson = (feedbackLesson as any).extra_students;
+      const extras = extraJson ? (typeof extraJson === 'string' ? JSON.parse(extraJson) : extraJson) : [];
+      if (feedbackLesson.lesson_type === 'dupla' || feedbackLesson.lesson_type === 'grupo') {
+        const names = (feedbackLesson.student_name || '').split(',').map((n: string) => n.trim()).filter(Boolean);
+        const firstId = feedbackLesson.student_id || null;
+        names.forEach((name: string, idx: number) => {
+          if (idx === 0) allStudents.push({ name, id: firstId });
+          else {
+            const extra = extras[idx - 1];
+            allStudents.push({ name, id: extra?.id || null });
+          }
+        });
+      } else {
+        allStudents.push({ name: feedbackLesson.student_name || 'Aluno', id: feedbackLesson.student_id || null });
+      }
+      // Cria feedback para cada aluno
+      for (const student of allStudents) {
+        const { error: fbError } = await supabase.from('feedbacks').insert({
+          schedule_id: feedbackLesson.id,
+          teacher_id: user?.id,
+          teacher_name: user?.name || feedbackLesson.teacher_name,
+          student_name: student.name,
+          student_id: student.id,
+          subject: feedbackLesson.subject || 'Aula',
+          attendance: feedback.attendance,
+          discipline: feedback.discipline,
+          content: feedback.content,
+          resources: feedback.resources,
+          observations: feedback.notes,
+          class_date: feedbackLesson.date || new Date().toISOString().split('T')[0],
+          created_at: new Date().toISOString(),
+        });
+        if (fbError) throw fbError;
+      }
 
       // Registra falta se ausente
       if (feedback.attendance === 'Ausente') {
