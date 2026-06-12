@@ -58,7 +58,7 @@ export default function StudentListTab() {
         '<td style="padding:6px 8px;border-bottom:.5px solid #E5E7EB;font-size:11px">' + (s.school || '-') + '</td>' +
         '<td style="padding:6px 8px;border-bottom:.5px solid #E5E7EB;font-size:11px">' + (s.grade || '-') + '</td>' +
         '<td style="padding:6px 8px;border-bottom:.5px solid #E5E7EB;font-size:11px">' + (s.school_shift || '-') + '</td>' +
-        '<td style="padding:6px 8px;border-bottom:.5px solid #E5E7EB;font-size:11px">' + (s.has_allergy ? s.allergy_details || 'Sim' : '-') + '</td>' +
+        '<td style="padding:6px 8px;border-bottom:.5px solid #E5E7EB;font-size:11px">' + (s.has_allergy === 'sim' ? s.allergy_details || 'Sim' : '-') + '</td>' +
         '<td style="padding:6px 8px;border-bottom:.5px solid #E5E7EB;font-size:11px">' + (s.parent_name || '-') + '</td>' +
         '</tr>';
     }).join('');
@@ -136,7 +136,7 @@ export default function StudentListTab() {
                     <td className="px-3 py-3 text-gray-500 text-xs">{s.school || '-'}</td>
                     <td className="px-3 py-3"><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">{s.grade || '-'}</span></td>
                     <td className="px-3 py-3 text-gray-500 text-xs">{s.school_shift || '-'}</td>
-                    <td className="px-3 py-3">{s.has_allergy ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600">{s.allergy_details || 'Sim'}</span> : <span className="text-gray-300">-</span>}</td>
+                    <td className="px-3 py-3">{s.has_allergy === 'sim' ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600">{s.allergy_details || 'Sim'}</span> : <span className="text-gray-300">-</span>}</td>
                     <td className="px-3 py-3 text-gray-500 text-xs">{s.parent_name || '-'}</td>
                   </tr>
                 ))}
