@@ -74,16 +74,6 @@ export default function StudentsView() {
         fetchStudents();
       })
       .subscribe();
-    if (studentsTab === 'lista') return (
-    <div className="space-y-6 pb-12">
-      <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
-        <button onClick={() => setStudentsTab('cadastro')} className="px-4 py-2 rounded-lg text-xs font-bold text-gray-400">Cadastro</button>
-        <button className="px-4 py-2 rounded-lg text-xs font-bold bg-white shadow text-purple-600">Lista & Aniversarios</button>
-      </div>
-      <StudentListTab />
-    </div>
-  );
-
   return () => { supabase.removeChannel(channel); };
   }, [fetchStudents]);
 
@@ -230,6 +220,15 @@ export default function StudentsView() {
   };
 
   if (!isMounted) return null;
+  if (studentsTab === 'lista') return (
+    <div className="space-y-6 pb-12">
+      <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
+        <button onClick={() => setStudentsTab('cadastro')} className="px-4 py-2 rounded-lg text-xs font-bold text-gray-400">Cadastro</button>
+        <button className="px-4 py-2 rounded-lg text-xs font-bold bg-white shadow text-purple-600">Lista & Aniversarios</button>
+      </div>
+      <StudentListTab />
+    </div>
+  );
 
   return (
     <div className="space-y-10">
