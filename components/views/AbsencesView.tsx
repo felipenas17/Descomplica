@@ -354,6 +354,13 @@ export default function AbsencesView() {
                         Remarcar
                       </button>
                     )}
+                    <button onClick={async () => {
+                      if (!confirm('Excluir esta aula do controle?')) return;
+                      await supabase.from('schedules').delete().eq('id', s.id);
+                      fetchData();
+                    }} className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg text-xs font-bold transition-all">
+                      Excluir
+                    </button>
                   </div>
                 </div>
               );
