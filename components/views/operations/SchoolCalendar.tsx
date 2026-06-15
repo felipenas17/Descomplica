@@ -369,7 +369,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const d = String(date.getDate()).padStart(2, '0');
     const dateStr = y + '-' + m + '-' + d;
-    const result = lessons.filter(l => l.date === dateStr && l.attendance_status !== 'justificada' && l.attendance_status !== 'Justificada');
+    const result = lessons.filter(l => l.date === dateStr);
     return result;
   };
 
@@ -615,9 +615,9 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                                         setViewingLesson(lesson);
                                       }
                                     }}
-                                    className={`${color.hex ? '' : color.bg + ' border-l-4 ' + color.border} rounded p-1 mb-0.5 cursor-pointer hover:opacity-80 transition-all`}>
-                                    <p className="text-[9px] font-black truncate leading-tight" style={color.hex ? { color: color.hex } : {}}>{lesson.teacher_name || 'Prof.'}</p>
-                                    <p className="text-[8px] text-gray-600 truncate leading-tight">{lesson.student_name}</p>
+                                    className={`${(lesson.attendance_status === 'justificada' || lesson.attendance_status === 'Justificada') ? 'bg-gray-100 border-l-4 border-gray-300 opacity-50' : color.hex ? '' : color.bg + ' border-l-4 ' + color.border} rounded p-1 mb-0.5 cursor-pointer hover:opacity-80 transition-all`}>
+                                    <p className="text-[9px] font-black truncate leading-tight" style={color.hex && !(lesson.attendance_status === 'justificada' || lesson.attendance_status === 'Justificada') ? { color: color.hex } : {}}>{lesson.teacher_name || 'Prof.'}</p>
+                                    <p className={`text-[8px] truncate leading-tight ${(lesson.attendance_status === 'justificada' || lesson.attendance_status === 'Justificada') ? 'text-gray-400 line-through' : 'text-gray-600'}`}>{lesson.student_name}{(lesson.attendance_status === 'justificada' || lesson.attendance_status === 'Justificada') ? ' (Just.)' : ''}</p>
                                   </div>
                                 );
                               })}
