@@ -1253,7 +1253,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
               {(viewingLesson as any).attendance_status !== 'falta' && (viewingLesson as any).attendance_status !== 'Ausente' && (
                 <button onClick={async () => {
                   if (!confirm('Marcar falta para ' + (viewingLesson.student_name || '') + '?')) return;
-                  await supabase.from('schedules').update({ attendance_status: 'falta' }).eq('id', viewingLesson.id);
+                  await supabase.from('schedules').update({ attendance_status: 'falta', status: 'falta_confirmada' }).eq('id', viewingLesson.id);
                   const teacherEmail = teachers.find(t => t.id === viewingLesson.teacher_id)?.email || '';
                   const { data: profProfile } = await supabase.from('profiles').select('id').eq('email', teacherEmail).single();
                   const notifId = profProfile?.id || viewingLesson.teacher_id;
