@@ -1232,10 +1232,10 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
             </div>
             <div className="p-5 border-t border-gray-100 flex gap-3">
               <button onClick={() => setViewingLesson(null)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all">Fechar</button>
-              {viewingLesson.status !== 'concluido' && (viewingLesson as any).attendance_status !== 'justificada' && (
+              {(viewingLesson as any).attendance_status !== 'justificada' && (viewingLesson as any).attendance_status !== 'Justificada' && (
                 <button onClick={async () => {
                   if (!confirm('Justificar a aula de ' + (viewingLesson.student_name || '') + '?')) return;
-                  await supabase.from('schedules').update({ attendance_status: 'justificada' }).eq('id', viewingLesson.id);
+                  await supabase.from('schedules').update({ attendance_status: 'justificada', reposicao_pendente: true }).eq('id', viewingLesson.id);
                   const teacherEmail = teachers.find(t => t.id === viewingLesson.teacher_id)?.email || '';
                   const { data: profProfile } = await supabase.from('profiles').select('id').eq('email', teacherEmail).single();
                   const notifId = profProfile?.id || viewingLesson.teacher_id;
@@ -1249,6 +1249,24 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                   setViewingLesson(null);
                   fetchLessons();
                 }} className="px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-xl text-sm font-bold transition-all">Justificar</button>
+              )}
+              {(viewingLesson as any).attendance_status !== 'falta' && (viewingLesson as any).attendance_status !== 'Ausente' && (
+                <button onClick={async () => {
+                  if (!confirm('Marcar falta para ' + (viewingLesson.student_name || '') + '?')) return;
+                  await supabase.from('schedules').update({ attendance_status: 'falta' }).eq('id', viewingLesson.id);
+                  const teacherEmail = teachers.find(t => t.id === viewingLesson.teacher_id)?.email || '';
+                  const { data: profProfile } = await supabase.from('profiles').select('id').eq('email', teacherEmail).single();
+                  const notifId = profProfile?.id || viewingLesson.teacher_id;
+                  await supabase.from('notifications').insert({
+                    user_id: notifId,
+                    title: 'Falta registrada pelo admin',
+                    message: 'A aula com ' + (viewingLesson.student_name || '') + ' em ' + new Date(viewingLesson.date + 'T00:00:00').toLocaleDateString('pt-BR') + ' foi marcada como falta pelo administrador.',
+                    type: 'warning', read: false, created_at: new Date().toISOString(),
+                  });
+                  toast.success('Falta registrada!');
+                  setViewingLesson(null);
+                  fetchLessons();
+                }} className="px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold transition-all">Falta</button>
               )}
               <button onClick={async () => {
                 const recGroup = (viewingLesson as any).recurrence_group;
