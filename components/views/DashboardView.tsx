@@ -129,16 +129,7 @@ export default function DashboardView() {
       if (lucroMes < 0) alertas.push({ type: 'danger', msg: `📉 Prejuízo de ${fmt(Math.abs(lucroMes))} este mês` });
       if (recebidoMes < receitaMes * 0.5 && receitaMes > 0) alertas.push({ type: 'warning', msg: `💰 Apenas ${taxaRecebimento}% da receita foi recebida este mês` });
       if (students.length < 5) alertas.push({ type: 'info', msg: '💡 Dica: Aulas em grupo aumentam receita sem mais horas trabalhadas' });
-      // Lembrete: aulas experimentais de amanhã
-      const amanha = new Date(); amanha.setDate(amanha.getDate() + 1);
-      const amanhaStr = amanha.getFullYear() + '-' + String(amanha.getMonth()+1).padStart(2,'0') + '-' + String(amanha.getDate()).padStart(2,'0');
-      const expAmanha = (experimentais || []).filter((e: any) => e.data === amanhaStr && e.status !== 'arquivada' && e.status !== 'matriculado');
-      expAmanha.forEach((e: any) => {
-        const tel = (e.telefone || '').replace(/\D/g, '');
-        const msg = encodeURIComponent('Ol\u00e1! Lembramos que amanh\u00e3, ' + amanha.toLocaleDateString('pt-BR') + ', \u00e0s ' + (e.hora_inicio || '') + ', temos a aula experimental de ' + (e.nome || '') + ' na Descomplica com a professora ' + (e.professor_nome || '') + '. Confirmamos a presen\u00e7a?');
-        const waLink = tel ? 'https://wa.me/55' + tel + '?text=' + msg : '';
-        alertas.push({ type: 'experimental', msg: '📋 Aula experimental amanh\u00e3: ' + (e.nome || '') + ' \u00e0s ' + (e.hora_inicio || '') + ' com ' + (e.professor_nome || ''), waLink, tel });
-      });
+
 
       // Aniversários
       const anivAlunos = students.filter(s => {
@@ -168,6 +159,16 @@ export default function DashboardView() {
 
       // Busca dados de experimentais e renovações
       const { data: experimentais } = await supabase.from('aulas_experimentais').select('*');
+      // Lembrete: aulas experimentais de amanhã
+      const amanha = new Date(); amanha.setDate(amanha.getDate() + 1);
+      const amanhaStr = amanha.getFullYear() + '-' + String(amanha.getMonth()+1).padStart(2,'0') + '-' + String(amanha.getDate()).padStart(2,'0');
+      const expAmanha = (experimentais || []).filter((e: any) => e.data === amanhaStr && e.status !== 'arquivada' && e.status !== 'matriculado');
+      expAmanha.forEach((e: any) => {
+        const tel = (e.telefone || '').replace(/\D/g, '');
+        const msg = encodeURIComponent('Ol\u00e1! Lembramos que amanh\u00e3, ' + amanha.toLocaleDateString('pt-BR') + ', \u00e0s ' + (e.hora_inicio || '') + ', temos a aula experimental de ' + (e.nome || '') + ' na Descomplica com a professora ' + (e.professor_nome || '') + '. Confirmamos a presen\u00e7a?');
+        const waLink = tel ? 'https://wa.me/55' + tel + '?text=' + msg : '';
+        alertas.push({ type: 'experimental', msg: '\ud83d\udccb Aula experimental amanh\u00e3: ' + (e.nome || '') + ' \u00e0s ' + (e.hora_inicio || '') + ' com ' + (e.professor_nome || ''), waLink, tel });
+      });
       const expMatriculadas = (experimentais || []).filter((e: any) => e.status === 'matriculado').length;
       const expNaoConvertidas = (experimentais || []).filter((e: any) => e.status === 'arquivada').length;
       const expTotal = (experimentais || []).length;
