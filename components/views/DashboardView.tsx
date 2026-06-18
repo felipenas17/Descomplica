@@ -129,6 +129,16 @@ export default function DashboardView() {
       if (lucroMes < 0) alertas.push({ type: 'danger', msg: `📉 Prejuízo de ${fmt(Math.abs(lucroMes))} este mês` });
       if (recebidoMes < receitaMes * 0.5 && receitaMes > 0) alertas.push({ type: 'warning', msg: `💰 Apenas ${taxaRecebimento}% da receita foi recebida este mês` });
       if (students.length < 5) alertas.push({ type: 'info', msg: '💡 Dica: Aulas em grupo aumentam receita sem mais horas trabalhadas' });
+      // Lembrete: aulas experimentais de amanhã
+      const amanha = new Date(); amanha.setDate(amanha.getDate() + 1);
+      const amanhaStr = amanha.getFullYear() + '-' + String(amanha.getMonth()+1).padStart(2,'0') + '-' + String(amanha.getDate()).padStart(2,'0');
+      const expAmanha = (experimentais || []).filter((e: any) => e.data === amanhaStr && e.status !== 'arquivada' && e.status !== 'matriculado');
+      expAmanha.forEach((e: any) => {
+        const tel = (e.telefone || '').replace(/\D/g, '');
+        const msg = encodeURIComponent('Ol\u00e1! Lembramos que amanh\u00e3, ' + amanha.toLocaleDateString('pt-BR') + ', \u00e0s ' + (e.hora_inicio || '') + ', temos a aula experimental de ' + (e.nome || '') + ' na Descomplica com a professora ' + (e.professor_nome || '') + '. Confirmamos a presen\u00e7a?');
+        const waLink = tel ? 'https://wa.me/55' + tel + '?text=' + msg : '';
+        alertas.push({ type: 'experimental', msg: '📋 Aula experimental amanh\u00e3: ' + (e.nome || '') + ' \u00e0s ' + (e.hora_inicio || '') + ' com ' + (e.professor_nome || ''), waLink, tel });
+      });
 
       // Aniversários
       const anivAlunos = students.filter(s => {
@@ -203,8 +213,9 @@ export default function DashboardView() {
       {data.alertas.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {data.alertas.map((a: any, i: number) => (
-            <div key={i} style={{ padding: '12px 16px', borderRadius: 12, fontSize: 13, fontWeight: 600, background: a.type === 'danger' ? '#2a0d0d' : a.type === 'warning' ? '#2a1f0d' : '#0d1a2a', color: a.type === 'danger' ? D_RED : a.type === 'warning' ? D_YELLOW : '#60a5fa', border: `1px solid ${a.type === 'danger' ? '#5a1a1a' : a.type === 'warning' ? '#5a3a1a' : '#1a2a4a'}` }}>
-              {a.msg}
+            <div key={i} style={{ padding: '12px 16px', borderRadius: 12, fontSize: 13, fontWeight: 600, background: a.type === 'danger' ? '#2a0d0d' : a.type === 'warning' ? '#2a1f0d' : a.type === 'experimental' ? '#0d2a1a' : '#0d1a2a', color: a.type === 'danger' ? D_RED : a.type === 'warning' ? D_YELLOW : a.type === 'experimental' ? '#34d399' : '#60a5fa', border: `1px solid ${a.type === 'danger' ? '#5a1a1a' : a.type === 'warning' ? '#5a3a1a' : a.type === 'experimental' ? '#1a4a2a' : '#1a2a4a'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <span>{a.msg}</span>
+              {a.waLink && <a href={a.waLink} target="_blank" rel="noopener noreferrer" style={{ background: '#25D366', color: '#fff', padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>Enviar WhatsApp</a>}
             </div>
           ))}
         </div>
