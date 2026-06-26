@@ -30,7 +30,7 @@ export default function FeedbacksView() {
   const [filterTeacher, setFilterTeacher] = useState('');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
-  const [filterSent, setFilterSent] = useState('todos');
+  const [filterSent, setFilterSent] = useState('nao_enviado');
   const [teachers, setTeachers] = useState<any[]>([]);
 
   const fetchTeachers = React.useCallback(async () => {
@@ -188,12 +188,14 @@ export default function FeedbacksView() {
         <span className="text-gray-400 text-sm">até</span>
         <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)}
           className="py-2.5 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
-        <select value={filterSent} onChange={e => setFilterSent(e.target.value)}
-          className="py-2.5 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
-          <option value="todos">Todos os status</option>
-          <option value="enviado">✅ Enviados ao pai</option>
-          <option value="nao_enviado">⏳ Não enviados</option>
-        </select>
+        <div className="flex bg-gray-100 p-0.5 rounded-lg">
+          {[{v:'nao_enviado',l:'Pendentes',c:feedbacks.filter(f=>!f.sent_to_parent).length,bg:'text-red-600'},{v:'enviado',l:'Enviados',c:feedbacks.filter(f=>f.sent_to_parent).length,bg:'text-green-600'},{v:'todos',l:'Todos',c:feedbacks.length,bg:'text-gray-600'}].map(o=>(
+            <button key={o.v} onClick={()=>setFilterSent(o.v)}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${filterSent===o.v?'bg-white shadow text-purple-600':'text-gray-400 hover:text-gray-600'}`}>
+              {o.l} <span className={filterSent===o.v?'text-purple-600':o.bg}>{o.c}</span>
+            </button>
+          ))}
+        </div>
         {(filterStr || filterTeacher || filterDateFrom || filterDateTo || filterSent !== 'todos') && (
           <button onClick={() => { setFilterStr(''); setFilterTeacher(''); setFilterDateFrom(''); setFilterDateTo(''); setFilterSent('todos'); }}
             className="px-4 py-2.5 bg-red-50 text-red-600 rounded-xl text-sm font-bold hover:bg-red-100 transition-all">
@@ -205,7 +207,7 @@ export default function FeedbacksView() {
       {/* Lista */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-          <h3 className="text-sm font-black text-gray-900">Histórico de Feedbacks</h3>
+          <h3 className="text-sm font-black text-gray-900">{filterSent === 'nao_enviado' ? 'Pendentes de envio' : filterSent === 'enviado' ? 'Enviados ao pai' : 'Histórico de Feedbacks'}</h3>
           <span className="text-xs text-gray-400 font-bold">{filteredFeedbacks.length} resultado(s)</span>
         </div>
 
@@ -235,7 +237,33 @@ export default function FeedbacksView() {
                     Nenhum feedback encontrado.
                   </td>
                 </tr>
-              ) : filteredFeedbacks.map((f) => (
+              ) : (() => {
+                const getWeekLabel = (dateStr: string) => {
+                  if (!dateStr) return 'Sem data';
+                  const d = new Date(dateStr + 'T00:00:00');
+                  const now = new Date();
+                  const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - now.getDay() + 1);
+                  const endOfWeek = new Date(startOfWeek); endOfWeek.setDate(startOfWeek.getDate() + 6);
+                  const prevStart = new Date(startOfWeek); prevStart.setDate(prevStart.getDate() - 7);
+                  if (d >= startOfWeek && d <= endOfWeek) return 'Esta semana';
+                  if (d >= prevStart && d < startOfWeek) return 'Semana passada';
+                  return 'Semana de ' + new Date(d.getFullYear(), d.getMonth(), d.getDate() - d.getDay() + 1).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                };
+                let lastWeek = '';
+                return filteredFeedbacks.map((f, idx) => {
+                const weekLabel = getWeekLabel(f.class_date);
+                const showWeekHeader = weekLabel !== lastWeek;
+                if (showWeekHeader) lastWeek = weekLabel;
+                return (<>
+                {showWeekHeader && (
+                  <tr key={'week-'+idx}><td colSpan={6} className="px-4 py-2 bg-gray-50 border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                      <span className="text-[10px] font-black text-purple-600 uppercase tracking-wider">{weekLabel}</span>
+                      <div className="flex-1 h-px bg-gray-200" />
+                    </div>
+                  </td></tr>
+                )}
                 <tr 
                   key={f.id} 
                   className="group hover:bg-gray-50/50 transition-all cursor-pointer"
@@ -294,7 +322,7 @@ export default function FeedbacksView() {
                     </button>
                   </td>
                 </tr>
-              ))}
+              </>); }); })()}
             </tbody>
           </table>
         </div>
