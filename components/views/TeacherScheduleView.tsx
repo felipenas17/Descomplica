@@ -222,7 +222,7 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
         await supabase.from('absences').insert({
           student_id: feedbackLesson.student_id || null,
           student_name: feedbackLesson.student_name || 'Aluno',
-          feedback_id: fbError ? null : null,
+          feedback_id: null,
           schedule_id: feedbackLesson.id,
           absence_date: feedbackLesson.date,
           notified_advance: false,

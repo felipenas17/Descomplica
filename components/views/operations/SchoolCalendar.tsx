@@ -60,7 +60,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     subject: '', room: '', teacher_id: '', student_name: '', student_id: '', notes: '', recorrente: false, recurrence_end: ''
   });
   const [saving, setSaving] = useState(false);
-  const [teachers, setTeachers] = useState<{id: string, name: string, color?: string}[]>([]);
+  const [teachers, setTeachers] = useState<{id: string, name: string, color?: string, email?: string}[]>([]);
   const [showSubstModal, setShowSubstModal] = useState(false);
   const [showExpModal, setShowExpModal] = useState(false);
   const [lessonType, setLessonType] = useState<'individual' | 'dupla' | 'grupo' | 'avulsa'>('individual');
