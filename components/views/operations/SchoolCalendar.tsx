@@ -1261,7 +1261,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                 setViewingLesson(null);
                 fetchLessons();
               }} className="px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold transition-all">Excluir</button>
-              <button onClick={() => { setSelectedLesson(viewingLesson); setEditingLesson({...viewingLesson}); setViewingLesson(null); }}
+              <button onClick={() => { setSelectedLesson(viewingLesson); setEditingLesson({...viewingLesson, time_start: (viewingLesson as any).start_time || viewingLesson.time_start, time_end: (viewingLesson as any).end_time || viewingLesson.time_end}); setViewingLesson(null); }}
                 className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold transition-all">Editar</button>
             </div>
           </div>
