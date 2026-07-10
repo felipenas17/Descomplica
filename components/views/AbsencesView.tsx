@@ -43,6 +43,11 @@ export default function AbsencesView() {
 
   const confirmLesson = async (id: string) => {
     await supabase.from('schedules').update({ status: 'concluido', admin_confirmed: true }).eq('id', id);
+    // Se esta aula era uma reposição de outra, fecha o ciclo da aula original
+    const lesson = schedules.find(s => s.id === id);
+    if (lesson && (lesson as any).reposicao_de_id) {
+      await supabase.from('schedules').update({ status: 'reposicao_concluida' }).eq('id', (lesson as any).reposicao_de_id);
+    }
     fetchData();
     toast.success('Aula confirmada!');
   };
@@ -87,6 +92,7 @@ export default function AbsencesView() {
         notes: remarcarData.notes || 'Reposicao da aula de ' + showRemarcarModal.date,
         status: 'confirmado',
         reposicao_pendente: false,
+        reposicao_de_id: showRemarcarModal.id,
         created_at: new Date().toISOString(),
       });
       await supabase.from('schedules').update({
@@ -197,7 +203,7 @@ export default function AbsencesView() {
     const teacherName = filterTeacher ? teachers.find((t: any) => t.id === filterTeacher)?.name || '' : 'Todas';
     const fmtDate = (d: string) => { if(!d) return '---'; const [y,m,dd]=d.split('-'); return dd+'/'+m+'/'+y; };
     const periodo = fmtDate(filterDateFrom) + ' a ' + fmtDate(filterDateTo);
-    const base2 = baseKpi;
+    const base2 = baseKpi.filter((s: any) => s.conta_pagamento !== false);
     const duracao = (start: string, end: string) => {
       const [sh,sm] = (start||'00:00').split(':').map(Number);
       const [eh,em] = (end||'00:00').split(':').map(Number);
