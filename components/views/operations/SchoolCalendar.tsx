@@ -1225,6 +1225,8 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                 { label: 'Horario', value: (viewingLesson.time_start || (viewingLesson as any).start_time || '') + ' - ' + (viewingLesson.time_end || (viewingLesson as any).end_time || '') },
                 { label: 'Sala', value: (viewingLesson as any).room },
                 { label: 'Status', value: viewingLesson.status },
+                { label: 'Presenca', value: (viewingLesson as any).attendance_status },
+                { label: 'Motivo', value: (viewingLesson as any).motivo_falta },
                 { label: 'Observacoes', value: (viewingLesson as any).notes },
               ].filter(i => i.value).map(item => (
                 <div key={item.label} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
