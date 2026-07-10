@@ -189,6 +189,9 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [editingLesson, setEditingLesson] = useState<any>(null);
   const [viewingLesson, setViewingLesson] = useState<Lesson | null>(null);
+  const [motivoModal, setMotivoModal] = useState<{ tipo: 'justificar' | 'falta', lesson: Lesson } | null>(null);
+  const [motivoTexto, setMotivoTexto] = useState('');
+  const [motivoTag, setMotivoTag] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [teacherAvailability, setTeacherAvailability] = useState<any>(null);
   const [teacherBusySlots, setTeacherBusySlots] = useState<any[]>([]);
@@ -1233,40 +1236,12 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
             <div className="p-5 border-t border-gray-100 flex gap-3">
               <button onClick={() => setViewingLesson(null)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all">Fechar</button>
               {(viewingLesson as any).attendance_status !== 'justificada' && (viewingLesson as any).attendance_status !== 'Justificada' && (
-                <button onClick={async () => {
-                  if (!confirm('Justificar a aula de ' + (viewingLesson.student_name || '') + '?')) return;
-                  await supabase.from('schedules').update({ attendance_status: 'justificada', reposicao_pendente: true }).eq('id', viewingLesson.id);
-                  const teacherEmail = teachers.find(t => t.id === viewingLesson.teacher_id)?.email || '';
-                  const { data: profProfile } = await supabase.from('profiles').select('id').eq('email', teacherEmail).single();
-                  const notifId = profProfile?.id || viewingLesson.teacher_id;
-                  await supabase.from('notifications').insert({
-                    user_id: notifId,
-                    title: 'Aula justificada pelo admin',
-                    message: 'A aula com ' + (viewingLesson.student_name || '') + ' em ' + new Date(viewingLesson.date + 'T00:00:00').toLocaleDateString('pt-BR') + ' foi justificada pelo administrador.',
-                    type: 'info', read: false, created_at: new Date().toISOString(),
-                  });
-                  toast.success('Aula justificada!');
-                  setViewingLesson(null);
-                  fetchLessons();
-                }} className="px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-xl text-sm font-bold transition-all">Justificar</button>
+                <button onClick={() => { setMotivoModal({ tipo: 'justificar', lesson: viewingLesson }); setMotivoTexto(''); setMotivoTag(''); }}
+                  className="px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-xl text-sm font-bold transition-all">Justificar</button>
               )}
               {(viewingLesson as any).attendance_status !== 'falta' && (viewingLesson as any).attendance_status !== 'Ausente' && (
-                <button onClick={async () => {
-                  if (!confirm('Marcar falta para ' + (viewingLesson.student_name || '') + '?')) return;
-                  await supabase.from('schedules').update({ attendance_status: 'falta', status: 'falta_confirmada' }).eq('id', viewingLesson.id);
-                  const teacherEmail = teachers.find(t => t.id === viewingLesson.teacher_id)?.email || '';
-                  const { data: profProfile } = await supabase.from('profiles').select('id').eq('email', teacherEmail).single();
-                  const notifId = profProfile?.id || viewingLesson.teacher_id;
-                  await supabase.from('notifications').insert({
-                    user_id: notifId,
-                    title: 'Falta registrada pelo admin',
-                    message: 'A aula com ' + (viewingLesson.student_name || '') + ' em ' + new Date(viewingLesson.date + 'T00:00:00').toLocaleDateString('pt-BR') + ' foi marcada como falta pelo administrador.',
-                    type: 'warning', read: false, created_at: new Date().toISOString(),
-                  });
-                  toast.success('Falta registrada!');
-                  setViewingLesson(null);
-                  fetchLessons();
-                }} className="px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold transition-all">Falta</button>
+                <button onClick={() => { setMotivoModal({ tipo: 'falta', lesson: viewingLesson }); setMotivoTexto(''); setMotivoTag(''); }}
+                  className="px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold transition-all">Falta</button>
               )}
               <button onClick={async () => {
                 const recGroup = (viewingLesson as any).recurrence_group;
@@ -1286,6 +1261,73 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
               }} className="px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold transition-all">Excluir</button>
               <button onClick={() => { setSelectedLesson(viewingLesson); setEditingLesson({...viewingLesson}); setViewingLesson(null); }}
                 className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold transition-all">Editar</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {motivoModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md">
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-lg font-black text-gray-900">
+                {motivoModal.tipo === 'justificar' ? 'Justificar aula' : 'Marcar falta'}
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">{motivoModal.lesson.student_name}</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Motivo</label>
+                <div className="flex flex-wrap gap-2">
+                  {['Atestado medico', 'Avisou com antecedencia', 'Faltou sem aviso', 'Compromisso familiar', 'Outro'].map(tag => (
+                    <button key={tag} type="button" onClick={() => setMotivoTag(tag)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${motivoTag === tag ? 'bg-purple-600 text-white border-purple-600' : 'border-gray-200 text-gray-600 hover:border-purple-300'}`}>
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Observacao (opcional)</label>
+                <textarea value={motivoTexto} onChange={e => setMotivoTexto(e.target.value)} rows={3} placeholder="Detalhes adicionais..."
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-100 flex gap-3">
+              <button onClick={() => setMotivoModal(null)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all">Cancelar</button>
+              <button onClick={async () => {
+                const lesson = motivoModal.lesson;
+                const motivoFinal = motivoTag + (motivoTexto ? (motivoTag ? ' - ' : '') + motivoTexto : '');
+                if (motivoModal.tipo === 'justificar') {
+                  await supabase.from('schedules').update({ attendance_status: 'justificada', reposicao_pendente: true, motivo_falta: motivoFinal }).eq('id', lesson.id);
+                  const teacherEmail = teachers.find(t => t.id === lesson.teacher_id)?.email || '';
+                  const { data: profProfile } = await supabase.from('profiles').select('id').eq('email', teacherEmail).single();
+                  const notifId = profProfile?.id || lesson.teacher_id;
+                  await supabase.from('notifications').insert({
+                    user_id: notifId,
+                    title: 'Aula justificada pelo admin',
+                    message: 'A aula com ' + (lesson.student_name || '') + ' em ' + new Date(lesson.date + 'T00:00:00').toLocaleDateString('pt-BR') + ' foi justificada pelo administrador.',
+                    type: 'info', read: false, created_at: new Date().toISOString(),
+                  });
+                  toast.success('Aula justificada!');
+                } else {
+                  await supabase.from('schedules').update({ attendance_status: 'falta', status: 'falta_confirmada', motivo_falta: motivoFinal }).eq('id', lesson.id);
+                  const teacherEmail = teachers.find(t => t.id === lesson.teacher_id)?.email || '';
+                  const { data: profProfile } = await supabase.from('profiles').select('id').eq('email', teacherEmail).single();
+                  const notifId = profProfile?.id || lesson.teacher_id;
+                  await supabase.from('notifications').insert({
+                    user_id: notifId,
+                    title: 'Falta registrada pelo admin',
+                    message: 'A aula com ' + (lesson.student_name || '') + ' em ' + new Date(lesson.date + 'T00:00:00').toLocaleDateString('pt-BR') + ' foi marcada como falta pelo administrador.',
+                    type: 'warning', read: false, created_at: new Date().toISOString(),
+                  });
+                  toast.success('Falta registrada!');
+                }
+                setMotivoModal(null);
+                setViewingLesson(null);
+                fetchLessons();
+              }} className={`flex-1 py-3 text-white rounded-xl text-sm font-bold transition-all ${motivoModal.tipo === 'justificar' ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-red-500 hover:bg-red-600'}`}>
+                Confirmar
+              </button>
             </div>
           </div>
         </div>
