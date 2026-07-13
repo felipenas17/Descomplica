@@ -6,9 +6,10 @@ import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { Avatar } from '@/components/ui/Avatar';
 import TeacherForm from '@/components/forms/TeacherForm';
+import TeacherBirthdayTab from './TeacherBirthdayTab';
 
 export default function TeachersView() {
-  const [teachersTab, setTeachersTab] = useState<'cadastro' | 'aniversarios'>('cadastro');
+  const [teachersTab, setTeachersTab] = React.useState<'cadastro' | 'aniversarios'>('cadastro');
   const [teachers, setTeachers] = React.useState<any[]>([]);
   const [showForm, setShowForm] = React.useState(false);
   const [editingTeacher, setEditingTeacher] = React.useState<any>(null);
