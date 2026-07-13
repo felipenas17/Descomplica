@@ -1374,7 +1374,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                   });
                   toast.success('Aula justificada!');
                 } else {
-                  await supabase.from('schedules').update({ attendance_status: 'falta', status: 'falta_confirmada', motivo_falta: motivoFinal }).eq('id', lesson.id);
+                  await supabase.from('schedules').update({ attendance_status: 'falta', status: 'falta_confirmada', motivo_falta: motivoFinal, reposicao_pendente: false }).eq('id', lesson.id);
                   const teacherEmail = teachers.find(t => t.id === lesson.teacher_id)?.email || '';
                   const { data: profProfile } = await supabase.from('profiles').select('id').eq('email', teacherEmail).single();
                   const notifId = profProfile?.id || lesson.teacher_id;
