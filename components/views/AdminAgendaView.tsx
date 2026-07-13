@@ -59,7 +59,7 @@ export default function AdminAgendaView({ user }: { user?: any }) {
     setSaving(true);
     try {
       // Se teacher_id for 'todos', salva como null na tabela (coluna é UUID)
-      const agendaData = { ...form, user_id: user?.id, created_at: new Date().toISOString() };
+      const agendaData: any = { ...form, user_id: user?.id, created_at: new Date().toISOString() };
       if (agendaData.teacher_id === 'todos') agendaData.teacher_id = null;
       const { error } = await supabase.from('admin_agenda').insert(agendaData);
       if (error) throw error;

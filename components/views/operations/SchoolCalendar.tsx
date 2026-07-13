@@ -145,11 +145,16 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
         created_at: new Date().toISOString(),
       });
       // Atualiza a aula
+      const vinculoId = vinculosSelecionados.length === 1 ? vinculosSelecionados[0] : null;
       await supabase.from('schedules').update({
         teacher_id: substData.professor_id,
         teacher_name: novoProf?.name,
         notes: (selectedLesson.notes || '') + ' | Substituido: ' + (selectedLesson.teacher_name) + ' por ' + novoProf?.name,
+        reposicao_de_id: vinculoId,
       }).eq('id', selectedLesson.id);
+      if (vinculoId) {
+        await supabase.from('schedules').update({ reposicao_pendente: false, status: 'reposicao_marcada' }).eq('id', vinculoId);
+      }
       // Notifica professor substituto
       const substEmail = teachers.find(t => t.id === substData.professor_id)?.email || '';
       const { data: substProfile } = await supabase.from('profiles').select('id').eq('email', substEmail).single();
@@ -188,8 +193,8 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
   const [dragLesson, setDragLesson] = useState<Lesson | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [editingLesson, setEditingLesson] = useState<any>(null);
-  const [reposicaoPendenteDetectada, setReposicaoPendenteDetectada] = useState<any>(null);
-  const [vincularReposicao, setVincularReposicao] = useState(false);
+  const [reposicoesPendentesDetectadas, setReposicoesPendentesDetectadas] = useState<any[]>([]);
+  const [vinculosSelecionados, setVinculosSelecionados] = useState<string[]>([]);
   const [viewingLesson, setViewingLesson] = useState<Lesson | null>(null);
   const [motivoModal, setMotivoModal] = useState<{ tipo: 'justificar' | 'falta', lesson: Lesson } | null>(null);
   const [motivoTexto, setMotivoTexto] = useState('');
@@ -408,18 +413,19 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     return Math.max(mins / 60 * 80, 40);
   };
 
-  const checkReposicaoPendente = async (studentId: string, studentName: string) => {
-    if (!studentId && !studentName) { setReposicaoPendenteDetectada(null); return; }
-    let query = supabase.from('schedules').select('*').eq('reposicao_pendente', true).neq('status', 'reposicao_concluida').neq('status', 'reposicao_marcada');
-    if (studentId) query = query.eq('student_id', studentId);
-    else query = query.ilike('student_name', studentName);
-    const { data } = await query.limit(1);
-    if (data && data.length > 0) {
-      setReposicaoPendenteDetectada(data[0]);
-      setVincularReposicao(false);
-    } else {
-      setReposicaoPendenteDetectada(null);
+  const checkReposicaoPendente = async (studentsList: {id: string, name: string}[]) => {
+    const validStudents = studentsList.filter(s => s.id || s.name);
+    if (validStudents.length === 0) { setReposicoesPendentesDetectadas([]); return; }
+    const results: any[] = [];
+    for (const st of validStudents) {
+      let query = supabase.from('schedules').select('*').eq('reposicao_pendente', true).neq('status', 'reposicao_concluida').neq('status', 'reposicao_marcada');
+      if (st.id) query = query.eq('student_id', st.id);
+      else query = query.ilike('student_name', st.name);
+      const { data } = await query.limit(1);
+      if (data && data.length > 0) results.push(data[0]);
     }
+    setReposicoesPendentesDetectadas(results);
+    setVinculosSelecionados([]);
   };
   const saveLesson = async () => {
     if (!newLesson.date) {
@@ -443,14 +449,14 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
         notes: newLesson.notes,
         status: 'confirmado',
         recurrence_group: recGroupId,
-        reposicao_de_id: vincularReposicao && reposicaoPendenteDetectada ? reposicaoPendenteDetectada.id : null,
+        reposicao_de_id: vinculosSelecionados.length === 1 ? vinculosSelecionados[0] : null,
       });
       if (error) throw error;
-      if (vincularReposicao && reposicaoPendenteDetectada) {
-        await supabase.from('schedules').update({ reposicao_pendente: false, status: 'reposicao_marcada' }).eq('id', reposicaoPendenteDetectada.id);
-        setReposicaoPendenteDetectada(null);
-        setVincularReposicao(false);
+      for (const vincId of vinculosSelecionados) {
+        await supabase.from('schedules').update({ reposicao_pendente: false, status: 'reposicao_marcada' }).eq('id', vincId);
       }
+      setReposicoesPendentesDetectadas([]);
+      setVinculosSelecionados([]);
 
       // Notificar o professor selecionado
       const teacherId = newLesson.teacher_id || user?.id || null;
@@ -870,7 +876,8 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                         const updated = [...extraStudents];
                         updated[idx] = { id: e.target.value, name: student?.name || '' };
                         setExtraStudents(updated);
-                        if (idx === 0) { setNewLesson(p => ({ ...p, student_id: e.target.value, student_name: student?.name || '' })); checkReposicaoPendente(e.target.value, student?.name || ''); }
+                        if (idx === 0) setNewLesson(p => ({ ...p, student_id: e.target.value, student_name: student?.name || '' }));
+                        checkReposicaoPendente(updated.map(u => ({ id: u.id, name: u.name })));
                       }}
                       className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
                       <option value="">Aluno {idx + 1}...</option>
@@ -879,15 +886,20 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                   ))}
                 </div>
                 )}
-                {reposicaoPendenteDetectada && (
-                  <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                    <p className="text-xs font-bold text-amber-700">
-                      Este aluno tem uma reposicao pendente: aula de {new Date(reposicaoPendenteDetectada.date + 'T00:00:00').toLocaleDateString('pt-BR')} com {reposicaoPendenteDetectada.teacher_name}.
-                    </p>
-                    <label className="flex items-center gap-2 mt-2 text-xs font-bold text-amber-700 cursor-pointer">
-                      <input type="checkbox" checked={vincularReposicao} onChange={e => setVincularReposicao(e.target.checked)} />
-                      Esta aula e a reposicao dessa aula pendente
-                    </label>
+                {reposicoesPendentesDetectadas.length > 0 && (
+                  <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
+                    {reposicoesPendentesDetectadas.map((rep: any) => (
+                      <div key={rep.id}>
+                        <p className="text-xs font-bold text-amber-700">
+                          {rep.student_name} tem uma reposicao pendente: aula de {new Date(rep.date + 'T00:00:00').toLocaleDateString('pt-BR')} com {rep.teacher_name}.
+                        </p>
+                        <label className="flex items-center gap-2 mt-1 text-xs font-bold text-amber-700 cursor-pointer">
+                          <input type="checkbox" checked={vinculosSelecionados.includes(rep.id)}
+                            onChange={e => setVinculosSelecionados(v => e.target.checked ? [...v, rep.id] : v.filter(id => id !== rep.id))} />
+                          Esta aula e a reposicao dessa aula pendente
+                        </label>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -1228,9 +1240,25 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                   placeholder="Ex: Professor titular doente..."
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300" />
               </div>
+              {reposicoesPendentesDetectadas.length > 0 && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
+                  {reposicoesPendentesDetectadas.map((rep: any) => (
+                    <div key={rep.id}>
+                      <p className="text-xs font-bold text-amber-700">
+                        {rep.student_name} tem uma reposicao pendente: aula de {new Date(rep.date + 'T00:00:00').toLocaleDateString('pt-BR')} com {rep.teacher_name}.
+                      </p>
+                      <label className="flex items-center gap-2 mt-1 text-xs font-bold text-amber-700 cursor-pointer">
+                        <input type="checkbox" checked={vinculosSelecionados.includes(rep.id)}
+                          onChange={e => setVinculosSelecionados(v => e.target.checked ? [...v, rep.id] : v.filter(id => id !== rep.id))} />
+                        Esta aula e a reposicao dessa aula pendente
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex gap-3 mt-5">
-              <button onClick={() => setShowSubstModal(false)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold">Cancelar</button>
+              <button onClick={() => { setShowSubstModal(false); setReposicoesPendentesDetectadas([]); setVinculosSelecionados([]); }} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold">Cancelar</button>
               <button onClick={substituirProfessor} disabled={savingSubst || !substData.professor_id}
                 className="flex-1 py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2">
                 {savingSubst ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
@@ -1417,7 +1445,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                 setSelectedLesson(null); setEditingLesson(null);
                 fetchLessons();
               }} className="px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold transition-all">Excluir</button>
-              <button onClick={() => setShowSubstModal(true)} className="px-4 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-bold transition-all">Substituir</button>
+              <button onClick={() => { setShowSubstModal(true); if (selectedLesson) checkReposicaoPendente([{ id: (selectedLesson as any).student_id || '', name: selectedLesson.student_name || '' }]); }} className="px-4 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-bold transition-all">Substituir</button>
               <button onClick={saveEdit} disabled={savingEdit} className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all">{savingEdit ? "Salvando..." : "Salvar"}</button>
             </div>
           </div>
