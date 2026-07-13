@@ -104,7 +104,7 @@ export default function FeedbacksView() {
     const { data } = await supabase
       .from('students')
       .select('parent_name, parent_phone')
-      .ilike('name', feedback.student_name)
+      .ilike('name', '%' + feedback.student_name.trim() + '%')
       .limit(1)
       .single();
     const phone = (data?.parent_phone || '').replace(/[^0-9]/g, '');
