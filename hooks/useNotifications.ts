@@ -17,6 +17,7 @@ export function useNotifications(userId?: string) {
   const channelRef = useRef<any>(null);
   const fetchingRef = useRef(false);
   const debounceRef = useRef<any>(null);
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const fetchNotifications = useCallback(async () => {
     if (!userId || fetchingRef.current) return;
@@ -50,7 +51,7 @@ export function useNotifications(userId?: string) {
       channelRef.current = null;
     }
 
-    const channelName = 'notif_' + userId;
+    const channelName = 'notif_' + userId + '_' + instanceIdRef.current;
     const channel = supabase
       .channel(channelName)
       .on(
