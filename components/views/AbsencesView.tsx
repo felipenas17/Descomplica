@@ -156,7 +156,7 @@ export default function AbsencesView() {
       filterStatus === 'confirmado' ? (s.status === 'confirmado' || s.status === 'agendado') :
       filterStatus === 'aguardando' ? s.status === 'aguardando_confirmacao' :
       filterStatus === 'falta' ? s.attendance_status === 'falta' || s.attendance_status === 'Ausente' :
-      filterStatus === 'justificada' ? s.attendance_status === 'justificada' || s.attendance_status === 'Justificada' :
+      filterStatus === 'justificada' ? (s.attendance_status === 'justificada' || s.attendance_status === 'Justificada') && !s.reposicao_pendente && s.status !== 'reposicao_marcada' :
       filterStatus === 'reposicao' ? (s.reposicao_pendente === true || s.status === 'reposicao_marcada') :
       filterStatus === 'avulsa' ? s.lesson_type === 'avulsa' :
       s.status !== 'reposicao_concluida';
