@@ -289,7 +289,7 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
     } finally { setSavingFeedback(false); }
   };
 
-  const today = new Date().toISOString().split('T')[0];
+  const todayD = new Date(); const today = todayD.getFullYear() + '-' + String(todayD.getMonth()+1).padStart(2,'0') + '-' + String(todayD.getDate()).padStart(2,'0');
   const aulasHoje = lessons.filter(l => l.date === today).length;
   const aulasConfirmadas = lessons.filter(l => l.status === 'confirmado' || l.status === 'em_andamento' || l.status === 'reposicao_marcada').length;
   const aulasConcluidas = lessons.filter(l => l.status === 'concluido').length;

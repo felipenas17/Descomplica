@@ -102,7 +102,7 @@ export default function AdminAgendaView({ user }: { user?: any }) {
   };
 
   const getTipo = (type: string) => TIPOS.find(t => t.value === type) || TIPOS[TIPOS.length - 1];
-  const hoje = new Date().toISOString().split('T')[0];
+  const hojeD2 = new Date(); const hoje = hojeD2.getFullYear() + '-' + String(hojeD2.getMonth()+1).padStart(2,'0') + '-' + String(hojeD2.getDate()).padStart(2,'0');
 
   // Calendário
   const year  = calDate.getFullYear();

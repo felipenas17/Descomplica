@@ -80,7 +80,7 @@ export default function DashboardView() {
   const fetchDashboard = async () => {
     setLoading(true);
     try {
-      const hoje = new Date().toISOString().split('T')[0];
+      const hojeD = new Date(); const hoje = hojeD.getFullYear() + '-' + String(hojeD.getMonth()+1).padStart(2,'0') + '-' + String(hojeD.getDate()).padStart(2,'0');
       const mesAtual = MONTHS_FULL[new Date().getMonth()];
       const ano = new Date().getFullYear();
 

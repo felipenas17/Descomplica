@@ -75,7 +75,7 @@ export default function FeriadosView({ user }: { user?: any }) {
   };
 
   const getTipo = (tipo: string) => TIPOS.find(t => t.value === tipo) || TIPOS[TIPOS.length - 1];
-  const hoje = new Date().toISOString().split('T')[0];
+  const hojeD3 = new Date(); const hoje = hojeD3.getFullYear() + '-' + String(hojeD3.getMonth()+1).padStart(2,'0') + '-' + String(hojeD3.getDate()).padStart(2,'0');
   const proximos = feriados.filter(f => f.data >= hoje);
   const passados = feriados.filter(f => f.data < hoje);
 
