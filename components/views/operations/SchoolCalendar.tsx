@@ -188,6 +188,8 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
   const [dragLesson, setDragLesson] = useState<Lesson | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [editingLesson, setEditingLesson] = useState<any>(null);
+  const [reposicaoPendenteDetectada, setReposicaoPendenteDetectada] = useState<any>(null);
+  const [vincularReposicao, setVincularReposicao] = useState(false);
   const [viewingLesson, setViewingLesson] = useState<Lesson | null>(null);
   const [motivoModal, setMotivoModal] = useState<{ tipo: 'justificar' | 'falta', lesson: Lesson } | null>(null);
   const [motivoTexto, setMotivoTexto] = useState('');
@@ -406,6 +408,19 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     return Math.max(mins / 60 * 80, 40);
   };
 
+  const checkReposicaoPendente = async (studentId: string, studentName: string) => {
+    if (!studentId && !studentName) { setReposicaoPendenteDetectada(null); return; }
+    let query = supabase.from('schedules').select('*').eq('reposicao_pendente', true).neq('status', 'reposicao_concluida').neq('status', 'reposicao_marcada');
+    if (studentId) query = query.eq('student_id', studentId);
+    else query = query.ilike('student_name', studentName);
+    const { data } = await query.limit(1);
+    if (data && data.length > 0) {
+      setReposicaoPendenteDetectada(data[0]);
+      setVincularReposicao(false);
+    } else {
+      setReposicaoPendenteDetectada(null);
+    }
+  };
   const saveLesson = async () => {
     if (!newLesson.date) {
       toast.error('Preencha pelo menos a matéria e a data!');
@@ -428,8 +443,14 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
         notes: newLesson.notes,
         status: 'confirmado',
         recurrence_group: recGroupId,
+        reposicao_de_id: vincularReposicao && reposicaoPendenteDetectada ? reposicaoPendenteDetectada.id : null,
       });
       if (error) throw error;
+      if (vincularReposicao && reposicaoPendenteDetectada) {
+        await supabase.from('schedules').update({ reposicao_pendente: false, status: 'reposicao_marcada' }).eq('id', reposicaoPendenteDetectada.id);
+        setReposicaoPendenteDetectada(null);
+        setVincularReposicao(false);
+      }
 
       // Notificar o professor selecionado
       const teacherId = newLesson.teacher_id || user?.id || null;
@@ -849,7 +870,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                         const updated = [...extraStudents];
                         updated[idx] = { id: e.target.value, name: student?.name || '' };
                         setExtraStudents(updated);
-                        if (idx === 0) setNewLesson(p => ({ ...p, student_id: e.target.value, student_name: student?.name || '' }));
+                        if (idx === 0) { setNewLesson(p => ({ ...p, student_id: e.target.value, student_name: student?.name || '' })); checkReposicaoPendente(e.target.value, student?.name || ''); }
                       }}
                       className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
                       <option value="">Aluno {idx + 1}...</option>
@@ -857,6 +878,17 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                     </select>
                   ))}
                 </div>
+                )}
+                {reposicaoPendenteDetectada && (
+                  <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                    <p className="text-xs font-bold text-amber-700">
+                      Este aluno tem uma reposicao pendente: aula de {new Date(reposicaoPendenteDetectada.date + 'T00:00:00').toLocaleDateString('pt-BR')} com {reposicaoPendenteDetectada.teacher_name}.
+                    </p>
+                    <label className="flex items-center gap-2 mt-2 text-xs font-bold text-amber-700 cursor-pointer">
+                      <input type="checkbox" checked={vincularReposicao} onChange={e => setVincularReposicao(e.target.checked)} />
+                      Esta aula e a reposicao dessa aula pendente
+                    </label>
+                  </div>
                 )}
               </div>
 
