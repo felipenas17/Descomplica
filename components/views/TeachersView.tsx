@@ -8,6 +8,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import TeacherForm from '@/components/forms/TeacherForm';
 
 export default function TeachersView() {
+  const [teachersTab, setTeachersTab] = useState<'cadastro' | 'aniversarios'>('cadastro');
   const [teachers, setTeachers] = React.useState<any[]>([]);
   const [showForm, setShowForm] = React.useState(false);
   const [editingTeacher, setEditingTeacher] = React.useState<any>(null);
@@ -243,8 +244,22 @@ export default function TeachersView() {
 
   if (!isMounted) return null;
 
+  if (teachersTab === 'aniversarios') return (
+    <div className="space-y-10">
+      <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
+        <button onClick={() => setTeachersTab('cadastro')} className="px-4 py-2 rounded-lg text-xs font-bold text-gray-400">Cadastro</button>
+        <button className="px-4 py-2 rounded-lg text-xs font-bold bg-white shadow text-purple-600">Aniversarios</button>
+      </div>
+      <TeacherBirthdayTab />
+    </div>
+  );
+
   return (
     <div className="space-y-10">
+      <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
+        <button className="px-4 py-2 rounded-lg text-xs font-bold bg-white shadow text-purple-600">Cadastro</button>
+        <button onClick={() => setTeachersTab('aniversarios')} className="px-4 py-2 rounded-lg text-xs font-bold text-gray-400">Aniversarios</button>
+      </div>
       {showForm && <TeacherForm onClose={() => setShowForm(false)} onSubmit={handleAddTeacher} />}
 
       {/* Modal Perfil Completo */}
