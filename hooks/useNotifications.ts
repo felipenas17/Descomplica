@@ -15,18 +15,30 @@ export interface AppNotification {
 export function useNotifications(userId?: string) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const channelRef = useRef<any>(null);
+  const fetchingRef = useRef(false);
+  const debounceRef = useRef<any>(null);
 
   const fetchNotifications = useCallback(async () => {
-    if (!userId) return;
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('archived', false)
-      .order('created_at', { ascending: false })
-      .limit(50);
-    setNotifications(data || []);
+    if (!userId || fetchingRef.current) return;
+    fetchingRef.current = true;
+    try {
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('archived', false)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      setNotifications(data || []);
+    } finally {
+      fetchingRef.current = false;
+    }
   }, [userId]);
+
+  const debouncedFetch = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => { fetchNotifications(); }, 500);
+  }, [fetchNotifications]);
 
   useEffect(() => {
     if (!userId) return;
@@ -38,13 +50,13 @@ export function useNotifications(userId?: string) {
       channelRef.current = null;
     }
 
-    const channelName = 'notif_' + userId + '_' + Date.now();
+    const channelName = 'notif_' + userId;
     const channel = supabase
       .channel(channelName)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'notifications', filter: 'user_id=eq.' + userId },
-        () => { fetchNotifications(); }
+        () => { debouncedFetch(); }
       )
       .subscribe();
 
