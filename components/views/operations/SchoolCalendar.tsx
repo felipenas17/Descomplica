@@ -230,7 +230,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     if (!editingLesson) return;
     setSavingEdit(true);
     try {
-      await supabase.from('schedules').update({
+      const { error: editError } = await supabase.from('schedules').update({
         date: editingLesson.date,
         start_time: editingLesson.time_start,
         end_time: editingLesson.time_end,
@@ -240,6 +240,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
         room: editingLesson.room,
         notes: editingLesson.notes,
       }).eq('id', editingLesson.id);
+      if (editError) { toast.error('Erro ao salvar: ' + editError.message); setSavingEdit(false); return; }
       toast.success('Aula atualizada! ✅');
       setSelectedLesson(null);
       setEditingLesson(null);
