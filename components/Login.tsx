@@ -37,7 +37,6 @@ export default function Login({ onLogin }: LoginProps) {
       const cleanEmail = email.trim().toLowerCase();
       const cleanPassword = password.trim();
 
-      console.log('[Login] Tentativa de login:', cleanEmail);
 
       // Demo removido por segurança
       if (false) {
@@ -54,7 +53,6 @@ export default function Login({ onLogin }: LoginProps) {
       }
 
       if (isRegistering) {
-        console.log('[Login] Registrando novo usuário:', cleanEmail);
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: cleanEmail,
           password: cleanPassword,
@@ -74,7 +72,6 @@ export default function Login({ onLogin }: LoginProps) {
         }
         
         if (data.user) {
-          console.log('[Login] Sincronizando perfil do novo usuário...');
           const { error: profileSyncError } = await supabase.from('profiles').upsert([{
             id: data.user.id,
             email: cleanEmail,
@@ -86,14 +83,12 @@ export default function Login({ onLogin }: LoginProps) {
           if (profileSyncError) console.warn('[Login] Aviso: Falha ao sincronizar perfil:', profileSyncError);
 
           // Tentativa de login automático imediato
-          console.log('[Login] Tentando login automático após registro...');
           const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
             email: cleanEmail,
             password: cleanPassword
           });
 
           if (!signInError && signInData.user) {
-            console.log('[Login] Login automático bem-sucedido.');
             onLogin({
               id: signInData.user.id,
               email: signInData.user.email,
@@ -105,11 +100,9 @@ export default function Login({ onLogin }: LoginProps) {
           }
         }
 
-        console.log('[Login] Registro concluído.');
         alert('Cadastro realizado! Por favor, verifique seu e-mail ou tente entrar.');
         setIsRegistering(false);
       } else {
-        console.log('[Login] Autenticando via Supabase...');
         const { data, error: signInError } = await supabase.auth.signInWithPassword({
           email: cleanEmail,
           password: cleanPassword
@@ -122,7 +115,6 @@ export default function Login({ onLogin }: LoginProps) {
 
         if (!data.user) throw new Error('Usuário não encontrado após autenticação.');
 
-        console.log('[Login] Autenticação bem-sucedida, buscando perfil...');
         
         // Buscar perfil para obter role e outros metadados
         const { data: profile, error: profileError } = await supabase
@@ -141,12 +133,9 @@ export default function Login({ onLogin }: LoginProps) {
             needs_password_change: data.user.user_metadata?.needs_password_change || false
           });
         } else {
-          console.log('[Login] Perfil carregado:', profile.role);
           let loginId = profile.id;
           if (profile.role === 'professor') {
             const { data: tData } = await supabase.from('teachers').select('id').eq('email', profile.email).single();
-            if (tData) { loginId = tData.id; console.log('[Login] teacher_id:', tData.id); }
-            else { console.log('[Login] teacher nao encontrado para email:', profile.email); }
           }
           onLogin({
             id: loginId,
