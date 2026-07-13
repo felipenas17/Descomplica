@@ -155,6 +155,10 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
   };
 
   const markAttendance = async (lesson: any, status: string) => {
+    if (lesson.attendance_status === 'justificada' || lesson.attendance_status === 'Justificada' || lesson.status === 'reposicao_marcada' || lesson.status === 'reposicao_concluida') {
+      toast.error('Esta aula ja foi justificada pelo administrador e nao pode ser alterada.');
+      return;
+    }
     await supabase.from('schedules').update({ attendance_status: status }).eq('id', lesson.id);
     if (status === 'falta') {
       const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'admin');
