@@ -333,7 +333,8 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
         feedback_professor: e.feedback_professor,
       }));
 
-      if ((data || []).length > 0 || expLessons.length > 0) setLessons([...(data || []), ...expLessons]);
+      const mappedData = (data || []).map((d: any) => ({ ...d, time_start: d.start_time, time_end: d.end_time }));
+      if (mappedData.length > 0 || expLessons.length > 0) setLessons([...mappedData, ...expLessons]);
     } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
