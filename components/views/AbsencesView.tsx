@@ -156,7 +156,7 @@ export default function AbsencesView() {
       filterStatus === 'confirmado' ? (s.status === 'confirmado' || s.status === 'agendado') :
       filterStatus === 'aguardando' ? s.status === 'aguardando_confirmacao' :
       filterStatus === 'falta' ? s.attendance_status === 'falta' || s.attendance_status === 'Ausente' :
-      filterStatus === 'justificada' ? (s.attendance_status === 'justificada' || s.attendance_status === 'Justificada') && !s.reposicao_pendente && s.status !== 'reposicao_marcada' :
+      filterStatus === 'justificada' ? (s.attendance_status === 'justificada' || s.attendance_status === 'Justificada') && !s.reposicao_pendente && s.status !== 'reposicao_marcada' && s.status !== 'reposicao_concluida' && s.status !== 'concluido' :
       filterStatus === 'reposicao' ? (s.reposicao_pendente === true || s.status === 'reposicao_marcada') :
       filterStatus === 'avulsa' ? s.lesson_type === 'avulsa' :
       s.status !== 'reposicao_concluida';
@@ -177,7 +177,7 @@ export default function AbsencesView() {
   const reposicoesConcluidas = base.filter(s => s.status === 'reposicao_concluida').length;
   const aguardando = base.filter(s => s.status === 'aguardando_confirmacao').length;
   const faltas = base.filter(s => s.attendance_status === 'falta' || s.attendance_status === 'Ausente').length;
-  const justificadas = base.filter(s => (s.attendance_status === 'justificada' || s.attendance_status === 'Justificada') && !s.reposicao_pendente && s.status !== 'reposicao_marcada').length;
+  const justificadas = base.filter(s => (s.attendance_status === 'justificada' || s.attendance_status === 'Justificada') && !s.reposicao_pendente && s.status !== 'reposicao_marcada' && s.status !== 'reposicao_concluida' && s.status !== 'concluido').length;
   const reposicoes = base.filter(s => s.reposicao_pendente || s.status === 'reposicao_marcada').length;
   const avulsas = base.filter(s => s.lesson_type === 'avulsa').length;
 
