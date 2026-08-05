@@ -58,9 +58,9 @@ export default function AdminAgendaView({ user }: { user?: any }) {
     if (!form.title || !form.date) { toast.error('Preencha título e data!'); return; }
     setSaving(true);
     try {
-      // Se teacher_id for 'todos', salva como null na tabela (coluna é UUID)
+      // Se teacher_id for 'todos', salva como null na tabela (coluna é UUID) e marca pra notificar todas
       const agendaData: any = { ...form, user_id: user?.id, created_at: new Date().toISOString() };
-      if (agendaData.teacher_id === 'todos') agendaData.teacher_id = null;
+      if (agendaData.teacher_id === 'todos') { agendaData.teacher_id = null; agendaData.notify_all_teachers = true; }
       const { error } = await supabase.from('admin_agenda').insert(agendaData);
       if (error) throw error;
       // Notifica professor(es) se selecionado — usa profile_id correto
