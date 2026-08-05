@@ -321,6 +321,18 @@ export default function AbsencesView() {
                       {s.student_name && <span className="flex items-center gap-1"><User size={11} />{s.student_name}</span>}
                       {s.teacher_name && <span>Prof: {s.teacher_name}</span>}
                     </div>
+                    {(s.status === 'reposicao_marcada' || s.status === 'reposicao_concluida') && (() => {
+                      const vinc = schedules.find(x => x.reposicao_de_id === s.id);
+                      return vinc ? (
+                        <div className="mt-1 text-xs text-green-600 font-bold">
+                          ↳ Reposição em {new Date(vinc.date + 'T00:00:00').toLocaleDateString('pt-BR')}{vinc.start_time ? ' às ' + vinc.start_time : ''}{vinc.status === 'concluido' && vinc.admin_confirmed ? ' — dada' : ' — agendada, aguardando confirmar'}
+                        </div>
+                      ) : (
+                        <div className="mt-1 text-xs text-red-500 font-bold">
+                          ⚠ Sem aula de reposição vinculada no sistema
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="flex gap-2 flex-wrap shrink-0">
                     {s.status === 'aguardando_confirmacao' && (
