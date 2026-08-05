@@ -51,7 +51,7 @@ export default function TeacherForm({ onClose, onSubmit }: TeacherFormProps) {
       password: generatedPassword,
       age: formData.age ? parseInt(formData.age) : null,
       availability_schedule: JSON.stringify(daySchedules),
-      availability: selectedDays.join(', '),
+      availability: selectedDays,
     });
   };
 

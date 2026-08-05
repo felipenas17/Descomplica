@@ -143,7 +143,7 @@ export default function TeacherAvailability() {
                 </div>
                 <div className="min-w-0">
                   <div className="text-sm font-bold text-gray-900 truncate">{teacher.name.split(' ')[0]} {teacher.name.split(' ').slice(-1)[0]}</div>
-                  <div className="text-xs text-gray-400">{totalSlots > 0 ? totalSlots+' slot'+(totalSlots>1?'s':'')+' vago'+(totalSlots>1?'s':'') : 'Agenda cheia'}</div>
+                  <div className="text-xs text-gray-400">{totalSlots > 0 ? totalSlots+' slot'+(totalSlots>1?'s':'')+' vago'+(totalSlots>1?'s':'') : ((teacher.availability||[]).length > 0 ? 'Agenda cheia' : 'Sem disponibilidade cadastrada')}</div>
                 </div>
               </div>
               <div className="p-3 space-y-2 max-h-48 overflow-y-auto">

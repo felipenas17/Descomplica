@@ -100,7 +100,7 @@ export default function TeachersView() {
 
   const openEdit = (teacher: any) => {
     setEditingTeacher({ ...teacher });
-    const avail = teacher.availability ? teacher.availability.split(', ').filter(Boolean) : [];
+    const avail = Array.isArray(teacher.availability) ? teacher.availability : (teacher.availability ? String(teacher.availability).split(', ').filter(Boolean) : []);
     setSelectedDaysEdit(avail);
     try {
       const sched = teacher.availability_schedule ? JSON.parse(teacher.availability_schedule) : {};
