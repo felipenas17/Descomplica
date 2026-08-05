@@ -419,7 +419,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     if (validStudents.length === 0) { setReposicoesPendentesDetectadas([]); return; }
     const results: any[] = [];
     for (const st of validStudents) {
-      let query = supabase.from('schedules').select('*').eq('reposicao_pendente', true).neq('status', 'reposicao_concluida').neq('status', 'reposicao_marcada');
+      let query = supabase.from('schedules').select('*').eq('reposicao_pendente', true).neq('status', 'reposicao_concluida');
       if (st.id) query = query.eq('student_id', st.id);
       else query = query.ilike('student_name', st.name);
       const { data } = await query.limit(1);
