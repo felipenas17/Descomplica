@@ -145,15 +145,14 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
         created_at: new Date().toISOString(),
       });
       // Atualiza a aula
-      const vinculoId = vinculosSelecionados.length === 1 ? vinculosSelecionados[0] : null;
       await supabase.from('schedules').update({
         teacher_id: substData.professor_id,
         teacher_name: novoProf?.name,
         notes: (selectedLesson.notes || '') + ' | Substituido: ' + (selectedLesson.teacher_name) + ' por ' + novoProf?.name,
-        reposicao_de_id: vinculoId,
+        reposicao_de_ids: vinculosSelecionados.length > 0 ? vinculosSelecionados : null,
       }).eq('id', selectedLesson.id);
-      if (vinculoId) {
-        await supabase.from('schedules').update({ reposicao_pendente: false, status: 'reposicao_marcada' }).eq('id', vinculoId);
+      for (const vincId of vinculosSelecionados) {
+        await supabase.from('schedules').update({ reposicao_pendente: false, status: 'reposicao_marcada' }).eq('id', vincId);
       }
       // Notifica professor substituto
       const substEmail = teachers.find(t => t.id === substData.professor_id)?.email || '';
@@ -451,7 +450,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
         notes: newLesson.notes,
         status: 'confirmado',
         recurrence_group: recGroupId,
-        reposicao_de_id: vinculosSelecionados.length === 1 ? vinculosSelecionados[0] : null,
+        reposicao_de_ids: vinculosSelecionados.length > 0 ? vinculosSelecionados : null,
       });
       if (error) throw error;
       for (const vincId of vinculosSelecionados) {

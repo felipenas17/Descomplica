@@ -43,10 +43,11 @@ export default function AbsencesView() {
 
   const confirmLesson = async (id: string) => {
     await supabase.from('schedules').update({ status: 'concluido', admin_confirmed: true }).eq('id', id);
-    // Se esta aula era uma reposição de outra, fecha o ciclo da aula original
+    // Se esta aula era uma reposição de outra (ou de varias), fecha o ciclo de todas as originais
     const lesson = schedules.find(s => s.id === id);
-    if (lesson && (lesson as any).reposicao_de_id) {
-      await supabase.from('schedules').update({ status: 'reposicao_concluida' }).eq('id', (lesson as any).reposicao_de_id);
+    const idsOriginais: string[] = (lesson as any)?.reposicao_de_ids || ((lesson as any)?.reposicao_de_id ? [(lesson as any).reposicao_de_id] : []);
+    for (const origId of idsOriginais) {
+      await supabase.from('schedules').update({ status: 'reposicao_concluida' }).eq('id', origId);
     }
     fetchData();
     toast.success('Aula confirmada!');
@@ -92,7 +93,7 @@ export default function AbsencesView() {
         notes: remarcarData.notes || 'Reposicao da aula de ' + showRemarcarModal.date,
         status: 'confirmado',
         reposicao_pendente: false,
-        reposicao_de_id: showRemarcarModal.id,
+        reposicao_de_ids: [showRemarcarModal.id],
         created_at: new Date().toISOString(),
       });
       await supabase.from('schedules').update({
@@ -322,7 +323,7 @@ export default function AbsencesView() {
                       {s.teacher_name && <span>Prof: {s.teacher_name}</span>}
                     </div>
                     {(s.status === 'reposicao_marcada' || s.status === 'reposicao_concluida') && (() => {
-                      const vinc = schedules.find(x => x.reposicao_de_id === s.id);
+                      const vinc = schedules.find(x => (x.reposicao_de_ids && x.reposicao_de_ids.includes(s.id)) || x.reposicao_de_id === s.id);
                       return vinc ? (
                         <div className="mt-1 text-xs text-green-600 font-bold">
                           ↳ Reposição em {new Date(vinc.date + 'T00:00:00').toLocaleDateString('pt-BR')}{vinc.start_time ? ' às ' + vinc.start_time : ''}{vinc.status === 'concluido' && vinc.admin_confirmed ? ' — dada' : ' — agendada, aguardando confirmar'}
