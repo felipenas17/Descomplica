@@ -15,7 +15,8 @@ import {
   ChevronRight,
   X,
   Zap,
-  Loader2
+  Loader2,
+  Trash2
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
@@ -317,9 +318,21 @@ export default function FeedbacksView() {
                     )}
                   </td>
                   <td className="px-8 py-6 text-right">
-                    <button className="p-2 hover:bg-white rounded-xl text-gray-400 group-hover:text-purple-600 transition-all border border-transparent group-hover:border-purple-100 shadow-sm">
-                      <Eye size={18} />
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button className="p-2 hover:bg-white rounded-xl text-gray-400 group-hover:text-purple-600 transition-all border border-transparent group-hover:border-purple-100 shadow-sm">
+                        <Eye size={18} />
+                      </button>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (!confirm('Excluir este feedback? Essa acao nao pode ser desfeita.')) return;
+                          await supabase.from('feedbacks').delete().eq('id', f.id);
+                          fetchFeedbacks();
+                        }}
+                        className="p-2 hover:bg-red-50 rounded-xl text-gray-400 hover:text-red-500 transition-all border border-transparent hover:border-red-100 shadow-sm">
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </>); }); })()}
