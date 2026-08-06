@@ -217,6 +217,7 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
 
   const isImage = (url: string) => /\.(jpg|jpeg|png|webp)$/i.test(url);
   const isPDF   = (url: string) => /\.pdf$/i.test(url);
+  const isDoc   = (url: string) => /\.(doc|docx)$/i.test(url);
 
   return (
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'system-ui, sans-serif' }}>
@@ -364,7 +365,7 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
                         {m.resubmitted_at && <span style={{ background: '#ede9fe', color: '#7c3aed', borderRadius: '20px', padding: '2px 10px', fontSize: '12px', fontWeight: 600 }}>🔁 Reenviado</span>}
                       </div>
                       <div style={{ marginTop: '6px', color: '#6b7280', fontSize: '13px' }}>{m.grade} · {m.subject} · {m.type}</div>
-                      <div style={{ marginTop: '4px', color: '#9ca3af', fontSize: '12px' }}>Enviado em {new Date(m.created_at).toLocaleDateString('pt-BR')}</div>
+                      <div style={{ marginTop: '4px', color: '#9ca3af', fontSize: '12px' }}>Enviado por {m.uploader_name || 'Professor'} em {new Date(m.created_at).toLocaleDateString('pt-BR')}</div>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                       <button onClick={() => setPreviewUrl(m.file_url)} style={btnOutline}>👁 Visualizar</button>
@@ -515,6 +516,7 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
             <div style={{ flex: 1, overflow: 'auto' }}>
               {isImage(previewUrl) ? <img src={previewUrl} alt="Preview" style={{ width: '100%', objectFit: 'contain' }} />
                 : isPDF(previewUrl) ? <iframe src={previewUrl} style={{ width: '100%', height: '70vh', border: 'none' }} title="PDF" />
+                : isDoc(previewUrl) ? <iframe src={'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(previewUrl)} style={{ width: '100%', height: '70vh', border: 'none' }} title="Documento" />
                 : <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
                     <div style={{ fontSize: '48px', marginBottom: '12px' }}>📄</div>
                     <p>Prévia não disponível.</p>
