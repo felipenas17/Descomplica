@@ -1364,7 +1364,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                 const lesson = motivoModal.lesson;
                 const motivoFinal = motivoTag + (motivoTexto ? (motivoTag ? ' - ' : '') + motivoTexto : '');
                 if (motivoModal.tipo === 'justificar') {
-                  await supabase.from('schedules').update({ attendance_status: 'justificada', reposicao_pendente: true, motivo_falta: motivoFinal }).eq('id', lesson.id);
+                  await supabase.from('schedules').update({ attendance_status: 'justificada', motivo_falta: motivoFinal }).eq('id', lesson.id);
                   const teacherEmail = teachers.find(t => t.id === lesson.teacher_id)?.email || '';
                   const { data: profProfile } = await supabase.from('profiles').select('id').eq('email', teacherEmail).single();
                   const notifId = profProfile?.id || lesson.teacher_id;
