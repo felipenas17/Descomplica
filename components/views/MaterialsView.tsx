@@ -26,7 +26,7 @@ interface MaterialsViewProps {
   userId: string;
 }
 
-const TYPES = ['Lista de Exercícios', 'Apostila', 'Resumo', 'Template', 'Jogos', 'Revisão', 'Teoria'];
+const TYPES = ['Lista de Exercícios', 'Apostila', 'Resumo', 'Template', 'Jogos', 'Revisão', 'Teoria', 'Avaliação Diagnóstica'];
 const GRADES = ['1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano', 'Ensino Médio'];
 const SUBJECTS = ['Matemática', 'Português', 'Ciências', 'História', 'Geografia', 'Inglês', 'Física', 'Química', 'Biologia', 'Artes'];
 
