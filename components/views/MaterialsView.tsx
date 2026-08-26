@@ -99,11 +99,15 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
       alert('Preencha todos os campos e selecione um arquivo.');
       return;
     }
+    if (uploadFile.size > 20 * 1024 * 1024) {
+      alert('Arquivo muito grande: ' + (uploadFile.size / 1024 / 1024).toFixed(1) + 'MB. O máximo é 20MB. Tente compactar o PDF ou reduzir a qualidade da imagem.');
+      return;
+    }
     setUploading(true);
     const safeName = uploadFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const path = "materials/" + Date.now() + "_" + safeName;
     const { error: storageError } = await supabase.storage.from('materials').upload(path, uploadFile);
-    if (storageError) { alert('Erro ao enviar arquivo.'); setUploading(false); return; }
+    if (storageError) { alert('Erro ao enviar arquivo: ' + storageError.message); setUploading(false); return; }
     const { data: urlData } = supabase.storage.from('materials').getPublicUrl(path);
     const status: ApprovalStatus = (userRole === 'teacher' || (userRole as string) === 'professor') ? 'pending' : 'approved';
     const { error: dbError } = await supabase.from('materials').insert({
@@ -176,7 +180,7 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
     const safeName2 = resubmitFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const path = "materials/" + Date.now() + "_" + safeName2;
     const { error: storageError } = await supabase.storage.from('materials').upload(path, resubmitFile);
-    if (storageError) { alert('Erro ao enviar arquivo.'); setResubmitLoading(false); return; }
+    if (storageError) { alert('Erro ao enviar arquivo: ' + storageError.message); setResubmitLoading(false); return; }
     const { data: urlData } = supabase.storage.from('materials').getPublicUrl(path);
     const { error } = await supabase.from('materials').update({
       file_url: urlData.publicUrl, approval_status: 'pending',
@@ -411,7 +415,7 @@ export default function MaterialsView({ userRole, userId }: MaterialsViewProps) 
               </select>
             </div>
             <div>
-              <label style={labelStyle}>Arquivo * (PDF, Word, Imagem — máx 10MB)</label>
+              <label style={labelStyle}>Arquivo * (PDF, Word, Imagem — máx 20MB)</label>
               <input type="file" ref={fileRef} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp" onChange={e => setUploadFile(e.target.files?.[0] || null)} style={{ display: 'none' }} />
               <div onClick={() => fileRef.current?.click()} style={{ border: '2px dashed #d1d5db', borderRadius: '10px', padding: '20px', textAlign: 'center', cursor: 'pointer', color: '#6b7280', fontSize: '14px' }}>
                 {uploadFile ? '📎 ' + uploadFile.name : '📁 Clique para selecionar o arquivo'}
