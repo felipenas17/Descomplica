@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, AlertTriangle, CheckCircle, Clock, Plus, X, ArrowUpRight, ArrowDownRight, BarChart3, Calendar, ChevronRight, Target, Zap } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from 'recharts';
 import { supabase } from '@/lib/supabase';
+import TeacherPayroll from './finance/TeacherPayroll';
 import { toast } from 'sonner';
 
 const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -49,7 +50,7 @@ export default function FinanceView() {
   const [students, setStudents] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'entradas' | 'saidas' | 'projecao'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'entradas' | 'saidas' | 'projecao' | 'professores'>('dashboard');
   const [filterMonth, setFilterMonth] = useState(MONTHS_FULL[new Date().getMonth()]);
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
   const [periodMode, setPeriodMode] = useState<'month' | 'period' | 'year' | 'week'>('month');
@@ -575,7 +576,7 @@ export default function FinanceView() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', background: D_CARD, border: `1px solid ${D_BORDER}`, padding: 4, borderRadius: 14, gap: 4, marginBottom: 16 }}>
-        {[{ key: 'dashboard', label: `Dashboard` },{ key: 'entradas', label: `Entradas (${monthPayments.length})` },{ key: 'saidas', label: `Saídas (${monthExpenses.length})` },{ key: 'projecao', label: `📈 Projeção` }].map(tab => (
+        {[{ key: 'dashboard', label: `Dashboard` },{ key: 'entradas', label: `Entradas (${monthPayments.length})` },{ key: 'saidas', label: `Saídas (${monthExpenses.length})` },{ key: 'projecao', label: `📈 Projeção` },{ key: 'professores', label: `👩‍🏫 Pagar Professores` }].map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key as any)} style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: activeTab === tab.key ? D_PURPLE : 'transparent', color: activeTab === tab.key ? '#fff' : D_MUTED, transition: 'all 0.2s' }}>
             {tab.label}
           </button>
@@ -714,6 +715,12 @@ export default function FinanceView() {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'professores' && (
+            <div style={cardStyle}>
+              <TeacherPayroll />
             </div>
           )}
 
