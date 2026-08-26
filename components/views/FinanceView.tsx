@@ -145,14 +145,16 @@ export default function FinanceView() {
     const mFull = MONTHS_FULL[i];
     const p = payments.filter(x => x.month === mFull && x.year === filterYear);
     const e = expenses.filter(x => x.month === mFull && x.year === filterYear);
-    const entradas = p.reduce((a, x) => a + (x.final_amount || x.amount || 0), 0);
-    const saidas = e.reduce((a, x) => a + (x.amount || 0), 0);
+    const totalCobrado = p.reduce((a, x) => a + (x.final_amount || x.amount || 0), 0);
+    const totalLancado = e.reduce((a, x) => a + (x.amount || 0), 0);
     const recebido = p.filter(x => x.status === 'paid').reduce((a, x) => a + (x.final_amount || x.amount || 0), 0);
-    return { mes: m, entradas, saidas, recebido, resultado: recebido - saidas };
+    const pago = e.filter(x => x.status === 'paid').reduce((a, x) => a + (x.amount || 0), 0);
+    // Fluxo de Caixa = dinheiro que realmente entrou/saiu, nao o total cobrado/lancado (que inclui pendente e atrasado)
+    return { mes: m, entradas: recebido, saidas: pago, totalCobrado, totalLancado, recebido, resultado: recebido - pago };
   });
 
   const expensesByCategory = Object.entries(
-    monthExpenses.reduce((acc: any, e) => { acc[e.category_name] = (acc[e.category_name] || 0) + e.amount; return acc; }, {})
+    monthExpenses.filter(e => e.status === 'paid').reduce((acc: any, e) => { acc[e.category_name] = (acc[e.category_name] || 0) + e.amount; return acc; }, {})
   ).map(([name, value]) => ({ name, value }));
 
   const currentMonthIdx = MONTHS_FULL.indexOf(filterMonth);
@@ -625,7 +627,7 @@ export default function FinanceView() {
               <div style={cardStyle}>
                 <div style={{ marginBottom: 16 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: D_TEXT }}>Fluxo de Caixa Anual</div>
-                  <div style={{ fontSize: 12, color: D_MUTED, marginTop: 2 }}>Entradas vs Saídas — {filterYear}</div>
+                  <div style={{ fontSize: 12, color: D_MUTED, marginTop: 2 }}>Recebido vs Pago (dinheiro real) — {filterYear}</div>
                 </div>
                 <ResponsiveContainer width="100%" height={200}>
                   <AreaChart data={fluxoAnual}>
@@ -650,7 +652,7 @@ export default function FinanceView() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 {/* Pizza */}
                 <div style={cardStyle}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: D_TEXT, marginBottom: 14 }}>Despesas por categoria</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: D_TEXT, marginBottom: 14 }}>Despesas pagas por categoria</div>
                   {expensesByCategory.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '30px 0', color: D_MUTED, fontSize: 13 }}>Sem despesas registradas</div>
                   ) : (
