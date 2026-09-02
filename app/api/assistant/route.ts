@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const supabase = createClient(
@@ -12,15 +10,12 @@ const supabase = createClient(
 
 export async function POST(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabaseAuth = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { cookies: { getAll() { return cookieStore.getAll(); }, setAll(list) { list.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); } } }
-    );
-    const { data: { user } } = await supabaseAuth.auth.getUser();
+    const authHeader = req.headers.get('authorization') || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) return NextResponse.json({ resposta: 'Nao autorizado.', acao: 'NENHUMA' }, { status: 401 });
+    const { data: { user } } = await supabase.auth.getUser(token);
     if (!user) return NextResponse.json({ resposta: 'Nao autorizado.', acao: 'NENHUMA' }, { status: 401 });
-    const { data: callerProfile } = await supabaseAuth.from('profiles').select('role').eq('id', user.id).single();
+    const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
     if (callerProfile?.role !== 'admin') return NextResponse.json({ resposta: 'Acesso restrito a administradores.', acao: 'NENHUMA' }, { status: 403 });
 
     const { message } = await req.json();

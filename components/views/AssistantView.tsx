@@ -59,9 +59,10 @@ export default function AssistantView({ user }: AssistantViewProps) {
     await supabase.from('assistant_messages').insert({ user_id: user.id, role: 'user', content: text });
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch('/api/assistant', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (session?.access_token || '') },
         body: JSON.stringify({ message: text }),
       });
       const data = await res.json();

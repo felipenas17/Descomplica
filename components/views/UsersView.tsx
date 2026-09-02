@@ -176,9 +176,10 @@ export default function UsersView() {
       setLastCreated(staffData);
       
       // 2. Cria usuário no Auth e perfil via API admin
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch('/api/create-user', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (session?.access_token || '') },
         body: JSON.stringify({ email: newEmail, password: generatedPassword, name: newName, role: newRole }),
       });
       const result = await res.json();
@@ -192,7 +193,7 @@ export default function UsersView() {
       // Send credentials via API (don't block the UI)
       fetch('/api/send-credentials', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (session?.access_token || '') },
         body: JSON.stringify(staffData)
       }).then(res => {
         if (!res.ok) console.warn('Email API returned non-ok status');
