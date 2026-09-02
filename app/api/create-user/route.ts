@@ -11,9 +11,9 @@ export async function POST(req: NextRequest) {
 
     const authHeader = req.headers.get('authorization') || '';
     const token = authHeader.replace('Bearer ', '');
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const { data: { user } } = await supabaseAdmin.auth.getUser(token);
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!token) return NextResponse.json({ error: 'Unauthorized: nenhum token foi enviado pelo app' }, { status: 401 });
+    const { data: { user }, error: tokenError } = await supabaseAdmin.auth.getUser(token);
+    if (!user) return NextResponse.json({ error: 'Unauthorized: token invalido/expirado - ' + (tokenError?.message || 'motivo desconhecido') }, { status: 401 });
     const { data: callerProfile } = await supabaseAdmin.from('profiles').select('role').eq('id', user.id).single();
     if (callerProfile?.role !== 'admin') return NextResponse.json({ error: 'Forbidden: admin access required' }, { status: 403 });
 

@@ -176,7 +176,14 @@ export default function UsersView() {
       setLastCreated(staffData);
       
       // 2. Cria usuário no Auth e perfil via API admin
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('Sem sessao local ao tentar criar usuario:', sessionError);
+        alert('Sua sessao local nao foi encontrada (session=null). Faca logout e login de novo antes de tentar criar staff.');
+        setUsers(prev => prev.filter(u => u.id !== tempId));
+        setIsSaving(false);
+        return;
+      }
       const res = await fetch('/api/create-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (session?.access_token || '') },
