@@ -204,7 +204,8 @@ export default function AbsencesView() {
   const pagPresentes = pagaveis.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'presente').length;
   const pagJustificadas = pagaveis.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'justificada').length;
   const pagFaltas = pagaveis.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'falta').length;
-  const pagSemMarcacao = pagamentoBase.filter((s: any) => !s.attendance_status && s.date < hojeStr).length;
+  const pagSemMarcacaoLista = pagamentoBase.filter((s: any) => !s.attendance_status && s.date < hojeStr);
+  const pagSemMarcacao = pagSemMarcacaoLista.length;
   const gradeMensal = (selectedTeacher?.weekly_lessons || 0) * 4;
   const valorMensal = Number(selectedTeacher?.monthly_value) || 0;
   const valorPorAula = gradeMensal > 0 ? valorMensal / gradeMensal : 0;
@@ -398,7 +399,16 @@ export default function AbsencesView() {
             <div className="bg-gray-50 rounded-xl p-3 mb-3 text-xs text-gray-600 space-y-1">
               <p className="font-bold text-gray-800">{pagaveis.length} aula(s) no filtro atual (presentes: {pagPresentes}, justificadas: {pagJustificadas}, faltas: {pagFaltas})</p>
               <p>Grade mensal: {gradeMensal} aulas · Valor por aula: {fmtMoeda(valorPorAula)}</p>
-              {pagSemMarcacao > 0 && <p className="text-yellow-600 font-bold">⚠ {pagSemMarcacao} aula(s) já aconteceram sem marcação — não contam aqui.</p>}
+              {pagSemMarcacao > 0 && (
+                <div className="text-yellow-600">
+                  <p className="font-bold">⚠ {pagSemMarcacao} aula(s) já aconteceram sem marcação — não contam aqui:</p>
+                  <ul className="mt-1 space-y-0.5">
+                    {pagSemMarcacaoLista.map((s: any) => (
+                      <li key={s.id}>• {new Date(s.date + 'T00:00:00').toLocaleDateString('pt-BR')} às {s.start_time} — {s.student_name}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
