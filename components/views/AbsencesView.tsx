@@ -18,6 +18,7 @@ export default function AbsencesView() {
   const [showRemarcarModal, setShowRemarcarModal] = useState<any>(null);
   const [remarcarData, setRemarcarData] = useState({ date: '', start_time: '08:00', end_time: '09:00', notes: '' });
   const [savingRemarcar, setSavingRemarcar] = useState(false);
+  const [feriados, setFeriados] = useState<any[]>([]);
   const [showPayPanel, setShowPayPanel] = useState(false);
   const [payAmount, setPayAmount] = useState('');
   const [payNotes, setPayNotes] = useState('');
@@ -39,12 +40,14 @@ export default function AbsencesView() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [schedulesRes, teachersRes] = await Promise.all([
+    const [schedulesRes, teachersRes, feriadosRes] = await Promise.all([
       supabase.from('schedules').select('*').order('date', { ascending: false }),
       supabase.from('teachers').select('id, name, weekly_lessons, monthly_value, payment_method, pix_key').order('name'),
+      supabase.from('feriados').select('data, recorrente, titulo'),
     ]);
     setSchedules(schedulesRes.data || []);
     setTeachers(teachersRes.data || []);
+    setFeriados(feriadosRes.data || []);
     setLoading(false);
   };
 
@@ -200,11 +203,24 @@ export default function AbsencesView() {
         filterDateFrom ? s.date >= filterDateFrom : s.date <= filterDateTo);
     return matchTeacher && matchDateRange;
   });
-  const pagaveis = pagamentoBase.filter((s: any) => !!s.attendance_status);
-  const pagPresentes = pagaveis.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'presente').length;
-  const pagJustificadas = pagaveis.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'justificada').length;
-  const pagFaltas = pagaveis.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'falta').length;
-  const pagSemMarcacaoLista = pagamentoBase.filter((s: any) => !s.attendance_status && s.date < hojeStr);
+  const isFeriado = (dateStr: string) => {
+    const [, m, d] = dateStr.split('-');
+    return feriados.some((f: any) => {
+      if (!f.data) return false;
+      const [, fm, fd] = f.data.split('-');
+      return f.recorrente ? (fm === m && fd === d) : f.data === dateStr;
+    });
+  };
+  // Aula marcada (presenca/falta/justificada/feriado ja gravado) conta. Aula em feriado cadastrado
+  // que AINDA nao foi marcada tambem conta automaticamente (grade fixa), e vira 'feriado' gravado ao confirmar o pagamento.
+  const pagaveisMarcadas = pagamentoBase.filter((s: any) => !!s.attendance_status);
+  const pagaveisFeriadoNovo = pagamentoBase.filter((s: any) => !s.attendance_status && isFeriado(s.date));
+  const pagaveis = [...pagaveisMarcadas, ...pagaveisFeriadoNovo];
+  const pagPresentes = pagaveisMarcadas.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'presente').length;
+  const pagJustificadas = pagaveisMarcadas.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'justificada').length;
+  const pagFaltas = pagaveisMarcadas.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'falta').length;
+  const pagFeriados = pagaveisMarcadas.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'feriado').length + pagaveisFeriadoNovo.length;
+  const pagSemMarcacaoLista = pagamentoBase.filter((s: any) => !s.attendance_status && s.date < hojeStr && !isFeriado(s.date));
   const pagSemMarcacao = pagSemMarcacaoLista.length;
   const gradeMensal = (selectedTeacher?.weekly_lessons || 0) * 4;
   const valorMensal = Number(selectedTeacher?.monthly_value) || 0;
@@ -227,6 +243,7 @@ export default function AbsencesView() {
     if (s.status === 'falta_confirmada') return { label: 'Falta Confirmada', color: 'bg-red-100 text-red-700' };
     if (s.attendance_status === 'falta' || s.attendance_status === 'Ausente') return { label: 'Falta', color: 'text-red-600' };
     if (s.attendance_status === 'justificada' || s.attendance_status === 'Justificada') return { label: 'Justificada', color: 'text-yellow-600' };
+    if (s.attendance_status === 'feriado') return { label: 'Feriado', color: 'text-purple-600' };
     return null;
   };
 
@@ -241,6 +258,9 @@ export default function AbsencesView() {
   const registrarPagamentoAulas = async () => {
     if (!selectedTeacher || !payAmount) return;
     setSavingPay(true);
+    if (pagaveisFeriadoNovo.length > 0) {
+      await supabase.from('schedules').update({ attendance_status: 'feriado' }).in('id', pagaveisFeriadoNovo.map((s: any) => s.id));
+    }
     const amount = parseFloat(payAmount);
     const { data: paymentData, error } = await supabase.from('teacher_payments').insert({
       teacher_id: selectedTeacher.id,
@@ -309,8 +329,8 @@ export default function AbsencesView() {
     const rows = base2.sort((a: any,b: any) => (a.date+a.start_time).localeCompare(b.date+b.start_time)).map((s: any) => {
       const mins = duracao(s.start_time,s.end_time);
       const durLabel = mins===60?'1h':mins===90?'1h30':mins===120?'2h':mins+'min';
-      const st = s.status==='reposicao_concluida'?'Concluida':(s.status==='concluido'&&s.admin_confirmed)?'Concluida':s.attendance_status==='falta'?'Falta':(s.reposicao_pendente||s.status==='reposicao_marcada')?'Reposicao':(s.attendance_status==='justificada'||s.attendance_status==='Justificada')?'Justificada':s.lesson_type==='avulsa'?'Avulsa':'Aguardando';
-      const stColor = st==='Concluida'?'#D1FAE5;color:#065F46':st==='Falta'?'#FEE2E2;color:#991B1B':st==='Justificada'?'#FEF3C7;color:#92400E':st==='Reposicao'?'#DBEAFE;color:#1E40AF':'#F3F4F6;color:#374151';
+      const st = s.attendance_status==='feriado'?'Feriado':s.status==='reposicao_concluida'?'Concluida':(s.status==='concluido'&&s.admin_confirmed)?'Concluida':s.attendance_status==='falta'?'Falta':(s.reposicao_pendente||s.status==='reposicao_marcada')?'Reposicao':(s.attendance_status==='justificada'||s.attendance_status==='Justificada')?'Justificada':s.lesson_type==='avulsa'?'Avulsa':'Aguardando';
+      const stColor = st==='Feriado'?'#EDE9FE;color:#5B21B6':st==='Concluida'?'#D1FAE5;color:#065F46':st==='Falta'?'#FEE2E2;color:#991B1B':st==='Justificada'?'#FEF3C7;color:#92400E':st==='Reposicao'?'#DBEAFE;color:#1E40AF':'#F3F4F6;color:#374151';
       const [y,m,d] = (s.date||'').split('-');
       return '<tr><td>'+(d||'')+'/'+( m||'')+'</td><td>'+(s.start_time||'')+'-'+(s.end_time||'')+'</td><td>'+(s.student_name||'')+'</td><td>'+durLabel+'</td><td><span style="display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:'+stColor+'">'+st+'</span></td></tr>';
     }).join('');
@@ -397,7 +417,7 @@ export default function AbsencesView() {
               <button onClick={() => setShowPayPanel(false)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"><X size={18} /></button>
             </div>
             <div className="bg-gray-50 rounded-xl p-3 mb-3 text-xs text-gray-600 space-y-1">
-              <p className="font-bold text-gray-800">{pagaveis.length} aula(s) no filtro atual (presentes: {pagPresentes}, justificadas: {pagJustificadas}, faltas: {pagFaltas})</p>
+              <p className="font-bold text-gray-800">{pagaveis.length} aula(s) no filtro atual (presentes: {pagPresentes}, justificadas: {pagJustificadas}, faltas: {pagFaltas}, feriados: {pagFeriados})</p>
               <p>Grade mensal: {gradeMensal} aulas · Valor por aula: {fmtMoeda(valorPorAula)}</p>
               {pagSemMarcacao > 0 && (
                 <div className="text-yellow-600">
