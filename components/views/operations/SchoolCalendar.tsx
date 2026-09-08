@@ -198,6 +198,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
   const [motivoModal, setMotivoModal] = useState<{ tipo: 'justificar' | 'falta', lesson: Lesson } | null>(null);
   const [motivoTexto, setMotivoTexto] = useState('');
   const [motivoTag, setMotivoTag] = useState('');
+  const [professorLiberado, setProfessorLiberado] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [teacherAvailability, setTeacherAvailability] = useState<any>(null);
   const [teacherBusySlots, setTeacherBusySlots] = useState<any[]>([]);
@@ -1302,11 +1303,11 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
             <div className="p-5 border-t border-gray-100 flex gap-3">
               <button onClick={() => setViewingLesson(null)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all">Fechar</button>
               {(viewingLesson as any).attendance_status !== 'justificada' && (viewingLesson as any).attendance_status !== 'Justificada' && (
-                <button onClick={() => { setMotivoModal({ tipo: 'justificar', lesson: viewingLesson }); setMotivoTexto(''); setMotivoTag(''); }}
+                <button onClick={() => { setMotivoModal({ tipo: 'justificar', lesson: viewingLesson }); setMotivoTexto(''); setMotivoTag(''); setProfessorLiberado(false); }}
                   className="px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-xl text-sm font-bold transition-all">Justificar</button>
               )}
               {(viewingLesson as any).attendance_status !== 'falta' && (viewingLesson as any).attendance_status !== 'Ausente' && (
-                <button onClick={() => { setMotivoModal({ tipo: 'falta', lesson: viewingLesson }); setMotivoTexto(''); setMotivoTag(''); }}
+                <button onClick={() => { setMotivoModal({ tipo: 'falta', lesson: viewingLesson }); setMotivoTexto(''); setMotivoTag(''); setProfessorLiberado(false); }}
                   className="px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold transition-all">Falta</button>
               )}
               <button onClick={async () => {
@@ -1357,6 +1358,15 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                 <textarea value={motivoTexto} onChange={e => setMotivoTexto(e.target.value)} rows={3} placeholder="Detalhes adicionais..."
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300" />
               </div>
+              {motivoModal.tipo === 'falta' && (
+                <div className="p-3 bg-gray-50 rounded-xl">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={professorLiberado} onChange={e => setProfessorLiberado(e.target.checked)} className="w-4 h-4" />
+                    <span className="text-xs font-bold text-gray-700">Professor(a) foi liberado(a) (NÃO conta pra pagamento)</span>
+                  </label>
+                  <p className="text-[10px] text-gray-400 mt-1 ml-6">Deixe desmarcado se ela ficou trabalhando nesse horário — aí conta normalmente.</p>
+                </div>
+              )}
             </div>
             <div className="p-6 border-t border-gray-100 flex gap-3">
               <button onClick={() => setMotivoModal(null)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all">Cancelar</button>
@@ -1376,7 +1386,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                   });
                   toast.success('Aula justificada!');
                 } else {
-                  await supabase.from('schedules').update({ attendance_status: 'falta', status: 'falta_confirmada', motivo_falta: motivoFinal, reposicao_pendente: false }).eq('id', lesson.id);
+                  await supabase.from('schedules').update({ attendance_status: 'falta', status: 'falta_confirmada', motivo_falta: motivoFinal, reposicao_pendente: false, professor_liberado: professorLiberado }).eq('id', lesson.id);
                   const teacherEmail = teachers.find(t => t.id === lesson.teacher_id)?.email || '';
                   const { data: profProfile } = await supabase.from('profiles').select('id').eq('email', teacherEmail).single();
                   const notifId = profProfile?.id || lesson.teacher_id;

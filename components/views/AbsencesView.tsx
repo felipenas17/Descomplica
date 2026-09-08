@@ -211,9 +211,16 @@ export default function AbsencesView() {
       return f.recorrente ? (fm === m && fd === d) : f.data === dateStr;
     });
   };
-  // Aula marcada (presenca/falta/justificada/feriado ja gravado) conta. Aula em feriado cadastrado
-  // que AINDA nao foi marcada tambem conta automaticamente (grade fixa), e vira 'feriado' gravado ao confirmar o pagamento.
-  const pagaveisMarcadas = pagamentoBase.filter((s: any) => !!s.attendance_status);
+  // Aula marcada (presenca/justificada/feriado ja gravado) conta. Falta so conta se a professora
+  // NAO foi liberada (ficou trabalhando). Aula em feriado cadastrado sem marcacao tambem conta
+  // automaticamente (grade fixa), e vira 'feriado' gravado ao confirmar o pagamento.
+  const pagaveisMarcadas = pagamentoBase.filter((s: any) => {
+    if (!s.attendance_status) return false;
+    const st = (s.attendance_status || '').toLowerCase();
+    if (st === 'falta' && s.professor_liberado) return false; // liberada -> nao conta
+    return true;
+  });
+  const pagLiberadas = pagamentoBase.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'falta' && s.professor_liberado).length;
   const pagaveisFeriadoNovo = pagamentoBase.filter((s: any) => !s.attendance_status && isFeriado(s.date));
   const pagaveis = [...pagaveisMarcadas, ...pagaveisFeriadoNovo];
   const pagPresentes = pagaveisMarcadas.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'presente').length;
@@ -222,10 +229,19 @@ export default function AbsencesView() {
   const pagFeriados = pagaveisMarcadas.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'feriado').length + pagaveisFeriadoNovo.length;
   const pagSemMarcacaoLista = pagamentoBase.filter((s: any) => !s.attendance_status && s.date < hojeStr && !isFeriado(s.date));
   const pagSemMarcacao = pagSemMarcacaoLista.length;
+  // Nem toda aula dura 1h - calcula pelo tempo real (1h30 conta 1.5x, por exemplo).
+  const getDuracaoHoras = (s: any) => {
+    if (!s.start_time || !s.end_time) return 1;
+    const [h1, m1] = s.start_time.split(':').map(Number);
+    const [h2, m2] = s.end_time.split(':').map(Number);
+    const min = (h2 * 60 + m2) - (h1 * 60 + m1);
+    return min > 0 ? min / 60 : 1;
+  };
+  const totalHoras = pagaveis.reduce((acc: number, s: any) => acc + getDuracaoHoras(s), 0);
   const gradeMensal = (selectedTeacher?.weekly_lessons || 0) * 4;
   const valorMensal = Number(selectedTeacher?.monthly_value) || 0;
-  const valorPorAula = gradeMensal > 0 ? valorMensal / gradeMensal : 0;
-  const valorCalculado = pagaveis.length * valorPorAula;
+  const valorPorAula = gradeMensal > 0 ? valorMensal / gradeMensal : 0; // valor de 1 aula padrao (1h) = valor por hora
+  const valorCalculado = totalHoras * valorPorAula;
   const fmtMoeda = (v: number) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const getStatusLabel = (s: any) => {
@@ -398,7 +414,7 @@ export default function AbsencesView() {
         {filterTeacher && (
           <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between flex-wrap gap-2">
             <span className="text-xs text-gray-500">
-              {pagaveis.length} aula(s) pagável(is) nesse filtro · {fmtMoeda(valorCalculado)} calculado pra {selectedTeacher?.name}
+              {pagaveis.length} aula(s) ({totalHoras.toFixed(1)}h) pagável(is) nesse filtro · {fmtMoeda(valorCalculado)} calculado pra {selectedTeacher?.name}
               {pagSemMarcacao > 0 && <span className="text-yellow-600 font-bold"> · ⚠ {pagSemMarcacao} sem marcação</span>}
             </span>
             <button onClick={abrirPagamento}
@@ -417,7 +433,8 @@ export default function AbsencesView() {
               <button onClick={() => setShowPayPanel(false)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"><X size={18} /></button>
             </div>
             <div className="bg-gray-50 rounded-xl p-3 mb-3 text-xs text-gray-600 space-y-1">
-              <p className="font-bold text-gray-800">{pagaveis.length} aula(s) no filtro atual (presentes: {pagPresentes}, justificadas: {pagJustificadas}, faltas: {pagFaltas}, feriados: {pagFeriados})</p>
+              <p className="font-bold text-gray-800">{pagaveis.length} aula(s) / {totalHoras.toFixed(1)}h no filtro atual (presentes: {pagPresentes}, justificadas: {pagJustificadas}, faltas: {pagFaltas}, feriados: {pagFeriados})</p>
+              {pagLiberadas > 0 && <p className="text-gray-500 mt-1">{pagLiberadas} falta(s) com professora liberada — não entram na conta.</p>}
               <p>Grade mensal: {gradeMensal} aulas · Valor por aula: {fmtMoeda(valorPorAula)}</p>
               {pagSemMarcacao > 0 && (
                 <div className="text-yellow-600">
@@ -488,6 +505,7 @@ export default function AbsencesView() {
                       <p className="font-bold text-gray-900 text-sm">{s.subject || 'Aula'}</p>
                       <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${status.color}`}>{status.label}</span>
                       {attendance && <span className={`text-[10px] font-black ${attendance.color}`}>{attendance.label}</span>}
+                      {s.status === 'falta_confirmada' && s.professor_liberado && <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">Professora Liberada</span>}
                       {s.reposicao_pendente && <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Reposicao Pendente</span>}
                     </div>
                     <div className="flex gap-3 mt-1 flex-wrap text-xs text-gray-400">
@@ -496,6 +514,9 @@ export default function AbsencesView() {
                       {s.student_name && <span className="flex items-center gap-1"><User size={11} />{s.student_name}</span>}
                       {s.teacher_name && <span>Prof: {s.teacher_name}</span>}
                     </div>
+                    {s.motivo_falta && (
+                      <div className="mt-1 text-xs text-gray-500">📝 {s.motivo_falta}</div>
+                    )}
                     {(s.status === 'reposicao_marcada' || s.status === 'reposicao_concluida') && (() => {
                       const vinc = schedules.find(x => (x.reposicao_de_ids && x.reposicao_de_ids.includes(s.id)) || x.reposicao_de_id === s.id);
                       return vinc ? (
