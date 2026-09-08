@@ -55,6 +55,8 @@ export default function TeacherPayroll() {
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [done, setDone] = useState<Record<string, boolean>>({});
+  const [lastIds, setLastIds] = useState<Record<string, { paymentId: string; expenseId: string | null }>>({});
+  const [undoing, setUndoing] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -89,7 +91,7 @@ export default function TeacherPayroll() {
     const amount = parseFloat(amounts[teacher.id] || '0');
     if (!amount || !periodo) return;
     setSaving(teacher.id);
-    const { error } = await supabase.from('teacher_payments').insert({
+    const { data: paymentData, error } = await supabase.from('teacher_payments').insert({
       teacher_id: teacher.id,
       teacher_name: teacher.name,
       amount,
@@ -103,15 +105,14 @@ export default function TeacherPayroll() {
       status: 'pago',
       paid_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
-    });
+    }).select('id').single();
     setSaving(null);
     if (!error) {
-      setDone(d => ({ ...d, [teacher.id]: true }));
       // Também lança como despesa no Financeiro, categoria Salário Professor
       const { data: cat } = await supabase.from('expense_categories').select('id').eq('name', 'Salário Professor').maybeSingle();
       const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
       const d = new Date(periodo.end + 'T00:00:00');
-      await supabase.from('expenses').insert({
+      const { data: expenseData } = await supabase.from('expenses').insert({
         description: 'Pagamento ' + teacher.name + ' (' + periodo.start.split('-').reverse().join('/') + ' a ' + periodo.end.split('-').reverse().join('/') + ')',
         amount,
         category_id: cat?.id || null,
@@ -122,8 +123,21 @@ export default function TeacherPayroll() {
         status: 'paid',
         teacher_id: teacher.id,
         teacher_name: teacher.name,
-      });
+      }).select('id').single();
+      setLastIds(l => ({ ...l, [teacher.id]: { paymentId: paymentData?.id, expenseId: expenseData?.id || null } }));
+      setDone(d => ({ ...d, [teacher.id]: true }));
     }
+  };
+
+  const desfazer = async (teacher: any) => {
+    const ids = lastIds[teacher.id];
+    if (!ids) return;
+    setUndoing(teacher.id);
+    await supabase.from('teacher_payments').delete().eq('id', ids.paymentId);
+    if (ids.expenseId) await supabase.from('expenses').delete().eq('id', ids.expenseId);
+    setUndoing(null);
+    setDone(d => ({ ...d, [teacher.id]: false }));
+    setLastIds(l => { const copy = { ...l }; delete copy[teacher.id]; return copy; });
   };
 
   if (loading) {
@@ -178,7 +192,12 @@ export default function TeacherPayroll() {
                     </div>
 
                     {done[teacher.id] ? (
-                      <div style={{ color: D_GREEN, fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}><Check size={16} /> Pago e lançado em Saídas</div>
+                      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+                        <div style={{ color: D_GREEN, fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}><Check size={16} /> Pago e lançado em Saídas</div>
+                        <button onClick={() => desfazer(teacher)} disabled={undoing === teacher.id} style={{ background: 'transparent', border: `1px solid ${D_RED}`, color: D_RED, borderRadius: 8, padding: '7px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-start' }}>
+                          {undoing === teacher.id ? 'Desfazendo...' : '↩ Desfazer este pagamento'}
+                        </button>
+                      </div>
                     ) : (
                       <button onClick={() => registrar(teacher)} disabled={saving === teacher.id} style={{ width: '100%', padding: '11px', borderRadius: 10, border: 'none', background: D_PURPLE, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                         {saving === teacher.id ? <><Loader2 size={15} className="animate-spin" /> Registrando...</> : <><DollarSign size={15} /> Registrar Pagamento</>}
