@@ -190,21 +190,37 @@ export default function AssistantView({ user }: AssistantViewProps) {
       }
 
       else if (msg.acao === 'APROVAR_MATERIAL') {
-        const { error } = await supabase.from('materials').update({
+        const { data: matAprov, error } = await supabase.from('materials').update({
           approval_status: 'approved',
           reviewed_by_id: user.id,
           reviewed_at: new Date().toISOString(),
-        }).eq('id', msg.dados.material_id);
+        }).eq('id', msg.dados.material_id).select('uploaded_by_id, title').single();
+        if (!error && matAprov?.uploaded_by_id) {
+          await supabase.from('notifications').insert({
+            user_id: matAprov.uploaded_by_id,
+            title: '✅ Material "' + (matAprov.title || msg.dados.material_titulo) + '" aprovado!',
+            message: 'Seu material foi aprovado e já está na biblioteca.',
+            type: 'success',
+          });
+        }
         resultado = error ? '❌ Erro ao aprovar: ' + error.message : '✅ Material "' + msg.dados.material_titulo + '" aprovado e publicado na biblioteca!';
       }
 
       else if (msg.acao === 'REPROVAR_MATERIAL') {
-        const { error } = await supabase.from('materials').update({
+        const { data: matReprov, error } = await supabase.from('materials').update({
           approval_status: 'rejected',
           rejection_reason: msg.dados.motivo,
           reviewed_by_id: user.id,
           reviewed_at: new Date().toISOString(),
-        }).eq('id', msg.dados.material_id);
+        }).eq('id', msg.dados.material_id).select('uploaded_by_id, title').single();
+        if (!error && matReprov?.uploaded_by_id) {
+          await supabase.from('notifications').insert({
+            user_id: matReprov.uploaded_by_id,
+            title: '❌ Material "' + (matReprov.title || msg.dados.material_titulo) + '" reprovado',
+            message: 'Motivo: ' + (msg.dados.motivo || 'não informado'),
+            type: 'warning',
+          });
+        }
         resultado = error ? '❌ Erro ao reprovar: ' + error.message : '❌ Material "' + msg.dados.material_titulo + '" reprovado. Professor será notificado.';
       }
 
