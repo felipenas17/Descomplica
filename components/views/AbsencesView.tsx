@@ -64,9 +64,11 @@ export default function AbsencesView() {
   };
 
   const rejectLesson = async (id: string) => {
-    await supabase.from('schedules').update({ status: 'cancelado', admin_confirmed: false }).eq('id', id);
+    // Recusar a confirmacao NAO cancela a aula (ela pode nem ter acontecido ainda, so foi marcada errada) -
+    // reverte pro estado normal, pronta pra ser marcada de novo, do jeito certo, quando o dia chegar.
+    await supabase.from('schedules').update({ status: 'confirmado', attendance_status: null, admin_confirmed: false }).eq('id', id);
     fetchData();
-    toast.error('Aula recusada!');
+    toast.error('Aula recusada e revertida para pendente!');
   };
 
   const markNotified = async (id: string, current: boolean) => {

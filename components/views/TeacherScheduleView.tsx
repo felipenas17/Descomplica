@@ -175,6 +175,12 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
   };
 
   const openFeedback = (lesson: any) => {
+    const hojeStr = new Date().toISOString().split('T')[0];
+    if (lesson.date && lesson.date > hojeStr) {
+      const dataFmt = new Date(lesson.date + 'T00:00:00').toLocaleDateString('pt-BR');
+      const confirmou = window.confirm('Atencao: essa aula e do dia ' + dataFmt + ', que ainda nao chegou. Tem certeza que quer finalizar ela agora, antes da data?');
+      if (!confirmou) return;
+    }
     setFeedbackLesson(lesson);
     setFeedback({ attendance: 'Presente', discipline: '', content: '', resources: '', notes: '' });
   };
