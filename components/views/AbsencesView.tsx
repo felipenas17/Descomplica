@@ -528,7 +528,7 @@ export default function AbsencesView() {
                     {s.motivo_falta && (
                       <div className="mt-1 text-xs text-gray-500">📝 {s.motivo_falta}</div>
                     )}
-                    {(s.status === 'reposicao_marcada' || s.status === 'reposicao_concluida') && (() => {
+                    {(s.status === 'reposicao_marcada' || s.status === 'reposicao_concluida') && !((s.reposicao_de_ids && s.reposicao_de_ids.length > 0) || s.reposicao_de_id) && (() => {
                       const vinc = schedules.find(x => (x.reposicao_de_ids && x.reposicao_de_ids.includes(s.id)) || x.reposicao_de_id === s.id);
                       return vinc ? (
                         <div className="mt-1 text-xs text-green-600 font-bold">
@@ -537,6 +537,20 @@ export default function AbsencesView() {
                       ) : (
                         <div className="mt-1 text-xs text-red-500 font-bold">
                           ⚠ Sem aula de reposição vinculada no sistema
+                        </div>
+                      );
+                    })()}
+                    {((s.reposicao_de_ids && s.reposicao_de_ids.length > 0) || s.reposicao_de_id) && (() => {
+                      const origIds = (s.reposicao_de_ids && s.reposicao_de_ids.length > 0) ? s.reposicao_de_ids : [s.reposicao_de_id];
+                      const origs = origIds.map((oid: string) => schedules.find((x: any) => x.id === oid)).filter(Boolean);
+                      if (origs.length === 0) return null;
+                      return (
+                        <div className="mt-1 text-xs text-green-600 font-bold">
+                          {origs.map((o: any) => (
+                            <div key={o.id}>
+                              ↳ Reposição da aula de {new Date(o.date + 'T00:00:00').toLocaleDateString('pt-BR')} com {o.teacher_name || 'professor(a)'}{o.motivo_falta ? ' — Motivo: ' + o.motivo_falta : ''}
+                            </div>
+                          ))}
                         </div>
                       );
                     })()}
