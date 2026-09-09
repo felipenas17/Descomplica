@@ -139,7 +139,7 @@ export default function FeedbacksView() {
       f.student_name?.toLowerCase().includes(filterStr.toLowerCase()) ||
       f.teacher_name?.toLowerCase().includes(filterStr.toLowerCase()) ||
       f.subject?.toLowerCase().includes(filterStr.toLowerCase());
-    const matchesTeacher = !filterTeacher || f.teacher_name === filterTeacher;
+    const matchesTeacher = !filterTeacher || f.teacher_id === filterTeacher;
     const matchesFrom = !filterDateFrom || f.class_date >= filterDateFrom;
     const matchesTo = !filterDateTo || f.class_date <= filterDateTo;
     const matchesSent = filterSent === 'todos' || (filterSent === 'enviado' && f.sent_to_parent) || (filterSent === 'nao_enviado' && !f.sent_to_parent);
@@ -182,7 +182,7 @@ export default function FeedbacksView() {
         <select value={filterTeacher} onChange={e => setFilterTeacher(e.target.value)}
           className="py-2.5 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300">
           <option value="">Todos os professores</option>
-          {teachers.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+          {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
         <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)}
           className="py-2.5 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
