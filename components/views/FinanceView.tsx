@@ -42,6 +42,20 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
+function Modal({ children, title, onClose }: any) {
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.75)', padding: 16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: D_CARD, borderRadius: 20, padding: 24, width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${D_BORDER}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: D_TEXT }}>{title}</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: D_MUTED, fontSize: 20 }}>✕</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default function FinanceView() {
   const [payments, setPayments] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
@@ -472,18 +486,6 @@ export default function FinanceView() {
     } catch (e: any) { toast.error('Erro: ' + e.message); }
     finally { setSaving(false); }
   };
-
-  const Modal = ({ children, title, onClose }: any) => (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.75)', padding: 16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: D_CARD, borderRadius: 20, padding: 24, width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${D_BORDER}` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: D_TEXT }}>{title}</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: D_MUTED, fontSize: 20 }}>✕</button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
 
   return (
     <div style={{ background: D_BG, minHeight: '100vh', padding: '20px 16px 60px', fontFamily: 'system-ui, sans-serif' }}>
