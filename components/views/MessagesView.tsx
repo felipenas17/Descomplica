@@ -281,7 +281,7 @@ export default function MessagesView({ user }: { user?: any }) {
 
         <div className="flex-1 overflow-y-auto">
           <div onClick={() => setSelected({ id: GROUP_ID, name: 'Grupo Professoras', role: 'Grupo' })}
-            className={`p-4 cursor-pointer hover:bg-purple-50 transition-colors border-b border-gray-100 ${selected?.id === GROUP_ID ? 'bg-purple-50' : ''}`}>
+            className={`sticky top-0 z-10 p-4 cursor-pointer hover:bg-purple-50 transition-colors border-b border-gray-100 ${selected?.id === GROUP_ID ? 'bg-purple-50' : 'bg-white'}`}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-white shrink-0">
                 <Users size={18} />
