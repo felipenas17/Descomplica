@@ -126,6 +126,18 @@ export default function MessagesView({ user }: { user?: any }) {
     else fetchMessages(selected.id);
   }, [selected]);
 
+  // Rede de seguranca: confere sozinho a cada poucos segundos se chegou mensagem nova,
+  // mesmo que o aviso em tempo real falhe por algum motivo (rede, celular em segundo plano, etc.)
+  useEffect(() => {
+    if (!user?.id) return;
+    const interval = setInterval(() => {
+      fetchConversations();
+      if (selected?.id === GROUP_ID) fetchGroupMessages();
+      else if (selected?.id) fetchMessages(selected.id);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [user?.id, selected]);
+
   // Busca membros
   const searchMembers = async (query: string) => {
     if (!query.trim()) { setMembers([]); return; }
