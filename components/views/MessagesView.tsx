@@ -6,11 +6,14 @@ import { supabase } from '@/lib/supabase';
 
 interface Member { id: string; name: string; role: string; email?: string; }
 interface Message { id: string; sender_id: string; receiver_id: string; text: string; created_at: string; }
+interface GroupMessage { id: string; sender_id: string; sender_name: string; text: string; created_at: string; }
+const GROUP_ID = 'GROUP';
 
 export default function MessagesView({ user }: { user?: any }) {
   const [conversations, setConversations] = useState<Member[]>([]);
   const [selected, setSelected] = useState<Member | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [groupMessages, setGroupMessages] = useState<GroupMessage[]>([]);
   const [input, setInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -22,6 +25,8 @@ export default function MessagesView({ user }: { user?: any }) {
   const [editText, setEditText] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [convMenuOpenId, setConvMenuOpenId] = useState<string | null>(null);
+  const [deletingConvId, setDeletingConvId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
@@ -32,6 +37,13 @@ export default function MessagesView({ user }: { user?: any }) {
     document.addEventListener('click', closeMenu);
     return () => document.removeEventListener('click', closeMenu);
   }, [menuOpenId]);
+
+  useEffect(() => {
+    if (!convMenuOpenId) return;
+    const closeMenu = () => setConvMenuOpenId(null);
+    document.addEventListener('click', closeMenu);
+    return () => document.removeEventListener('click', closeMenu);
+  }, [convMenuOpenId]);
 
   // Busca conversas existentes (pessoas com quem já trocou mensagem)
   useEffect(() => {
@@ -75,6 +87,12 @@ export default function MessagesView({ user }: { user?: any }) {
       .eq('receiver_id', user.id).eq('sender_id', otherId).eq('read', false);
   };
 
+  // Busca mensagens do grupo (conversa unica, compartilhada por todo mundo)
+  const fetchGroupMessages = async () => {
+    const { data } = await supabase.from('group_messages').select('*').order('created_at', { ascending: true });
+    setGroupMessages(data || []);
+  };
+
   // Realtime
   useEffect(() => {
     if (!user?.id) return;
@@ -82,7 +100,7 @@ export default function MessagesView({ user }: { user?: any }) {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const msg = payload.new as Message;
         if (msg.sender_id === user.id || msg.receiver_id === user.id) {
-          if (selected && (msg.sender_id === selected.id || msg.receiver_id === selected.id)) {
+          if (selected && selected.id !== GROUP_ID && (msg.sender_id === selected.id || msg.receiver_id === selected.id)) {
             setMessages(prev => prev.find(m => m.id === msg.id) ? prev : [...prev, msg]);
           }
           fetchConversations();
@@ -94,12 +112,18 @@ export default function MessagesView({ user }: { user?: any }) {
           setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, read: (msg as any).read } : m));
         }
       })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'group_messages' }, (payload) => {
+        const gm = payload.new as GroupMessage;
+        setGroupMessages(prev => prev.find(m => m.id === gm.id) ? prev : [...prev, gm]);
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [user?.id, selected]);
 
   useEffect(() => {
-    if (selected) fetchMessages(selected.id);
+    if (!selected) return;
+    if (selected.id === GROUP_ID) fetchGroupMessages();
+    else fetchMessages(selected.id);
   }, [selected]);
 
   // Busca membros
@@ -137,6 +161,17 @@ export default function MessagesView({ user }: { user?: any }) {
     setSending(true);
     const text = input.trim();
     setInput('');
+    if (selected.id === GROUP_ID) {
+      const { data: newGm } = await supabase.from('group_messages').insert({
+        sender_id: user.id,
+        sender_name: user?.name || 'Alguém',
+        text,
+        created_at: new Date().toISOString(),
+      }).select().single();
+      if (newGm) setGroupMessages(prev => [...prev, newGm]);
+      setSending(false);
+      return;
+    }
     const { data: newMsg } = await supabase.from('messages').insert({
       sender_id: user.id,
       receiver_id: selected.id,
@@ -181,6 +216,19 @@ export default function MessagesView({ user }: { user?: any }) {
       setMessages(prev => prev.filter(m => m.id !== id));
     }
     setDeletingId(null);
+  };
+
+  const deleteConversation = async (otherId: string) => {
+    setConvMenuOpenId(null);
+    if (!user?.id) return;
+    setDeletingConvId(otherId);
+    const { error } = await supabase.from('messages').delete()
+      .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${user.id})`);
+    if (!error) {
+      setConversations(prev => prev.filter(c => c.id !== otherId));
+      if (selected?.id === otherId) { setSelected(null); setMessages([]); }
+    }
+    setDeletingConvId(null);
   };
 
   const formatTime = (ts: string) => new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -232,6 +280,18 @@ export default function MessagesView({ user }: { user?: any }) {
         </div>
 
         <div className="flex-1 overflow-y-auto">
+          <div onClick={() => setSelected({ id: GROUP_ID, name: 'Grupo Professoras', role: 'Grupo' })}
+            className={`p-4 cursor-pointer hover:bg-purple-50 transition-colors border-b border-gray-100 ${selected?.id === GROUP_ID ? 'bg-purple-50' : ''}`}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-white shrink-0">
+                <Users size={18} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-gray-800 text-sm truncate">Grupo Professoras</p>
+                <p className="text-xs text-green-500">Todo mundo vê essa conversa</p>
+              </div>
+            </div>
+          </div>
           {conversations.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full p-6 text-center">
               <Users size={36} className="text-gray-200 mb-3" />
@@ -240,7 +300,8 @@ export default function MessagesView({ user }: { user?: any }) {
             </div>
           ) : conversations.map(conv => (
             <div key={conv.id} onClick={() => setSelected(conv)}
-              className={`p-4 cursor-pointer hover:bg-purple-50 transition-colors border-b border-gray-50 ${selected?.id === conv.id ? 'bg-purple-50' : ''}`}>
+              onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setConvMenuOpenId(convMenuOpenId === conv.id ? null : conv.id); }}
+              className={`relative group p-4 cursor-pointer hover:bg-purple-50 transition-colors border-b border-gray-50 ${selected?.id === conv.id ? 'bg-purple-50' : ''}`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
                   {conv.name[0]?.toUpperCase()}
@@ -249,7 +310,19 @@ export default function MessagesView({ user }: { user?: any }) {
                   <p className="font-semibold text-gray-800 text-sm truncate">{conv.name}</p>
                   <p className="text-xs text-purple-400">{conv.role}</p>
                 </div>
+                <button onClick={e => { e.stopPropagation(); setConvMenuOpenId(convMenuOpenId === conv.id ? null : conv.id); }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-full hover:bg-gray-200 text-gray-400 text-xs flex items-center justify-center shrink-0">
+                  ⋮
+                </button>
               </div>
+              {convMenuOpenId === conv.id && (
+                <div onClick={e => e.stopPropagation()} className="absolute z-20 bg-white border border-gray-200 rounded-xl shadow-lg py-1 text-sm right-3 top-12 min-w-[150px]">
+                  <button onClick={() => deleteConversation(conv.id)} disabled={deletingConvId === conv.id}
+                    className="w-full text-left px-3 py-1.5 hover:bg-red-50 text-red-600">
+                    {deletingConvId === conv.id ? 'Excluindo...' : '🗑️ Excluir conversa'}
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -271,7 +344,30 @@ export default function MessagesView({ user }: { user?: any }) {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 bg-gray-50">
-              {messages.length === 0 ? (
+              {selected.id === GROUP_ID ? (
+                groupMessages.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center">
+                      <Users size={36} className="text-gray-200 mx-auto mb-2" />
+                      <p className="text-sm text-gray-400">Nenhuma mensagem no grupo ainda</p>
+                      <p className="text-xs text-gray-300">Todo mundo vê o que for escrito aqui</p>
+                    </div>
+                  </div>
+                ) : groupMessages.map(gm => {
+                  const own = gm.sender_id === user?.id;
+                  return (
+                    <div key={gm.id} className={`flex ${own ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-xs px-4 py-2.5 rounded-2xl text-sm shadow-sm ${own ? 'bg-purple-600 text-white rounded-br-sm' : 'bg-white border border-gray-100 text-gray-800 rounded-bl-sm'}`}>
+                        {!own && <p className="text-[11px] font-bold text-green-600 mb-0.5">{gm.sender_name}</p>}
+                        {gm.text}
+                        <p className={`text-xs mt-1 flex items-center justify-end gap-1 ${own ? 'text-purple-200' : 'text-gray-400'}`}>
+                          {formatTime(gm.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : messages.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center">
                   <div className="text-center">
                     <MessageSquare size={36} className="text-gray-200 mx-auto mb-2" />
