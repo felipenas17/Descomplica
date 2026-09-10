@@ -219,7 +219,7 @@ export default function AbsencesView() {
   const pagaveisMarcadas = pagamentoBase.filter((s: any) => {
     if (!s.attendance_status) return false;
     const st = (s.attendance_status || '').toLowerCase();
-    if (st === 'falta' && s.professor_liberado) return false; // liberada -> nao conta
+    if ((st === 'falta' || st === 'justificada') && s.professor_liberado) return false; // liberada ou vaga substituida -> nao conta (quem conta e o substituto)
     return true;
   });
   const pagLiberadas = pagamentoBase.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'falta' && s.professor_liberado).length;
@@ -518,7 +518,11 @@ export default function AbsencesView() {
                       <p className="font-bold text-gray-900 text-sm">{s.subject || 'Aula'}</p>
                       <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${status.color}`}>{status.label}</span>
                       {attendance && <span className={`text-[10px] font-black ${attendance.color}`}>{attendance.label}</span>}
-                      {s.status === 'falta_confirmada' && s.professor_liberado && <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">Professora Liberada</span>}
+                      {s.status === 'falta_confirmada' && s.professor_liberado && (
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">
+                          {(s.notes || '').includes('Substituido por') ? 'Vaga Substituída' : 'Professora Liberada'}
+                        </span>
+                      )}
                       {s.reposicao_pendente && <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Reposicao Pendente</span>}
                     </div>
                     <div className="flex gap-3 mt-1 flex-wrap text-xs text-gray-400">

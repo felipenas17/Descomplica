@@ -142,6 +142,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
         status: substAlunoData.tipo === 'falta' ? 'falta_confirmada' : selectedLesson.status,
         motivo_falta: motivoFinal,
         notes: (selectedLesson.notes || '') + ' | Substituido por ' + novoAluno?.name,
+        professor_liberado: true,
       }).eq('id', selectedLesson.id);
       await supabase.from('schedules').insert({
         date: selectedLesson.date,
