@@ -353,7 +353,7 @@ export default function AbsencesView() {
       const [y,m,d] = (s.date||'').split('-');
       const obsParts = [];
       if (s.motivo_falta) obsParts.push(escHtml(s.motivo_falta));
-      if (s.status === 'falta_confirmada' && s.professor_liberado) obsParts.push('<b>Professora liberada</b>');
+      if (s.status === 'falta_confirmada' && s.professor_liberado) obsParts.push('<b>' + ((s.notes || '').includes('Substituido por') ? 'Vaga Substituída' : 'Professora liberada') + '</b>');
       const origIds = (s.reposicao_de_ids && s.reposicao_de_ids.length > 0) ? s.reposicao_de_ids : (s.reposicao_de_id ? [s.reposicao_de_id] : []);
       const origs = origIds.map((oid: string) => schedules.find((x: any) => x.id === oid)).filter(Boolean);
       origs.forEach((o: any) => {
