@@ -342,7 +342,7 @@ export default function AbsencesView() {
     const aulas1h = base2.filter((s: any) => duracao(s.start_time,s.end_time)===60).length;
     const aulas1h30 = base2.filter((s: any) => duracao(s.start_time,s.end_time)===90).length;
     const aulas2h = base2.filter((s: any) => duracao(s.start_time,s.end_time)===120).length;
-    const totalHoras = base2.reduce((acc: number, s: any) => acc + duracao(s.start_time,s.end_time)/60, 0);
+    const totalHoras = pagaveis.reduce((acc: number, s: any) => acc + getDuracaoHoras(s), 0);
     const totalHorasStr = Math.floor(totalHoras) + 'h' + ((totalHoras % 1) * 60 > 0 ? String(Math.round((totalHoras % 1) * 60)).padStart(2, '0') : '00');
     const escHtml = (t: string) => (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const rows = base2.sort((a: any,b: any) => (a.date+a.start_time).localeCompare(b.date+b.start_time)).map((s: any) => {
