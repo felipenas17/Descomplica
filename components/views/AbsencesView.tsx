@@ -247,6 +247,8 @@ export default function AbsencesView() {
   const fmtMoeda = (v: number) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const getStatusLabel = (s: any) => {
+    if (s.status === 'falta_confirmada') return { label: '', color: '' };
+    if (s.attendance_status === 'feriado' || (s.date && isFeriado(s.date))) return { label: '', color: '' };
     if (s.status === 'concluido' && s.admin_confirmed) return { label: 'Concluida', color: 'bg-green-100 text-green-700' };
     if (s.status === 'aguardando_confirmacao') return { label: 'Aguard. Confirmacao', color: 'bg-orange-100 text-orange-700' };
     if (s.status === 'reposicao_marcada') return { label: 'Reposicao Marcada', color: 'bg-blue-100 text-blue-700' };
