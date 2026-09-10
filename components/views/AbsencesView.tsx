@@ -261,7 +261,7 @@ export default function AbsencesView() {
     if (s.status === 'falta_confirmada') return { label: 'Falta Confirmada', color: 'bg-red-100 text-red-700' };
     if (s.attendance_status === 'falta' || s.attendance_status === 'Ausente') return { label: 'Falta', color: 'text-red-600' };
     if (s.attendance_status === 'justificada' || s.attendance_status === 'Justificada') return { label: 'Justificada', color: 'text-yellow-600' };
-    if (s.attendance_status === 'feriado') return { label: 'Feriado', color: 'text-purple-600' };
+    if (s.attendance_status === 'feriado' || (s.date && isFeriado(s.date))) return { label: 'Feriado', color: 'text-purple-600' };
     return null;
   };
 
@@ -348,7 +348,7 @@ export default function AbsencesView() {
     const rows = base2.sort((a: any,b: any) => (a.date+a.start_time).localeCompare(b.date+b.start_time)).map((s: any) => {
       const mins = duracao(s.start_time,s.end_time);
       const durLabel = mins===60?'1h':mins===90?'1h30':mins===120?'2h':mins+'min';
-      const st = s.attendance_status==='feriado'?'Feriado':s.status==='reposicao_concluida'?'Concluida':(s.status==='concluido'&&s.admin_confirmed)?'Concluida':s.attendance_status==='falta'?'Falta':(s.reposicao_pendente||s.status==='reposicao_marcada')?'Reposicao':(s.attendance_status==='justificada'||s.attendance_status==='Justificada')?'Justificada':s.lesson_type==='avulsa'?'Avulsa':'Aguardando';
+      const st = (s.attendance_status==='feriado'||(s.date&&isFeriado(s.date)))?'Feriado':s.status==='reposicao_concluida'?'Concluida':(s.status==='concluido'&&s.admin_confirmed)?'Concluida':s.attendance_status==='falta'?'Falta':(s.reposicao_pendente||s.status==='reposicao_marcada')?'Reposicao':(s.attendance_status==='justificada'||s.attendance_status==='Justificada')?'Justificada':s.lesson_type==='avulsa'?'Avulsa':'Aguardando';
       const stColor = st==='Feriado'?'#EDE9FE;color:#5B21B6':st==='Concluida'?'#D1FAE5;color:#065F46':st==='Falta'?'#FEE2E2;color:#991B1B':st==='Justificada'?'#FEF3C7;color:#92400E':st==='Reposicao'?'#DBEAFE;color:#1E40AF':'#F3F4F6;color:#374151';
       const [y,m,d] = (s.date||'').split('-');
       const obsParts = [];
