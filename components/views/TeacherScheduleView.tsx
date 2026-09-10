@@ -155,7 +155,8 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
   };
 
   const markAttendance = async (lesson: any, status: string) => {
-    if (lesson.attendance_status === 'justificada' || lesson.attendance_status === 'Justificada' || lesson.status === 'reposicao_marcada' || lesson.status === 'reposicao_concluida' || lesson.status === 'falta_confirmada') {
+    const ehReposicaoOriginalJaLinkada = lesson.status === 'reposicao_marcada' && !(lesson.reposicao_de_ids && lesson.reposicao_de_ids.length > 0);
+    if (lesson.attendance_status === 'justificada' || lesson.attendance_status === 'Justificada' || ehReposicaoOriginalJaLinkada || lesson.status === 'reposicao_concluida' || lesson.status === 'falta_confirmada') {
       toast.error('Esta aula ja foi resolvida pelo administrador (justificativa, reposicao ou substituicao) e nao pode ser alterada por aqui.');
       return;
     }
