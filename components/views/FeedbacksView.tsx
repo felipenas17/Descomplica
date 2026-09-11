@@ -34,6 +34,7 @@ export default function FeedbacksView() {
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
   const [filterSent, setFilterSent] = useState('nao_enviado');
+  const [selectedArquivadoAluno, setSelectedArquivadoAluno] = useState<string | null>(null);
   const [teachers, setTeachers] = useState<any[]>([]);
 
   const fetchTeachers = React.useCallback(async () => {
@@ -198,7 +199,7 @@ export default function FeedbacksView() {
           className="py-2.5 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
         <div className="flex bg-gray-100 p-0.5 rounded-lg">
           {[{v:'nao_enviado',l:'Pendentes',c:feedbacks.filter(f=>!f.sent_to_parent && !f.arquivado).length,bg:'text-red-600'},{v:'enviado',l:'Enviados',c:feedbacks.filter(f=>f.sent_to_parent).length,bg:'text-green-600'},{v:'arquivado',l:'Arquivados',c:feedbacks.filter(f=>f.arquivado).length,bg:'text-purple-600'},{v:'todos',l:'Todos',c:feedbacks.length,bg:'text-gray-600'}].map(o=>(
-            <button key={o.v} onClick={()=>setFilterSent(o.v)}
+            <button key={o.v} onClick={()=>{setFilterSent(o.v); setSelectedArquivadoAluno(null);}}
               className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${filterSent===o.v?'bg-white shadow text-purple-600':'text-gray-400 hover:text-gray-600'}`}>
               {o.l} <span className={filterSent===o.v?'text-purple-600':o.bg}>{o.c}</span>
             </button>
@@ -219,7 +220,30 @@ export default function FeedbacksView() {
           <span className="text-xs text-gray-400 font-bold">{filteredFeedbacks.length} resultado(s)</span>
         </div>
 
+        {filterSent === 'arquivado' && !selectedArquivadoAluno ? (
+          <div style={{ padding: '20px 24px' }}>
+            <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '12px' }}>Selecione um aluno:</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '12px' }}>
+              {Array.from(new Set(filteredFeedbacks.map(f => f.student_name || 'Sem aluno'))).sort().length === 0
+                ? <p style={{ color: '#9ca3af' }}>Nenhum feedback arquivado ainda.</p>
+                : Array.from(new Set(filteredFeedbacks.map(f => f.student_name || 'Sem aluno'))).sort().map(aluno => (
+                    <div key={aluno} onClick={() => setSelectedArquivadoAluno(aluno)}
+                      style={{ background: '#fff', border: '1.5px solid #e5e7eb', borderRadius: '12px', padding: '20px 16px', cursor: 'pointer', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                      <div style={{ fontSize: '32px', marginBottom: '8px' }}>📁</div>
+                      <div style={{ fontWeight: 600, fontSize: '14px', color: '#1e1b4b' }}>{aluno}</div>
+                      <div style={{ color: '#9ca3af', fontSize: '12px', marginTop: '4px' }}>{filteredFeedbacks.filter(f => (f.student_name || 'Sem aluno') === aluno).length} feedback(s)</div>
+                    </div>
+                  ))
+              }
+            </div>
+          </div>
+        ) : (
         <div className="overflow-x-auto">
+          {filterSent === 'arquivado' && selectedArquivadoAluno && (
+            <div style={{ padding: '16px 24px 0' }}>
+              <button onClick={() => setSelectedArquivadoAluno(null)} style={{ color: '#7c3aed', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '14px' }}>← Voltar para pastas</button>
+            </div>
+          )}
           <table className="w-full text-left">
             <thead>
               <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50">
@@ -257,16 +281,14 @@ export default function FeedbacksView() {
                   if (d >= prevStart && d < startOfWeek) return 'Semana passada';
                   return 'Semana de ' + new Date(d.getFullYear(), d.getMonth(), d.getDate() - d.getDay() + 1).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
                 };
-                const isArquivadoView = filterSent === 'arquivado';
-                const listaExibida = isArquivadoView
-                  ? [...filteredFeedbacks].sort((a, b) => (a.student_name || '').localeCompare(b.student_name || ''))
+                const listaExibida = (filterSent === 'arquivado' && selectedArquivadoAluno)
+                  ? filteredFeedbacks.filter(f => f.student_name === selectedArquivadoAluno)
                   : filteredFeedbacks;
                 let lastWeek = '';
-                let lastAluno = '';
                 return listaExibida.map((f, idx) => {
-                const weekLabel = isArquivadoView ? (f.student_name || 'Sem aluno') : getWeekLabel(f.class_date);
-                const showWeekHeader = isArquivadoView ? (weekLabel !== lastAluno) : (weekLabel !== lastWeek);
-                if (isArquivadoView) { if (showWeekHeader) lastAluno = weekLabel; } else { if (showWeekHeader) lastWeek = weekLabel; }
+                const weekLabel = getWeekLabel(f.class_date);
+                const showWeekHeader = weekLabel !== lastWeek;
+                if (showWeekHeader) lastWeek = weekLabel;
                 return (<>
                 {showWeekHeader && (
                   <tr key={'week-'+idx}><td colSpan={6} className="px-4 py-2 bg-gray-50 border-b border-gray-100">
@@ -357,6 +379,7 @@ export default function FeedbacksView() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {/* Details Modal */}
