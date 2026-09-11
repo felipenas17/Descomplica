@@ -170,7 +170,7 @@ export default function FeedbacksView() {
         </div>
         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Não Enviados</p>
-          <h3 className="text-3xl font-black text-yellow-600">{feedbacks.filter(f => !f.sent_to_parent).length}</h3>
+          <h3 className="text-3xl font-black text-yellow-600">{feedbacks.filter(f => !f.sent_to_parent && !f.arquivado).length}</h3>
           <p className="text-[10px] text-gray-400 mt-1">pendentes de envio</p>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
