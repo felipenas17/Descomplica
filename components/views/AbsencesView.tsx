@@ -216,12 +216,28 @@ export default function AbsencesView() {
   // Aula marcada (presenca/justificada/feriado ja gravado) conta. Falta so conta se a professora
   // NAO foi liberada (ficou trabalhando). Aula em feriado cadastrado sem marcacao tambem conta
   // automaticamente (grade fixa), e vira 'feriado' gravado ao confirmar o pagamento.
+  // Reposicao cuja aula ORIGINAL ja foi paga (original marcada sem professora liberada, ou anterior ao
+  // recesso 27/07) nao conta de novo. Original do RECESSO (27/07 a 31/07) nunca foi paga -> a reposicao conta.
+  // Original que nao existe mais tambem continua contando.
+  const schedPorId = new Map<string, any>(schedules.map((x: any) => [x.id, x] as [string, any]));
+  const reposicaoJaPaga = (s: any) => {
+    const ids: string[] = (s.reposicao_de_ids && s.reposicao_de_ids.length > 0) ? s.reposicao_de_ids : (s.reposicao_de_id ? [s.reposicao_de_id] : []);
+    return ids.some((oid: string) => {
+      const o = schedPorId.get(oid);
+      if (!o) return false;
+      if (o.date && o.date >= '2026-07-27' && o.date <= '2026-07-31') return false; // original do recesso: nao foi paga
+      if (o.date && o.date < '2026-07-27') return true;
+      return !!o.attendance_status && !o.professor_liberado;
+    });
+  };
   const pagaveisMarcadas = pagamentoBase.filter((s: any) => {
     if (!s.attendance_status) return false;
     const st = (s.attendance_status || '').toLowerCase();
     if (s.professor_liberado) return false; // liberada, vaga substituida, ou reposicao ja paga antes do sistema -> nunca conta
+    if (reposicaoJaPaga(s)) return false; // reposicao de aula original ja paga -> nao conta de novo
     return true;
   });
+  const pagRepoJaPagas = pagamentoBase.filter((s: any) => !!s.attendance_status && !s.professor_liberado && reposicaoJaPaga(s)).length;
   const pagLiberadas = pagamentoBase.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'falta' && s.professor_liberado).length;
   const pagaveisFeriadoNovo = pagamentoBase.filter((s: any) => !s.attendance_status && isFeriado(s.date));
   const pagaveis = [...pagaveisMarcadas, ...pagaveisFeriadoNovo];
@@ -360,7 +376,7 @@ export default function AbsencesView() {
       const origs = origIds.map((oid: string) => schedules.find((x: any) => x.id === oid)).filter(Boolean);
       origs.forEach((o: any) => {
         const [oy,om,od] = (o.date||'').split('-');
-        const jaPago = o.date && o.date < '2026-07-27' ? ' (ja paga anteriormente)' : '';
+        const jaPago = (o.date && o.date >= '2026-07-27' && o.date <= '2026-07-31') ? ' (original do recesso - conta)' : (o.date && o.date < '2026-07-27' ? ' (ja paga anteriormente)' : ((o.attendance_status && !o.professor_liberado) ? ' (ja paga na aula original - nao conta)' : ''));
         obsParts.push('Reposição da aula de '+(od||'')+'/'+(om||'')+' com '+escHtml(o.teacher_name||'')+jaPago);
       });
       const obs = obsParts.join(' — ');
@@ -451,6 +467,7 @@ export default function AbsencesView() {
             <div className="bg-gray-50 rounded-xl p-3 mb-3 text-xs text-gray-600 space-y-1">
               <p className="font-bold text-gray-800">{pagaveis.length} aula(s) / {totalHoras.toFixed(1)}h no filtro atual (presentes: {pagPresentes}, justificadas: {pagJustificadas}, faltas: {pagFaltas}, feriados: {pagFeriados})</p>
               {pagLiberadas > 0 && <p className="text-gray-500 mt-1">{pagLiberadas} falta(s) com professora liberada — não entram na conta.</p>}
+              {pagRepoJaPagas > 0 && <p className="text-gray-500 mt-1">{pagRepoJaPagas} reposição(ões) de aula já paga — não entram na conta.</p>}
               <p>Grade mensal: {gradeMensal} aulas · Valor por aula: {fmtMoeda(valorPorAula)}</p>
               {pagSemMarcacao > 0 && (
                 <div className="text-yellow-600">
@@ -559,6 +576,8 @@ export default function AbsencesView() {
                             <div key={o.id}>
                               ↳ Reposição da aula de {new Date(o.date + 'T00:00:00').toLocaleDateString('pt-BR')} com {o.teacher_name || 'professor(a)'}{o.motivo_falta ? ' — Motivo: ' + o.motivo_falta : ''}
                               {o.date && o.date < '2026-07-27' && <span className="text-gray-400 font-normal"> (já paga anteriormente)</span>}
+                              {o.date && o.date >= '2026-07-27' && o.date <= '2026-07-31' && <span className="text-gray-400 font-normal"> (original do recesso — conta)</span>}
+                              {o.date && o.date > '2026-07-31' && o.attendance_status && !o.professor_liberado && <span className="text-gray-400 font-normal"> (já paga na aula original — não conta)</span>}
                             </div>
                           ))}
                         </div>
