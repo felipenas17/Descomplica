@@ -137,15 +137,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     try {
       const novoAluno = students.find(s => s.id === substAlunoData.novo_aluno_id);
       const motivoFinal = substAlunoData.motivo_tag + (substAlunoData.motivo_texto ? (substAlunoData.motivo_tag ? ' - ' : '') + substAlunoData.motivo_texto : '');
-      const { error: erro1 } = await supabase.from('schedules').update({
-        attendance_status: substAlunoData.tipo,
-        status: substAlunoData.tipo === 'falta' ? 'falta_confirmada' : selectedLesson.status,
-        motivo_falta: motivoFinal,
-        notes: (selectedLesson.notes || '') + ' | Substituido por ' + novoAluno?.name,
-        professor_liberado: true,
-      }).eq('id', selectedLesson.id);
-      if (erro1) { toast.error('Erro ao marcar aula original: ' + erro1.message); setSavingSubst(false); return; }
-
+      // 1) cria PRIMEIRO a aula do substituto: se falhar, a aula original nao e tocada (a professora nao perde a hora)
       const { error: erro2 } = await supabase.from('schedules').insert({
         date: selectedLesson.date,
         start_time: (selectedLesson as any).start_time,
@@ -159,7 +151,17 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
         reposicao_de_ids: vinculosSelecionados.length > 0 ? vinculosSelecionados : null,
         notes: 'Substituindo ' + selectedLesson.student_name + ' (' + motivoFinal + ')',
       });
-      if (erro2) { toast.error('Erro ao criar aula do substituto (pendencia NAO foi fechada): ' + erro2.message); setSavingSubst(false); return; }
+      if (erro2) { toast.error('Nao foi possivel criar a aula do substituto. A aula original NAO foi alterada: ' + erro2.message); setSavingSubst(false); return; }
+
+      // 2) so depois marca a aula original (justificada/falta + professora liberada)
+      const { error: erro1 } = await supabase.from('schedules').update({
+        attendance_status: substAlunoData.tipo,
+        status: substAlunoData.tipo === 'falta' ? 'falta_confirmada' : selectedLesson.status,
+        motivo_falta: motivoFinal,
+        notes: (selectedLesson.notes || '') + ' | Substituido por ' + novoAluno?.name,
+        professor_liberado: true,
+      }).eq('id', selectedLesson.id);
+      if (erro1) { toast.error('Aula do substituto criada, mas NAO consegui marcar a aula original (' + erro1.message + '). Marque a original como justificada/falta e professora liberada manualmente.'); setSavingSubst(false); fetchLessons(); return; }
 
       for (const vincId of vinculosSelecionados) {
         const { error: erro3 } = await supabase.from('schedules').update({ reposicao_pendente: false, status: 'reposicao_marcada' }).eq('id', vincId);
@@ -185,8 +187,45 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     setSavingSubst(true);
     try {
       const novoProf = teachers.find(t => t.id === substData.professor_id);
-      // Salva histórico
-      await supabase.from('substituicoes').insert({
+
+      // Aviso (nao bloqueia): substituto ja tem aula em horario que se sobrepoe no mesmo dia
+      const minDe = (h?: string | null) => { const m = /^(\d{1,2}):(\d{2})/.exec(h || ''); return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null; };
+      const iniAula = minDe((selectedLesson as any).start_time || selectedLesson.time_start);
+      let fimAula = minDe((selectedLesson as any).end_time || selectedLesson.time_end);
+      if (iniAula !== null && (fimAula === null || fimAula <= iniAula)) fimAula = iniAula + 60;
+      const { data: aulasDoSubst } = await supabase.from('schedules')
+        .select('student_name,start_time,end_time,attendance_status')
+        .eq('teacher_id', substData.professor_id).eq('date', selectedLesson.date).neq('id', selectedLesson.id);
+      if (iniAula !== null && fimAula !== null) {
+        const conflitos = (aulasDoSubst || []).filter((a: any) => {
+          if (a.attendance_status === 'justificada' || a.attendance_status === 'falta') return false;
+          const i = minDe(a.start_time); let f = minDe(a.end_time);
+          if (i === null) return false;
+          if (f === null || f <= i) f = i + 60;
+          return i < fimAula! && f > iniAula;
+        });
+        if (conflitos.length > 0) {
+          const lista = conflitos.map((a: any) => (a.student_name || 'aula') + ' ' + (a.start_time || '') + '-' + (a.end_time || '')).join(', ');
+          if (!window.confirm((novoProf?.name || 'O substituto') + ' ja tem aula nesse horario: ' + lista + '.\n\nOK = substituir mesmo assim\nCancelar = voltar')) { setSavingSubst(false); return; }
+        }
+      }
+
+      // Vinculos de reposicao: nunca apaga o que a aula ja tem, so soma os novos
+      const { data: atual } = await supabase.from('schedules').select('reposicao_de_ids').eq('id', selectedLesson.id).single();
+      const idsAtuais: string[] = Array.isArray((atual as any)?.reposicao_de_ids) ? (atual as any).reposicao_de_ids : [];
+      const patch: any = {
+        teacher_id: substData.professor_id,
+        teacher_name: novoProf?.name,
+        notes: (selectedLesson.notes || '') + ' | Substituido: ' + (selectedLesson.teacher_name) + ' por ' + novoProf?.name,
+      };
+      if (vinculosSelecionados.length > 0) patch.reposicao_de_ids = Array.from(new Set([...idsAtuais, ...vinculosSelecionados]));
+
+      // 1) troca a professora da aula (se falhar, nada mais e feito)
+      const { error: erroAula } = await supabase.from('schedules').update(patch).eq('id', selectedLesson.id);
+      if (erroAula) { toast.error('Nao foi possivel trocar a professora. A aula NAO foi alterada: ' + erroAula.message); setSavingSubst(false); return; }
+
+      // 2) so depois grava o historico da substituicao
+      const { error: erroHist } = await supabase.from('substituicoes').insert({
         schedule_id: selectedLesson.id,
         professor_original_id: selectedLesson.teacher_id,
         professor_original_nome: selectedLesson.teacher_name,
@@ -195,15 +234,11 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
         motivo: substData.motivo,
         created_at: new Date().toISOString(),
       });
-      // Atualiza a aula
-      await supabase.from('schedules').update({
-        teacher_id: substData.professor_id,
-        teacher_name: novoProf?.name,
-        notes: (selectedLesson.notes || '') + ' | Substituido: ' + (selectedLesson.teacher_name) + ' por ' + novoProf?.name,
-        reposicao_de_ids: vinculosSelecionados.length > 0 ? vinculosSelecionados : null,
-      }).eq('id', selectedLesson.id);
+      if (erroHist) toast.error('Professora trocada, mas o historico da substituicao nao foi salvo: ' + erroHist.message);
+
       for (const vincId of vinculosSelecionados) {
-        await supabase.from('schedules').update({ reposicao_pendente: false, status: 'reposicao_marcada' }).eq('id', vincId);
+        const { error: erroVinc } = await supabase.from('schedules').update({ reposicao_pendente: false, status: 'reposicao_marcada' }).eq('id', vincId);
+        if (erroVinc) toast.error('Professora trocada, mas erro ao fechar a pendencia antiga: ' + erroVinc.message);
       }
       // Notifica professor substituto
       const substEmail = teachers.find(t => t.id === substData.professor_id)?.email || '';
@@ -227,12 +262,14 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
           type: 'warning', read: false, created_at: new Date().toISOString(),
         });
       }
+      toast.success('Professora substituida! ✅');
       setShowSubstModal(false);
       setSubstData({ professor_id: '', motivo: '' });
       setSelectedLesson(null);
       setEditingLesson(null);
+      setVinculosSelecionados([]);
       fetchLessons();
-    } catch (e: any) { console.error(e); }
+    } catch (e: any) { console.error(e); toast.error('Erro ao substituir professora: ' + (e?.message || '')); fetchLessons(); }
     setSavingSubst(false);
   };
 
@@ -313,11 +350,23 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
       return;
     }
     try {
-      await supabase.from('schedules').update({
+      // mantem a duracao da aula: o fim acompanha o novo inicio (antes so o inicio mudava e as horas pagas ficavam erradas)
+      const minDe = (h?: string | null) => { const m = /^(\d{1,2}):(\d{2})/.exec(h || ''); return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null; };
+      const iniAntigo = minDe((dragLesson as any).start_time || dragLesson.time_start);
+      const fimAntigo = minDe((dragLesson as any).end_time || dragLesson.time_end);
+      const duracao = iniAntigo !== null && fimAntigo !== null && fimAntigo > iniAntigo ? fimAntigo - iniAntigo : 60;
+      const iniNovo = minDe(rescheduleData.newTime);
+      const patch: any = {
         date: rescheduleData.newDate,
         start_time: rescheduleData.newTime,
         notes: (dragLesson.notes ? dragLesson.notes + ' | ' : '') + 'Remarcado: ' + rescheduleData.reason,
-      }).eq('id', dragLesson.id);
+      };
+      if (iniNovo !== null) {
+        const fimNovo = iniNovo + duracao;
+        patch.end_time = String(Math.floor(fimNovo / 60) % 24).padStart(2, '0') + ':' + String(fimNovo % 60).padStart(2, '0');
+      }
+      const { error: erroRem } = await supabase.from('schedules').update(patch).eq('id', dragLesson.id);
+      if (erroRem) { toast.error('Nao foi possivel remarcar. A aula NAO foi alterada: ' + erroRem.message); return; }
       toast.success('Aula remarcada! ✅');
       setShowRescheduleModal(false);
       setDragLesson(null);
