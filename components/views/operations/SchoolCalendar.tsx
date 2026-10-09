@@ -1442,10 +1442,12 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
               <button onClick={async () => {
                 const recGroup = (viewingLesson as any).recurrence_group;
                 if (recGroup) {
-                  const opcao = window.confirm('Esta aula é recorrente.\n\nOK = Excluir TODAS as recorrentes\nCancelar = Excluir só esta');
+                  const opcao = window.confirm('Esta aula é recorrente.\n\nOK = Excluir as recorrentes DE HOJE EM DIANTE que ainda não foram marcadas (aulas já dadas ou marcadas são mantidas)\nCancelar = Escolher excluir só esta');
                   if (opcao) {
-                    await supabase.from('schedules').delete().eq('recurrence_group', recGroup);
+                    // protege o historico: nunca apaga aula passada nem aula ja marcada (presente/falta/justificada); o feedback so some junto se a aula for apagada
+                    await supabase.from('schedules').delete().eq('recurrence_group', recGroup).gte('date', toLocalDateStr(new Date())).is('attendance_status', null);
                   } else {
+                    if (!confirm('Excluir só esta aula?')) return;
                     await supabase.from('schedules').delete().eq('id', viewingLesson.id);
                   }
                 } else {
