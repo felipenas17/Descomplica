@@ -11,11 +11,10 @@ interface TeacherFormProps {
 const DAYS_OF_WEEK = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
 export default function TeacherForm({ onClose, onSubmit }: TeacherFormProps) {
-  const [generatedPassword] = useState(() => {
-    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
-    let password = "";
-    for (let i = 0; i < 12; i++) password += charset.charAt(Math.floor(Math.random() * charset.length));
-    return password;
+  // Senha de acesso da professora: a mesma para todas (a admin digita). Fica so no navegador da admin
+  // (nao vai para o codigo do app); ja vem preenchida com a ultima usada.
+  const [password, setPassword] = useState(() => {
+    try { return localStorage.getItem('desc_senha_padrao_prof') || ''; } catch { return ''; }
   });
   const [copied, setCopied] = useState(false);
   const [showExtra, setShowExtra] = useState(false);
@@ -39,7 +38,7 @@ export default function TeacherForm({ onClose, onSubmit }: TeacherFormProps) {
   };
 
   const handleCopyPassword = () => {
-    navigator.clipboard.writeText(generatedPassword);
+    navigator.clipboard.writeText(password);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -48,7 +47,7 @@ export default function TeacherForm({ onClose, onSubmit }: TeacherFormProps) {
     e.preventDefault();
     onSubmit({
       ...formData,
-      password: generatedPassword,
+      password: password.trim(),
       age: formData.age ? parseInt(formData.age) : null,
       availability_schedule: JSON.stringify(daySchedules),
       availability: selectedDays,
@@ -219,17 +218,16 @@ export default function TeacherForm({ onClose, onSubmit }: TeacherFormProps) {
               <Key size={12} /> Acesso ao Sistema
             </p>
             <div>
-              <label className={labelClass}>Senha Gerada Automaticamente</label>
+              <label className={labelClass}>Senha de acesso</label>
               <div className="relative">
                 <Key size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
-                <div className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 pl-11 pr-12 text-sm font-mono font-bold text-gray-900 truncate">
-                  {generatedPassword}
-                </div>
+                <input value={password} onChange={e => setPassword(e.target.value)} minLength={6}
+                  className={inputClass + ' pr-12 font-mono font-bold'} placeholder="Mínimo 6 caracteres" autoComplete="off" />
                 <button type="button" onClick={handleCopyPassword} className="absolute right-4 top-1/2 -translate-y-1/2 text-purple-500 hover:text-purple-700 transition-colors">
                   {copied ? <Check size={18} /> : <Copy size={18} />}
                 </button>
               </div>
-              <p className="text-[10px] text-gray-400 font-bold mt-1">Copie e envie para o professor. O acesso é automático.</p>
+              <p className="text-[10px] text-gray-400 font-bold mt-1">O login é o e-mail acima + esta senha. A professora não terá opção de alterar a senha. Deixe vazio para cadastrar sem criar login agora.</p>
             </div>
           </div>
 

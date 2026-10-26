@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, X, Clock, MapPin, User, BookOpen } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { buildTeacherColorMap } from '@/lib/teacherColors';
 
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const DAYS_SHORT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
@@ -61,6 +62,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
   });
   const [saving, setSaving] = useState(false);
   const [teachers, setTeachers] = useState<{id: string, name: string, color?: string, email?: string}[]>([]);
+  const teacherColorMap = useMemo(() => buildTeacherColorMap(teachers), [teachers]);
   const [showSubstModal, setShowSubstModal] = useState(false);
   const [showExpModal, setShowExpModal] = useState(false);
   const [lessonType, setLessonType] = useState<'individual' | 'dupla' | 'grupo' | 'avulsa'>('individual');
@@ -486,8 +488,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
   };
 
   const getTeacherColor = (teacherId: string) => {
-    const teacher = teachers.find(t => t.id === teacherId);
-    return teacher?.color || null;
+    return teacherColorMap[teacherId] || null;
   };
 
   const getLessonColor = (lesson: any, idx: number) => {
@@ -737,6 +738,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                             <td key={day.toISOString()} className={`border-r border-b border-gray-50 last:border-r-0 p-0.5 align-top ${isToday ? 'bg-purple-50/30' : ''}`}>
                               {slotLessons.map((lesson, idx) => {
                                 const color = getLessonColor(lesson, idx);
+                                const tHex = getTeacherColor(lesson.teacher_id || '');
                                 return (
                                   <div key={lesson.id}
                                     style={{ ...(color.hex ? { backgroundColor: color.hex + '22', borderLeftColor: color.hex, borderLeftWidth: '3px' } : {}), minHeight: '36px' }}
@@ -751,7 +753,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                                       }
                                     }}
                                     className={`${(lesson.attendance_status === 'justificada' || lesson.attendance_status === 'Justificada') ? 'bg-gray-100 border-l-4 border-gray-300 opacity-50' : color.hex ? '' : color.bg + ' border-l-4 ' + color.border} rounded p-1 mb-0.5 cursor-pointer hover:opacity-80 transition-all`}>
-                                    <p className="text-[9px] font-black truncate leading-tight" style={color.hex && !(lesson.attendance_status === 'justificada' || lesson.attendance_status === 'Justificada') ? { color: color.hex } : {}}>{lesson.teacher_name || 'Prof.'}</p>
+                                    <p className="text-[9px] font-black truncate leading-tight" style={tHex && !(lesson.attendance_status === 'justificada' || lesson.attendance_status === 'Justificada') ? { color: tHex } : {}}>{tHex && <span className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle" style={{ backgroundColor: tHex }} />}{lesson.teacher_name || 'Prof.'}</p>
                                     <p className={`text-[8px] truncate leading-tight ${(lesson.attendance_status === 'justificada' || lesson.attendance_status === 'Justificada') ? 'text-gray-400 line-through' : 'text-gray-600'}`}>{lesson.student_name}{(lesson.attendance_status === 'justificada' || lesson.attendance_status === 'Justificada') ? ' (Just.)' : ''}</p>
                                   </div>
                                 );
@@ -797,7 +799,7 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                         <p className={`text-xs font-black uppercase ${color.text}`}>{lesson.subject}</p>
                         <p className="text-[10px] text-gray-500">{(lesson as any).time_start || (lesson as any).start_time} - {(lesson as any).time_end || (lesson as any).end_time}</p>
                         <p className="text-[10px] text-gray-500 truncate">👤 {lesson.student_name}</p>
-                        <p className="text-[10px] text-gray-500 truncate">🎓 {lesson.teacher_name}</p>
+                        <p className="text-[10px] font-bold truncate" style={{ color: getTeacherColor(lesson.teacher_id || '') || '#6b7280' }}>🎓 {lesson.teacher_name}</p>
                       </div>
                     );
                   })}
@@ -828,7 +830,8 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                           {dayLessons.slice(0, 3).map((lesson, idx) => {
                             const color = getLessonColor(lesson, idx);
                             return (
-                              <div key={lesson.id} className={`${color.bg} ${color.text} text-[9px] font-bold px-1.5 py-0.5 rounded-lg truncate`}>
+                              <div key={lesson.id} className={`${color.bg} ${color.text} text-[9px] font-bold px-1.5 py-0.5 rounded-lg truncate`}
+                                style={getTeacherColor(lesson.teacher_id || '') ? { borderLeft: '3px solid ' + getTeacherColor(lesson.teacher_id || '') } : undefined}>
                                 {lesson.time_start} {lesson.subject}
                               </div>
                             );

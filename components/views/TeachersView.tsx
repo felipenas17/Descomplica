@@ -1,11 +1,12 @@
 'use client';
 
 import React from 'react';
-import { Plus, Trash2, Mail, Award, Video, UserCheck, ShieldCheck, Pencil, X, Clock, ChevronDown, ChevronUp, Check } from 'lucide-react';
+import { Plus, Trash2, Mail, Award, Video, UserCheck, ShieldCheck, Pencil, X, Clock, ChevronDown, ChevronUp, Check, Key } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { Avatar } from '@/components/ui/Avatar';
 import TeacherForm from '@/components/forms/TeacherForm';
+import { nextFreeTeacherColor } from '@/lib/teacherColors';
 import TeacherBirthdayTab from './TeacherBirthdayTab';
 
 export default function TeachersView() {
@@ -24,6 +25,8 @@ export default function TeachersView() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isMounted, setIsMounted] = React.useState(false);
+  // e-mails que ja tem login (profiles). null = nao deu para carregar -> nao mostra aviso de 'sem login'
+  const [profileEmails, setProfileEmails] = React.useState<string[] | null>(null);
 
   const DAYS_OF_WEEK = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
   const [selectedDaysEdit, setSelectedDaysEdit] = React.useState<string[]>([]);
@@ -178,6 +181,10 @@ export default function TeachersView() {
       }
       
       setTeachers(data || []);
+      try {
+        const { data: profs, error: profErr } = await supabase.from('profiles').select('email');
+        setProfileEmails(profErr || !profs || profs.length < 2 ? null : profs.map((p: any) => String(p.email || '').trim().toLowerCase()));
+      } catch { setProfileEmails(null); }
     } catch (err: any) {
       setError(err.message || 'Erro inesperado.');
     } finally {
@@ -190,6 +197,43 @@ export default function TeachersView() {
     fetchTeachers();
   }, [fetchTeachers]);
 
+  // Cria auth + perfil (role professor, sem troca obrigatoria de senha) pela API de admin ja existente
+  const criarLoginProfessora = async (nome: string, email: string, senha: string): Promise<boolean> => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error('Sua sessão não foi encontrada. Saia e entre de novo e tente outra vez.'); return false; }
+      const res = await fetch('/api/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+        body: JSON.stringify({ email: String(email || '').trim(), password: senha, name: nome, role: 'professor', needs_password_change: false }),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = String(result?.error || '');
+        toast.error(/already|registered|exists/i.test(msg) ? 'Esse e-mail já tem login no sistema.' : 'Não foi possível criar o login: ' + (msg || 'erro desconhecido'));
+        return false;
+      }
+      try { localStorage.setItem('desc_senha_padrao_prof', senha); } catch {}
+      return true;
+    } catch (e: any) {
+      toast.error('Não foi possível criar o login: ' + (e?.message || 'erro de conexão'));
+      return false;
+    }
+  };
+
+  const handleCriarLoginCard = async (teacher: any) => {
+    if (!teacher.email) { toast.error('Cadastre o e-mail da professora antes (botão de editar).'); return; }
+    let sugestao = '';
+    try { sugestao = localStorage.getItem('desc_senha_padrao_prof') || ''; } catch {}
+    const senha = window.prompt('Criar login para ' + teacher.name + '\nE-mail: ' + teacher.email + '\n\nSenha de acesso (mínimo 6 caracteres). A professora não poderá alterar:', sugestao);
+    if (senha === null) return;
+    if (senha.trim().length < 6) { toast.error('A senha precisa ter pelo menos 6 caracteres.'); return; }
+    const t = toast.loading('Criando login...');
+    const ok = await criarLoginProfessora(teacher.name, teacher.email, senha.trim());
+    toast.dismiss(t);
+    if (ok) { toast.success('Login criado para ' + teacher.name + '!'); fetchTeachers(); }
+  };
+
   const handleAddTeacher = async (data: any) => {
     const loadingToast = toast.loading('Cadastrando professor...');
     try {
@@ -199,7 +243,8 @@ export default function TeachersView() {
         subject: data.subject,
         availability: data.availability ? (typeof data.availability === 'string' ? data.availability.split(',').map((s: string) => s.trim()) : data.availability) : [],
         avatar: `https://picsum.photos/seed/${data.name}/200`,
-        role: 'Professor'
+        role: 'Professor',
+        color: nextFreeTeacherColor(teachers.map((t: any) => t.color)), // cor propria no quadro de aulas
       };
 
       const { data: insertedTeacher, error: teacherError } = await supabase
@@ -210,18 +255,14 @@ export default function TeachersView() {
 
       if (teacherError) throw teacherError;
 
-      // Sync profile (optional but recommended)
-      if (insertedTeacher) {
-        await supabase.from('profiles').upsert([{
-          id: (insertedTeacher as any).id,
-          email: data.email,
-          full_name: data.name,
-          role: 'professor',
-          needs_password_change: false
-        }]);
-      }
+      // Cria o login de acesso (e-mail do cadastro + senha informada no formulario)
+      const senha = String(data.password || '').trim();
+      let loginOk = false;
+      if (insertedTeacher && senha) loginOk = await criarLoginProfessora(data.name, data.email, senha);
 
-      toast.success('Professor cadastrado com sucesso!', { id: loadingToast });
+      if (loginOk) toast.success('Professora cadastrada e login criado!', { id: loadingToast });
+      else if (!senha) toast.success('Professor cadastrado, sem login (senha em branco). Use o botão da chave no cartão para criar.', { id: loadingToast });
+      else toast.success('Professor cadastrado, mas o login NÃO foi criado. Use o botão da chave no cartão para tentar de novo.', { id: loadingToast });
       fetchTeachers();
       setShowForm(false);
     } catch (err: any) {
@@ -670,6 +711,12 @@ export default function TeachersView() {
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  {profileEmails !== null && !profileEmails.includes(String(teacher.email || '').trim().toLowerCase()) && (
+                    <button onClick={() => handleCriarLoginCard(teacher)}
+                      className="p-2 text-amber-500 hover:text-amber-600 transition-colors" title="Criar login de acesso">
+                      <Key size={18} />
+                    </button>
+                  )}
                   <button onClick={() => openEdit(teacher)}
                     className="p-2 text-gray-300 hover:text-purple-500 transition-colors" title="Editar">
                     <Pencil size={18} />
@@ -684,9 +731,15 @@ export default function TeachersView() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <h3 className="text-xl font-bold text-gray-900 group-hover:text-primary transition-colors">{teacher.name}</h3>
-                    <div className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-600 rounded-full text-[8px] font-black uppercase" title="Login ativo no sistema">
-                      <ShieldCheck size={10} /> Ativo
-                    </div>
+                    {profileEmails !== null && !profileEmails.includes(String(teacher.email || '').trim().toLowerCase()) ? (
+                      <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[8px] font-black uppercase" title="Ainda não tem login no sistema">
+                        <Key size={10} /> Sem login
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-600 rounded-full text-[8px] font-black uppercase" title="Login ativo no sistema">
+                        <ShieldCheck size={10} /> Ativo
+                      </div>
+                    )}
                   </div>
                   <p className="text-primary font-bold text-xs uppercase tracking-widest">{teacher.subject}</p>
                 <p className="text-gray-400 text-xs">{teacher.role}</p>

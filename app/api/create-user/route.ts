@@ -17,7 +17,10 @@ export async function POST(req: NextRequest) {
     const { data: callerProfile } = await supabaseAdmin.from('profiles').select('role').eq('id', user.id).single();
     if (callerProfile?.role !== 'admin') return NextResponse.json({ error: 'Forbidden: admin access required' }, { status: 403 });
 
-    const { email, password, name, role } = await req.json();
+    const { email, password, name, role, needs_password_change } = await req.json();
+    if (!email || !password || String(password).length < 6) {
+      return NextResponse.json({ error: 'Informe o e-mail e uma senha com pelo menos 6 caracteres' }, { status: 400 });
+    }
 
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -33,7 +36,8 @@ export async function POST(req: NextRequest) {
       full_name: name,
       email,
       role,
-      needs_password_change: true,
+      // professoras entram com senha padrao e nao trocam: o front manda false. Sem o campo, mantem o comportamento antigo (true).
+      needs_password_change: needs_password_change === false ? false : true,
     });
 
     if (profileError) return NextResponse.json({ error: profileError.message }, { status: 400 });

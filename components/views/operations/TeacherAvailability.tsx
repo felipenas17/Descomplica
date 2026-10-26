@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { buildTeacherColorMap } from '@/lib/teacherColors';
 
 const DAYS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 const DAYS_SHORT: Record<string,string> = { 'Segunda':'Seg','Terça':'Ter','Quarta':'Qua','Quinta':'Qui','Sexta':'Sex','Sábado':'Sáb' };
@@ -22,6 +23,7 @@ function strToMinutes(t: string) {
 
 export default function TeacherAvailability() {
   const [teachers, setTeachers] = useState<any[]>([]);
+  const teacherColorMap = React.useMemo(() => buildTeacherColorMap(teachers), [teachers]);
   const [schedules, setSchedules] = useState<any[]>([]);
   const [filterDay, setFilterDay] = useState<string>('Todos');
   const [loading, setLoading] = useState(true);
@@ -133,7 +135,7 @@ export default function TeacherAvailability() {
         {teachers.map(teacher => {
           const vagos = getVagos(teacher);
           const totalSlots = vagos.reduce((a,v) => a+v.slots.length, 0);
-          const hex = teacher.color || '#7C3AED';
+          const hex = teacherColorMap[teacher.id] || '#7C3AED';
           return (
             <div key={teacher.id} className="border border-gray-100 rounded-2xl overflow-hidden">
               <div className="flex items-center gap-3 p-4 border-b border-gray-50">

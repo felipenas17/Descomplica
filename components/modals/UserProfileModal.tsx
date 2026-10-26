@@ -64,6 +64,7 @@ export default function UserProfileModal({ isOpen, onClose, user, onUserUpdate }
   };
 
   const savePassword = async () => {
+    if (user?.role === 'professor') return; // professoras usam a senha padrao e nao trocam
     if (newPassword !== confirmPassword || newPassword.length < 8) return;
     setSavingPassword(true);
     setPasswordError('');
@@ -127,7 +128,7 @@ export default function UserProfileModal({ isOpen, onClose, user, onUserUpdate }
 
               {/* Tabs */}
               <div className="flex bg-gray-100 p-1 rounded-2xl mb-6">
-                {(['profile', 'password'] as const).map(t => (
+                {(user?.role === 'professor' ? (['profile'] as const) : (['profile', 'password'] as const)).map(t => (
                   <button key={t} onClick={() => setTab(t)}
                     className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${tab === t ? 'bg-white shadow text-purple-600' : 'text-gray-400 hover:text-gray-600'}`}>
                     {t === 'profile' ? '👤 Perfil' : '🔒 Senha'}
@@ -163,7 +164,7 @@ export default function UserProfileModal({ isOpen, onClose, user, onUserUpdate }
                 </div>
               )}
 
-              {tab === 'password' && (
+              {tab === 'password' && user?.role !== 'professor' && (
                 <div className="space-y-4">
                   {['Senha Atual', 'Nova Senha', 'Confirmar Senha'].map((label, i) => (
                     <div key={label}>
