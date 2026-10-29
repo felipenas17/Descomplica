@@ -105,12 +105,13 @@ export default function FeedbacksView() {
 
   const sendWhatsApp = async (feedback: any) => {
     const w = window.open('', '_blank');
-    const { data } = await supabase
-      .from('students')
-      .select('parent_name, parent_phone')
-      .ilike('name', '%' + feedback.student_name.trim() + '%')
-      .limit(1)
-      .single();
+    // Busca o responsável pelo ID do aluno. O nome gravado no feedback pode estar escrito diferente do cadastro
+    // (ex.: "Luíza ... M.Souza" x "Luísa ... M. Souza") e aí a busca por nome não achava ninguém.
+    let studentQuery: any = supabase.from('students').select('parent_name, parent_phone');
+    studentQuery = feedback.student_id
+      ? studentQuery.eq('id', feedback.student_id)
+      : studentQuery.ilike('name', '%' + (feedback.student_name || '').trim() + '%');
+    const { data } = await studentQuery.limit(1).maybeSingle();
     const phone = (data?.parent_phone || '').replace(/[^0-9]/g, '');
     const parentName = data?.parent_name || 'Responsável';
     if (!phone) {
