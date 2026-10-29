@@ -378,6 +378,57 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
     }
   };
 
+  // Admin: devolve a aula ao normal (tira justificada/falta) para a professora marcar presenca e feedback.
+  // Nunca apaga nada, guarda quem/quando em Observacoes e mostra "Desfazer".
+  const corrigirMarcacao = async () => {
+    const l: any = viewingLesson;
+    if (!l || l.is_experimental || !isAdmin) return;
+    const atual = String(l.attendance_status || '').toLowerCase();
+    if (!['justificada', 'falta', 'ausente'].includes(atual)) { toast.error('Esta aula não está marcada como justificada ou falta.'); return; }
+    if (!['confirmado', 'agendado', 'falta_confirmada', '', null, undefined].includes(l.status)) {
+      toast.error('Esta aula já foi finalizada pela professora (feedback). Para mexer nela, use "Recusar" na tela de Faltas/Confirmação.'); return;
+    }
+    if ((l.notes || '').includes('Substituido por')) {
+      toast.error('Esta é a vaga de um aluno que foi substituído. Não dá para mexer por aqui sem desfazer a substituição.'); return;
+    }
+    // aula original de uma reposicao ja marcada: mexer quebraria o vinculo
+    const { data: vinc } = await supabase.from('schedules').select('id, student_name, date')
+      .or('reposicao_de_id.eq.' + l.id + ',reposicao_de_ids.cs.{' + l.id + '}').limit(1);
+    if (vinc && vinc.length > 0) {
+      const v: any = vinc[0];
+      toast.error('Esta aula tem uma reposição vinculada (' + (v.student_name || '') + ', ' + (v.date ? new Date(v.date + 'T00:00:00').toLocaleDateString('pt-BR') : '') + '). Mexer aqui quebraria o vínculo.'); return;
+    }
+    const dataBr = l.date ? new Date(l.date + 'T00:00:00').toLocaleDateString('pt-BR') : '';
+    if (!window.confirm('Voltar esta aula ao normal (sem marcação)?\n\n' + (l.student_name || '') + ' · ' + dataBr + ' · ' + (l.teacher_name || '') + '\n\nA professora poderá marcar presença e feedback. Nada é apagado.')) return;
+
+    const antes = { attendance_status: l.attendance_status ?? null, status: l.status ?? null, motivo_falta: l.motivo_falta ?? null, professor_liberado: l.professor_liberado ?? false, notes: l.notes ?? null };
+    const agora = new Date();
+    const quando = String(agora.getDate()).padStart(2, '0') + '/' + String(agora.getMonth() + 1).padStart(2, '0') + ' ' + String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0');
+    const patch: any = {
+      attendance_status: null,
+      motivo_falta: null,
+      professor_liberado: false,
+      notes: (l.notes ? l.notes + ' | ' : '') + 'Marcação corrigida pelo admin (' + quando + '): ' + (l.attendance_status || '') + ' → normal',
+    };
+    if (l.status === 'falta_confirmada') patch.status = 'confirmado';
+
+    const { data: upd, error } = await supabase.from('schedules').update(patch).eq('id', l.id).select('id');
+    if (error || !upd || upd.length === 0) { toast.error('Não foi possível corrigir: ' + (error?.message || 'nenhuma aula foi alterada')); return; }
+    setViewingLesson({ ...l, ...patch });
+    fetchLessons();
+    toast.success('Aula voltou ao normal!', {
+      duration: 20000,
+      action: {
+        label: 'Desfazer',
+        onClick: async () => {
+          const { error: e2 } = await supabase.from('schedules').update(antes).eq('id', l.id);
+          if (e2) toast.error('Não consegui desfazer: ' + e2.message);
+          else { toast.success('Desfeito.'); setViewingLesson(null); fetchLessons(); }
+        },
+      },
+    });
+  };
+
   useEffect(() => { fetchLessons(); fetchTeachersAndStudents(); }, [currentDate, view, isAdmin]);
 
   const fetchLessons = async () => {
@@ -1481,6 +1532,15 @@ export default function SchoolCalendar({ user, onNavigate }: { user?: any, onNav
                 </div>
               ))}
             </div>
+            {isAdmin && !(viewingLesson as any).is_experimental && ['justificada', 'falta', 'ausente'].includes(String((viewingLesson as any).attendance_status || '').toLowerCase()) && (
+              <div className="px-5 pb-4">
+                <button onClick={corrigirMarcacao}
+                  className="w-full py-3 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 rounded-xl text-sm font-bold transition-all">
+                  ↩️ Marcado errado? Voltar ao normal
+                </button>
+                <p className="text-[10px] text-gray-400 font-bold mt-1.5 text-center">Tira a justificativa/falta e devolve a aula para a professora marcar. Nada é apagado e dá para desfazer.</p>
+              </div>
+            )}
             <div className="p-5 border-t border-gray-100 flex gap-3">
               <button onClick={() => setViewingLesson(null)} className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all">Fechar</button>
               {(viewingLesson as any).attendance_status !== 'justificada' && (viewingLesson as any).attendance_status !== 'Justificada' && (

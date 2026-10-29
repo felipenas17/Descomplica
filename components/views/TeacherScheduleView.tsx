@@ -160,6 +160,7 @@ export default function TeacherScheduleView({ user }: { user?: any }) {
       toast.error('Esta aula ja foi resolvida pelo administrador (justificativa, reposicao ou substituicao) e nao pode ser alterada por aqui.');
       return;
     }
+    if (status === 'justificada' && !window.confirm('Marcar a aula de ' + (lesson.student_name || 'aluno') + ' como JUSTIFICADA (o aluno avisou que não vem)?\n\nSe ele veio, toque em Cancelar e marque Presente.')) return;
     await supabase.from('schedules').update({ attendance_status: status }).eq('id', lesson.id);
     if (status === 'falta') {
       const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'admin');
