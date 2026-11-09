@@ -255,9 +255,7 @@ export default function AbsencesView() {
   const pagLiberadas = pagamentoBase.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'falta' && s.professor_liberado && !vagaSubstituidaPor(s)).length;
   const pagVagasSubstituidas = pagamentoBase.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'falta' && s.professor_liberado && !!vagaSubstituidaPor(s)).length;
   const pagaveisFeriadoNovo = pagamentoBase.filter((s: any) => !s.attendance_status && isFeriado(s.date) && !semFeriado(s));
-  // Aulas em feriado que ficam FORA da conta porque o contrato da professora nao paga feriado
-  const pagFeriadosContrato = pagamentoBase.filter((s: any) => !s.professor_liberado && semFeriado(s) && ((!s.attendance_status && isFeriado(s.date)) || (s.attendance_status || '').toLowerCase() === 'feriado'));
-  const pagaveis = [...pagaveisMarcadas, ...pagaveisFeriadoNovo];
+  const pagaveis =[...pagaveisMarcadas, ...pagaveisFeriadoNovo];
   const pagPresentes = pagaveisMarcadas.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'presente').length;
   const pagJustificadas = pagaveisMarcadas.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'justificada').length;
   const pagFaltas = pagaveisMarcadas.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'falta').length;
@@ -393,7 +391,6 @@ export default function AbsencesView() {
       else if (s.status === 'falta_confirmada' && s.professor_liberado) obsParts.push('<b>Professora liberada</b>');
       const substQuem = substituindoQuem(s);
       if (substQuem) obsParts.push('<b>Substituindo ' + escHtml(substQuem) + '</b>');
-      if (pagFeriadosContrato.some((x: any) => x.id === s.id)) obsParts.push('<b>Feriado — não remunerado (contrato)</b>');
       const origIds = (s.reposicao_de_ids && s.reposicao_de_ids.length > 0) ? s.reposicao_de_ids : (s.reposicao_de_id ? [s.reposicao_de_id] : []);
       const origs = origIds.map((oid: string) => schedules.find((x: any) => x.id === oid)).filter(Boolean);
       origs.forEach((o: any) => {
@@ -490,7 +487,6 @@ export default function AbsencesView() {
               <p className="font-bold text-gray-800">{pagaveis.length} aula(s) / {totalHoras.toFixed(1)}h no filtro atual (presentes: {pagPresentes}, justificadas: {pagJustificadas}, faltas: {pagFaltas}, feriados: {pagFeriados})</p>
               {pagLiberadas > 0 && <p className="text-gray-500 mt-1">{pagLiberadas} falta(s) com professora liberada — não entram na conta.</p>}
               {pagVagasSubstituidas > 0 && <p className="text-gray-500 mt-1">{pagVagasSubstituidas} vaga(s) substituída(s) por outro aluno — a professora deu a aula, que conta na linha do substituto.</p>}
-              {pagFeriadosContrato.length > 0 && <p className="text-gray-500 mt-1">{pagFeriadosContrato.length} aula(s) em feriado — pelo contrato dela feriado não é pago, não entram na conta.</p>}
               {pagRepoJaPagas > 0 && <p className="text-gray-500 mt-1">{pagRepoJaPagas} reposição(ões) de aula já paga — não entram na conta.</p>}
               <p>Grade mensal: {gradeMensal} aulas · Valor por aula: {fmtMoeda(valorPorAula)}</p>
               {pagSemMarcacao > 0 && (
