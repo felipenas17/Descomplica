@@ -220,6 +220,17 @@ export default function AbsencesView() {
   // recesso 27/07) nao conta de novo. Original do RECESSO (27/07 a 31/07) nunca foi paga -> a reposicao conta.
   // Original que nao existe mais tambem continua contando.
   const schedPorId = new Map<string, any>(schedules.map((x: any) => [x.id, x] as [string, any]));
+  // Vaga substituida: a aula foi dada pela professora a OUTRO aluno. O vinculo entre as duas linhas fica nas observacoes:
+  // na do aluno que faltou "| Substituido por X" e na do substituto "Substituindo Y (motivo)".
+  const vagaSubstituidaPor = (s: any): string | null => {
+    const m = /Substituido por\s+([^|]+)/.exec(s?.notes || '');
+    return m ? m[1].trim() : null;
+  };
+  const substituindoQuem = (s: any): string | null => {
+    const m = /Substituindo\s+([^|(]+)/.exec(s?.notes || '');
+    const nome = m ? m[1].trim() : '';
+    return nome || null;
+  };
   const reposicaoJaPaga = (s: any) => {
     const ids: string[] = (s.reposicao_de_ids && s.reposicao_de_ids.length > 0) ? s.reposicao_de_ids : (s.reposicao_de_id ? [s.reposicao_de_id] : []);
     return ids.some((oid: string) => {
@@ -238,7 +249,8 @@ export default function AbsencesView() {
     return true;
   });
   const pagRepoJaPagas = pagamentoBase.filter((s: any) => !!s.attendance_status && !s.professor_liberado && reposicaoJaPaga(s)).length;
-  const pagLiberadas = pagamentoBase.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'falta' && s.professor_liberado).length;
+  const pagLiberadas = pagamentoBase.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'falta' && s.professor_liberado && !vagaSubstituidaPor(s)).length;
+  const pagVagasSubstituidas = pagamentoBase.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'falta' && s.professor_liberado && !!vagaSubstituidaPor(s)).length;
   const pagaveisFeriadoNovo = pagamentoBase.filter((s: any) => !s.attendance_status && isFeriado(s.date));
   const pagaveis = [...pagaveisMarcadas, ...pagaveisFeriadoNovo];
   const pagPresentes = pagaveisMarcadas.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'presente').length;
@@ -371,7 +383,11 @@ export default function AbsencesView() {
       const [y,m,d] = (s.date||'').split('-');
       const obsParts = [];
       if (s.motivo_falta) obsParts.push(escHtml(s.motivo_falta));
-      if (s.status === 'falta_confirmada' && s.professor_liberado) obsParts.push('<b>' + ((s.notes || '').includes('Substituido por') ? 'Vaga Substituída' : 'Professora liberada') + '</b>');
+      const vagaPor = vagaSubstituidaPor(s);
+      if (vagaPor) obsParts.push('<b>Vaga substituída por ' + escHtml(vagaPor) + '</b>');
+      else if (s.status === 'falta_confirmada' && s.professor_liberado) obsParts.push('<b>Professora liberada</b>');
+      const substQuem = substituindoQuem(s);
+      if (substQuem) obsParts.push('<b>Substituindo ' + escHtml(substQuem) + '</b>');
       const origIds = (s.reposicao_de_ids && s.reposicao_de_ids.length > 0) ? s.reposicao_de_ids : (s.reposicao_de_id ? [s.reposicao_de_id] : []);
       const origs = origIds.map((oid: string) => schedules.find((x: any) => x.id === oid)).filter(Boolean);
       origs.forEach((o: any) => {
@@ -467,6 +483,7 @@ export default function AbsencesView() {
             <div className="bg-gray-50 rounded-xl p-3 mb-3 text-xs text-gray-600 space-y-1">
               <p className="font-bold text-gray-800">{pagaveis.length} aula(s) / {totalHoras.toFixed(1)}h no filtro atual (presentes: {pagPresentes}, justificadas: {pagJustificadas}, faltas: {pagFaltas}, feriados: {pagFeriados})</p>
               {pagLiberadas > 0 && <p className="text-gray-500 mt-1">{pagLiberadas} falta(s) com professora liberada — não entram na conta.</p>}
+              {pagVagasSubstituidas > 0 && <p className="text-gray-500 mt-1">{pagVagasSubstituidas} vaga(s) substituída(s) por outro aluno — a professora deu a aula, que conta na linha do substituto.</p>}
               {pagRepoJaPagas > 0 && <p className="text-gray-500 mt-1">{pagRepoJaPagas} reposição(ões) de aula já paga — não entram na conta.</p>}
               <p>Grade mensal: {gradeMensal} aulas · Valor por aula: {fmtMoeda(valorPorAula)}</p>
               {pagSemMarcacao > 0 && (
@@ -538,9 +555,18 @@ export default function AbsencesView() {
                       <p className="font-bold text-gray-900 text-sm">{s.subject || 'Aula'}</p>
                       <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${status.color}`}>{status.label}</span>
                       {attendance && <span className={`text-[10px] font-black ${attendance.color}`}>{attendance.label}</span>}
-                      {s.status === 'falta_confirmada' && s.professor_liberado && (
+                      {vagaSubstituidaPor(s) ? (
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                          Vaga substituída por {vagaSubstituidaPor(s)}
+                        </span>
+                      ) : (s.status === 'falta_confirmada' && s.professor_liberado && (
                         <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">
-                          {(s.notes || '').includes('Substituido por') ? 'Vaga Substituída' : 'Professora Liberada'}
+                          Professora Liberada
+                        </span>
+                      ))}
+                      {substituindoQuem(s) && (
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-sky-100 text-sky-700">
+                          Substituindo {substituindoQuem(s)}
                         </span>
                       )}
                       {s.reposicao_pendente && <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Reposicao Pendente</span>}
