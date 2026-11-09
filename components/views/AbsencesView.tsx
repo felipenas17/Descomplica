@@ -248,7 +248,7 @@ export default function AbsencesView() {
     const st = (s.attendance_status || '').toLowerCase();
     if (s.professor_liberado) return false; // liberada, vaga substituida, ou reposicao ja paga antes do sistema -> nunca conta
     if (reposicaoJaPaga(s)) return false; // reposicao de aula original ja paga -> nao conta de novo
-    if (st === 'feriado' && semFeriado(s)) return false; // contrato nao paga feriado
+    if (st === 'feriado' && semFeriado(s) && isFeriado(s.date)) return false; // contrato nao paga feriado (15/10 Dia dos Professores nao esta na tabela de feriados -> conta)
     return true;
   });
   const pagRepoJaPagas = pagamentoBase.filter((s: any) => !!s.attendance_status && !s.professor_liberado && reposicaoJaPaga(s)).length;
