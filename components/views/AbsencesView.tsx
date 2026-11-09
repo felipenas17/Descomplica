@@ -42,7 +42,7 @@ export default function AbsencesView() {
     setLoading(true);
     const [schedulesRes, teachersRes, feriadosRes] = await Promise.all([
       supabase.from('schedules').select('*').order('date', { ascending: false }),
-      supabase.from('teachers').select('id, name, weekly_lessons, monthly_value, payment_method, pix_key').order('name'),
+      supabase.from('teachers').select('id, name, weekly_lessons, monthly_value, payment_method, pix_key, recebe_feriado').order('name'),
       supabase.from('feriados').select('data, recorrente, titulo'),
     ]);
     setSchedules(schedulesRes.data || []);
@@ -213,6 +213,8 @@ export default function AbsencesView() {
       return f.recorrente ? (fm === m && fd === d) : f.data === dateStr;
     });
   };
+  // Professora que por contrato NAO recebe feriado (teachers.recebe_feriado = false): a aula em feriado sai da conta.
+  const semFeriado = (s: any) => (teachers.find((t: any) => t.id === s.teacher_id) as any)?.recebe_feriado === false;
   // Aula marcada (presenca/justificada/feriado ja gravado) conta. Falta so conta se a professora
   // NAO foi liberada (ficou trabalhando). Aula em feriado cadastrado sem marcacao tambem conta
   // automaticamente (grade fixa), e vira 'feriado' gravado ao confirmar o pagamento.
@@ -246,12 +248,15 @@ export default function AbsencesView() {
     const st = (s.attendance_status || '').toLowerCase();
     if (s.professor_liberado) return false; // liberada, vaga substituida, ou reposicao ja paga antes do sistema -> nunca conta
     if (reposicaoJaPaga(s)) return false; // reposicao de aula original ja paga -> nao conta de novo
+    if (st === 'feriado' && semFeriado(s)) return false; // contrato nao paga feriado
     return true;
   });
   const pagRepoJaPagas = pagamentoBase.filter((s: any) => !!s.attendance_status && !s.professor_liberado && reposicaoJaPaga(s)).length;
   const pagLiberadas = pagamentoBase.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'falta' && s.professor_liberado && !vagaSubstituidaPor(s)).length;
   const pagVagasSubstituidas = pagamentoBase.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'falta' && s.professor_liberado && !!vagaSubstituidaPor(s)).length;
-  const pagaveisFeriadoNovo = pagamentoBase.filter((s: any) => !s.attendance_status && isFeriado(s.date));
+  const pagaveisFeriadoNovo = pagamentoBase.filter((s: any) => !s.attendance_status && isFeriado(s.date) && !semFeriado(s));
+  // Aulas em feriado que ficam FORA da conta porque o contrato da professora nao paga feriado
+  const pagFeriadosContrato = pagamentoBase.filter((s: any) => !s.professor_liberado && semFeriado(s) && ((!s.attendance_status && isFeriado(s.date)) || (s.attendance_status || '').toLowerCase() === 'feriado'));
   const pagaveis = [...pagaveisMarcadas, ...pagaveisFeriadoNovo];
   const pagPresentes = pagaveisMarcadas.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'presente').length;
   const pagJustificadas = pagaveisMarcadas.filter((s: any) => (s.attendance_status || '').toLowerCase() === 'justificada').length;
@@ -388,6 +393,7 @@ export default function AbsencesView() {
       else if (s.status === 'falta_confirmada' && s.professor_liberado) obsParts.push('<b>Professora liberada</b>');
       const substQuem = substituindoQuem(s);
       if (substQuem) obsParts.push('<b>Substituindo ' + escHtml(substQuem) + '</b>');
+      if (pagFeriadosContrato.some((x: any) => x.id === s.id)) obsParts.push('<b>Feriado — não remunerado (contrato)</b>');
       const origIds = (s.reposicao_de_ids && s.reposicao_de_ids.length > 0) ? s.reposicao_de_ids : (s.reposicao_de_id ? [s.reposicao_de_id] : []);
       const origs = origIds.map((oid: string) => schedules.find((x: any) => x.id === oid)).filter(Boolean);
       origs.forEach((o: any) => {
@@ -484,6 +490,7 @@ export default function AbsencesView() {
               <p className="font-bold text-gray-800">{pagaveis.length} aula(s) / {totalHoras.toFixed(1)}h no filtro atual (presentes: {pagPresentes}, justificadas: {pagJustificadas}, faltas: {pagFaltas}, feriados: {pagFeriados})</p>
               {pagLiberadas > 0 && <p className="text-gray-500 mt-1">{pagLiberadas} falta(s) com professora liberada — não entram na conta.</p>}
               {pagVagasSubstituidas > 0 && <p className="text-gray-500 mt-1">{pagVagasSubstituidas} vaga(s) substituída(s) por outro aluno — a professora deu a aula, que conta na linha do substituto.</p>}
+              {pagFeriadosContrato.length > 0 && <p className="text-gray-500 mt-1">{pagFeriadosContrato.length} aula(s) em feriado — pelo contrato dela feriado não é pago, não entram na conta.</p>}
               {pagRepoJaPagas > 0 && <p className="text-gray-500 mt-1">{pagRepoJaPagas} reposição(ões) de aula já paga — não entram na conta.</p>}
               <p>Grade mensal: {gradeMensal} aulas · Valor por aula: {fmtMoeda(valorPorAula)}</p>
               {pagSemMarcacao > 0 && (
