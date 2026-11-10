@@ -233,6 +233,15 @@ export default function AbsencesView() {
     const nome = m ? m[1].trim() : '';
     return nome || null;
   };
+  // Troca de professora na aula ("Substituido: Alciléa ... por Verônica ..."): mostra de quem a professora atual esta cobrindo.
+  const professoraSubstituida = (s: any): string | null => {
+    const m = /Substituido:\s*([^|\n]+?)\s+por\s+([^|\n]+)/.exec(s?.notes || '');
+    if (!m) return null;
+    const original = m[1].trim();
+    const atual = m[2].trim();
+    if (!original || atual.toLowerCase() !== (s?.teacher_name || '').trim().toLowerCase()) return null;
+    return original.split(/\s+/)[0];
+  };
   const reposicaoJaPaga = (s: any) => {
     const ids: string[] = (s.reposicao_de_ids && s.reposicao_de_ids.length > 0) ? s.reposicao_de_ids : (s.reposicao_de_id ? [s.reposicao_de_id] : []);
     return ids.some((oid: string) => {
@@ -391,6 +400,8 @@ export default function AbsencesView() {
       else if (s.status === 'falta_confirmada' && s.professor_liberado) obsParts.push('<b>Professora liberada</b>');
       const substQuem = substituindoQuem(s);
       if (substQuem) obsParts.push('<b>Substituindo ' + escHtml(substQuem) + '</b>');
+      const profSubst = professoraSubstituida(s);
+      if (profSubst) obsParts.push('<b>Substituindo a professora ' + escHtml(profSubst) + '</b>');
       const origIds = (s.reposicao_de_ids && s.reposicao_de_ids.length > 0) ? s.reposicao_de_ids : (s.reposicao_de_id ? [s.reposicao_de_id] : []);
       const origs = origIds.map((oid: string) => schedules.find((x: any) => x.id === oid)).filter(Boolean);
       origs.forEach((o: any) => {
@@ -570,6 +581,11 @@ export default function AbsencesView() {
                       {substituindoQuem(s) && (
                         <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-sky-100 text-sky-700">
                           Substituindo {substituindoQuem(s)}
+                        </span>
+                      )}
+                      {professoraSubstituida(s) && (
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                          Substituindo a professora {professoraSubstituida(s)}
                         </span>
                       )}
                       {s.reposicao_pendente && <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Reposicao Pendente</span>}
